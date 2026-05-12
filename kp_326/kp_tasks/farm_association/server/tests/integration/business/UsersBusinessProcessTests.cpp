@@ -1,0 +1,38 @@
+#include <controllers/app/Users.hpp>
+#include <controllers/http/Users.hpp>
+#include <database/database.hpp>
+#include <fixtures/BeastRequestFixture.hpp>
+#include <handling/Users.hpp>
+#include <server/core/AppRouter.hpp>
+#include <server/core/RequestDispatcher.hpp>
+#include <utils/JsonAssertions.hpp>
+
+#include <boost/beast/http.hpp>
+#include <gtest/gtest.h>
+
+namespace {
+
+namespace http = boost::beast::http;
+
+using fasc::server::tests::fixtures::makeBeastRequest;
+using fasc::server::tests::utils::expectJsonStringField;
+
+TEST(UsersBusinessProcessTests, PostUsersWithEmptyNameReturnsBusinessErrorThroughHttpPipeline) {
+  fasc::server::database::Database database{nullptr};
+  UserController user_controller{database};
+  UserHttpController user_http_controller{user_controller};
+  UserHandler user_handler{user_http_controller};
+  AppRouter router;
+  router.post("/users", [&](const HttpRequest& request) {
+    return user_handler.create_user(request);
+  });
+  RequestDispatcher dispatcher{router};
+
+  const BeastResponse response =
+      dispatcher.dispatch(makeBeastRequest(http::verb::post, "/users", R"({"name":""})"));
+
+  EXPECT_EQ(response.result(), http::status::internal_server_error);
+  expectJsonStringField(response.body(), "error", "User name is required");
+}
+
+} // namespace

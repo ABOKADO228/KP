@@ -1,0 +1,26 @@
+# Build outputs
+build*/
+server/build*/
+out/
+
+# Local dependency cache/install tree. Recreate with tools/bootstrap-deps.*
+server/third_party/*
+!server/third_party/.gitkeep
+
+# Generated/transient files
+.cache/
+.vs/
+.vscode/.cmake/
+compile_commands.json
+
+# Python/tooling caches
+__pycache__/
+.pytest_cache/
+.coverage
+pytest-cache-files-*/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
