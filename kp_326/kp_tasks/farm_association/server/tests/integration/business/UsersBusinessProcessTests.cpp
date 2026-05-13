@@ -3,6 +3,8 @@
 #include <database/database.hpp>
 #include <fixtures/BeastRequestFixture.hpp>
 #include <handling/Users.hpp>
+#include <security/JwtService.hpp>
+#include <security/PasswordHasher.hpp>
 #include <server/core/AppRouter.hpp>
 #include <server/core/RequestDispatcher.hpp>
 #include <utils/JsonAssertions.hpp>
@@ -19,7 +21,9 @@ using fasc::server::tests::utils::expectJsonStringField;
 
 TEST(UsersBusinessProcessTests, PostUsersWithEmptyNameReturnsBusinessErrorThroughHttpPipeline) {
   fasc::server::database::Database database{nullptr};
-  UserController user_controller{database};
+  fasc::server::security::PasswordHasher password_hasher;
+  fasc::server::security::JwtService jwt_service{"test-secret"};
+  UserController user_controller{database, password_hasher, jwt_service};
   UserHttpController user_http_controller{user_controller};
   UserHandler user_handler{user_http_controller};
   AppRouter router;
@@ -29,9 +33,10 @@ TEST(UsersBusinessProcessTests, PostUsersWithEmptyNameReturnsBusinessErrorThroug
   RequestDispatcher dispatcher{router};
 
   const BeastResponse response =
-      dispatcher.dispatch(makeBeastRequest(http::verb::post, "/users", R"({"name":""})"));
+      dispatcher.dispatch(
+          makeBeastRequest(http::verb::post, "/users", R"({"name":"","password":"password123"})"));
 
-  EXPECT_EQ(response.result(), http::status::internal_server_error);
+  EXPECT_EQ(response.result(), http::status::bad_request);
   expectJsonStringField(response.body(), "error", "User name is required");
 }
 

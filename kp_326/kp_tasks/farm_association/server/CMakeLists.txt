@@ -30,6 +30,21 @@ farm_add_boost_headers(farm_boost "${FARM_SERVER_DEPS_DIR}")
 farm_add_nlohmann_json(farm_nlohmann_json "${FARM_SERVER_DEPS_DIR}")
 farm_add_fmt(farm_fmt "${FARM_SERVER_DEPS_DIR}")
 
+set(OPENSSL_INCLUDE_DIR "${FARM_SERVER_DEPS_DIR}/postgresql/include")
+farm_require_path("${OPENSSL_INCLUDE_DIR}/openssl/evp.h" "OpenSSL headers")
+if(WIN32)
+    set(OPENSSL_CRYPTO_LIBRARY "${FARM_SERVER_DEPS_DIR}/postgresql/lib/libcrypto.lib")
+    farm_require_path("${OPENSSL_CRYPTO_LIBRARY}" "OpenSSL libcrypto import library")
+else()
+    farm_find_local_library(OPENSSL_CRYPTO_LIBRARY "${FARM_SERVER_DEPS_DIR}" "libcrypto"
+        REQUIRED
+        NAMES crypto libcrypto
+        PATHS
+            "${FARM_SERVER_DEPS_DIR}/postgresql/lib"
+            "${FARM_SERVER_DEPS_DIR}/openssl/lib")
+endif()
+farm_add_imported_library(FarmOpenSSL::Crypto "${OPENSSL_CRYPTO_LIBRARY}" "${OPENSSL_INCLUDE_DIR}")
+
 farm_find_local_program(FARM_SERVER_ODB_COMPILER "${FARM_SERVER_DEPS_DIR}" "odb")
 set(FARM_SERVER_USER_MODEL "${CMAKE_CURRENT_SOURCE_DIR}/include/persistence/User.hpp")
 set(FARM_SERVER_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
@@ -67,15 +82,28 @@ set_source_files_properties(
     "${FARM_SERVER_USER_SQL}"
     PROPERTIES GENERATED TRUE)
 
+file(GLOB FARM_SERVER_TABLE_SOURCES CONFIGURE_DEPENDS
+        src/controllers/app/tables/*.cpp
+        src/handling/tables/*.cpp
+        src/persistence/tables/*.cpp)
+
 set(FARM_SERVER_CORE_SOURCES
         src/controllers/app/Users.cpp
         src/controllers/http/Users.cpp
         src/database/database.cpp
+        src/database/PgConnection.cpp
+        src/database/TableRegistry.cpp
         src/handling/Health.cpp
         src/handling/Users.cpp
+        src/persistence/TableRecordPersistenceBase.cpp
+        src/security/Encoding.cpp
+        src/security/JwtService.cpp
+        src/security/PasswordHasher.cpp
         src/server/core/AppRouter.cpp
+        src/server/core/HttpResult.cpp
         src/server/core/RequestDispatcher.cpp
         src/server/core/Server.cpp
+        ${FARM_SERVER_TABLE_SOURCES}
         "${FARM_SERVER_USER_ODB_CXX}")
 
 add_library(farm_association_server_core STATIC)
@@ -95,7 +123,8 @@ target_link_libraries(farm_association_server_core
         Threads::Threads
         farm_boost
         farm_nlohmann_json
-        farm_fmt)
+        farm_fmt
+        FarmOpenSSL::Crypto)
 
 if(WIN32)
     target_compile_definitions(farm_association_server_core PUBLIC _WIN32_WINNT=0x0601)

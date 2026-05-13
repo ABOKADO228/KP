@@ -2,25 +2,38 @@
 
 #include <server/core/AppRouter.hpp>
 
-///HTTP-сервер приложения.
-///@note Сейчас сервер принимает маршруты и запускает синхронный HTTP-loop на указанном порту.
+#include <chrono>
+#include <cstddef>
+#include <string>
+
+struct ServerSettings {
+  std::string address{"0.0.0.0"};
+  unsigned short port{8080};
+  std::size_t thread_count{0};
+  std::size_t request_body_limit{1024 * 1024};
+  std::chrono::seconds request_timeout{30};
+  int listen_backlog{0};
+};
+
+/// HTTP server for application routes.
 class Server {
 public:
-  ///Регистрирует GET-маршрут.
-  ///@param path    путь маршрута, например @c /health.
-  ///@param handler обработчик маршрута.
+  /// Registers a GET route.
   void get(std::string path, AppRouter::RouteHandler handler);
 
-  ///Регистрирует POST-маршрут.
-  ///@param path    путь маршрута, например @c /users.
-  ///@param handler обработчик маршрута.
+  /// Registers a POST route.
   void post(std::string path, AppRouter::RouteHandler handler);
+  void put(std::string path, AppRouter::RouteHandler handler);
+  void del(std::string path, AppRouter::RouteHandler handler);
 
-  ///Запускает сервер на указанном TCP-порту.
-  ///@param port порт, который должен слушать сервер.
-  ///@returns код завершения server loop.
-  ///@throws Исключения Boost.Asio/Boost.Beast при ошибках открытия сокета или сетевого ввода-вывода.
+  /// Runs the server using the hardware concurrency as the worker count.
   int run(unsigned short port);
+
+  /// Runs the server with an explicit number of Asio worker threads.
+  int run(unsigned short port, std::size_t thread_count);
+
+  /// Runs the server with production-oriented networking settings.
+  int run(const ServerSettings& settings);
 
 private:
   AppRouter router_;

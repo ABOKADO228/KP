@@ -17,7 +17,11 @@ public:
   ///@returns HTTP-ответ с JSON-представлением созданного пользователя.
   ///@throws Исключения JSON parser-а или @c UserController, если тело запроса некорректно или пользователь не создан.
   HttpResponse create_user(const HttpRequest& request);
+  HttpResponse register_user(const HttpRequest& request);
+  HttpResponse login_user(const HttpRequest& request);
 
 private:
+  HttpResponse auth_response(const AuthResultDto& result, unsigned status) const;
+
   UserController& users_;
 };

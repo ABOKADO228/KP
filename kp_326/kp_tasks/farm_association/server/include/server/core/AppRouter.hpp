@@ -24,6 +24,8 @@ public:
   ///@param path    путь маршрута, например @c /users.
   ///@param handler обработчик, который будет вызван для этого пути.
   void post(std::string path, RouteHandler handler);
+  void put(std::string path, RouteHandler handler);
+  void del(std::string path, RouteHandler handler);
 
   ///Находит и вызывает обработчик для HTTP-запроса.
   ///@param request запрос, который нужно маршрутизировать.

@@ -11,6 +11,17 @@
 ///@throws @c nlohmann::json::exception, если поле @c name отсутствует или имеет неверный тип.
 inline void from_json(const nlohmann::json& json, CreateUserCommand& command) {
   command.name = json.at("name").get<std::string>();
+  command.password = json.at("password").get<std::string>();
+}
+
+inline void from_json(const nlohmann::json& json, RegisterUserCommand& command) {
+  command.name = json.at("name").get<std::string>();
+  command.password = json.at("password").get<std::string>();
+}
+
+inline void from_json(const nlohmann::json& json, LoginUserCommand& command) {
+  command.name = json.at("name").get<std::string>();
+  command.password = json.at("password").get<std::string>();
 }
 
 ///Преобразует публичный view пользователя в JSON.

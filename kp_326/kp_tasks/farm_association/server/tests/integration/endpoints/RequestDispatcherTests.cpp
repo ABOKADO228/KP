@@ -42,4 +42,32 @@ TEST(RequestDispatcherIntegrationTests, ReturnsNotFoundResponseForUnknownRoute) 
   expectJsonStringField(response.body(), "error", "not found");
 }
 
+TEST(RequestDispatcherIntegrationTests, RoutesByPathWithoutQueryString) {
+  AppRouter router;
+  router.get("/health", [](const HttpRequest& request) {
+    return HttpResponse{200, "application/json",
+                        std::string{R"({"target":")"} + request.target + R"("})"};
+  });
+  RequestDispatcher dispatcher{router};
+
+  const BeastResponse response =
+      dispatcher.dispatch(makeBeastRequest(http::verb::get, "/health?verbose=true"));
+
+  EXPECT_EQ(response.result(), http::status::ok);
+  expectJsonStringField(response.body(), "target", "/health");
+}
+
+TEST(RequestDispatcherIntegrationTests, AddsSecurityHeadersToResponses) {
+  AppRouter router;
+  router.get("/health", [](const HttpRequest&) {
+    return HttpResponse{200, "application/json", R"({"status":"ok"})"};
+  });
+  RequestDispatcher dispatcher{router};
+
+  const BeastResponse response =
+      dispatcher.dispatch(makeBeastRequest(http::verb::get, "/health"));
+
+  EXPECT_EQ(response["X-Content-Type-Options"], "nosniff");
+}
+
 } // namespace

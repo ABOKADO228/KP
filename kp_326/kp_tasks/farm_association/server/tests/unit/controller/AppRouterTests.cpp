@@ -46,4 +46,16 @@ TEST(AppRouterTests, ConvertsHandlerExceptionToInternalServerError) {
   expectJsonStringField(response.body, "error", "failed");
 }
 
+TEST(AppRouterTests, EscapesExceptionTextInJsonErrorResponse) {
+  AppRouter router;
+  router.get("/broken", [](const HttpRequest&) -> HttpResponse {
+    throw std::runtime_error{R"(bad "json" text)"};
+  });
+
+  const HttpResponse response = router.route(makeHttpRequest("GET", "/broken"));
+
+  EXPECT_EQ(response.status, 500U);
+  expectJsonStringField(response.body, "error", R"(bad "json" text)");
+}
+
 } // namespace

@@ -1,13 +1,78 @@
 #include <server/core/RequestDispatcher.hpp>
 
+#include <cctype>
 #include <string>
+#include <unordered_map>
 
-RequestDispatcher::RequestDispatcher(AppRouter& router) : router_(router) {}
+namespace {
 
-BeastResponse RequestDispatcher::dispatch(const BeastRequest& request) {
+std::string url_decode(std::string_view value) {
+  std::string decoded;
+  decoded.reserve(value.size());
+
+  for (std::size_t i = 0; i < value.size(); ++i) {
+    if (value[i] == '+') {
+      decoded.push_back(' ');
+    } else if (value[i] == '%' && i + 2 < value.size() &&
+               std::isxdigit(static_cast<unsigned char>(value[i + 1])) &&
+               std::isxdigit(static_cast<unsigned char>(value[i + 2]))) {
+      const std::string hex{value.substr(i + 1, 2)};
+      decoded.push_back(static_cast<char>(std::stoi(hex, nullptr, 16)));
+      i += 2;
+    } else {
+      decoded.push_back(value[i]);
+    }
+  }
+
+  return decoded;
+}
+
+std::unordered_map<std::string, std::string> query_params_from(std::string_view target) {
+  std::unordered_map<std::string, std::string> params;
+  const auto query_position = target.find('?');
+  if (query_position == std::string_view::npos) {
+    return params;
+  }
+
+  std::string_view query = target.substr(query_position + 1);
+  while (!query.empty()) {
+    const auto amp = query.find('&');
+    const std::string_view pair = query.substr(0, amp);
+    const auto eq = pair.find('=');
+    if (eq != std::string_view::npos) {
+      params.emplace(url_decode(pair.substr(0, eq)), url_decode(pair.substr(eq + 1)));
+    } else if (!pair.empty()) {
+      params.emplace(url_decode(pair), "");
+    }
+
+    if (amp == std::string_view::npos) {
+      break;
+    }
+    query.remove_prefix(amp + 1);
+  }
+
+  return params;
+}
+
+std::string route_target_from(std::string target) {
+  const auto query_position = target.find('?');
+  if (query_position != std::string::npos) {
+    target.resize(query_position);
+  }
+
+  return target.empty() ? "/" : target;
+}
+
+} // namespace
+
+RequestDispatcher::RequestDispatcher(const AppRouter& router) : router_(router) {}
+
+BeastResponse RequestDispatcher::dispatch(const BeastRequest& request) const {
   HttpRequest app_request;
   app_request.method = std::string(request.method_string());
-  app_request.target = std::string(request.target());
+  const std::string raw_target{request.target()};
+  app_request.target = route_target_from(raw_target);
+  app_request.query_params = query_params_from(raw_target);
   app_request.body = request.body();
 
   for (const auto& field : request) {
@@ -20,6 +85,7 @@ BeastResponse RequestDispatcher::dispatch(const BeastRequest& request) {
 
   response.set(http::field::server, "farm-association-server");
   response.set(http::field::content_type, app_response.content_type);
+  response.set("X-Content-Type-Options", "nosniff");
   response.keep_alive(request.keep_alive());
   response.body() = app_response.body;
   response.prepare_payload();

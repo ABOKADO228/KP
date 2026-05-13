@@ -16,6 +16,8 @@ public:
   ///@returns HTTP-ответ от пользовательского HTTP controller-а.
   ///@throws Исключения @c UserHttpController, если обработка запроса завершилась ошибкой.
   HttpResponse create_user(const HttpRequest& request);
+  HttpResponse register_user(const HttpRequest& request);
+  HttpResponse login_user(const HttpRequest& request);
 
 private:
   UserHttpController& users_;

@@ -15,11 +15,12 @@ using fasc::server::tests::utils::expectJsonStringField;
 using fasc::server::tests::utils::expectJsonUnsignedLongField;
 
 TEST(UserMarshallingTests, ReadsCreateUserCommandFromJson) {
-  const auto json = nlohmann::json{{"name", "Alex"}};
+  const auto json = nlohmann::json{{"name", "Alex"}, {"password", "password123"}};
 
   const CreateUserCommand command = json.get<CreateUserCommand>();
 
   EXPECT_EQ(command.name, "Alex");
+  EXPECT_EQ(command.password, "password123");
 }
 
 TEST(UserMarshallingTests, ThrowsWhenRequiredNameFieldIsMissing) {
