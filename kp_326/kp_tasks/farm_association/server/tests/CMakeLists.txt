@@ -5,6 +5,8 @@ add_executable(farm_association_unit_tests)
 target_sources(farm_association_unit_tests
     PRIVATE
         unit/controller/AppRouterTests.cpp
+        unit/controller/FarmEntityControllerTests.cpp
+        unit/controller/FarmEntityHandlerTests.cpp
         unit/controller/HealthHandlerTests.cpp
         unit/controller/UserControllerTests.cpp
         unit/marshalling/UserMarshallingTests.cpp
@@ -25,6 +27,7 @@ add_executable(farm_association_integration_tests)
 target_sources(farm_association_integration_tests
     PRIVATE
         integration/business/UsersBusinessProcessTests.cpp
+        integration/endpoints/FarmEntityEndpointTests.cpp
         integration/endpoints/HealthEndpointTests.cpp
         integration/endpoints/RequestDispatcherTests.cpp)
 

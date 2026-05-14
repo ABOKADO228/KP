@@ -30,6 +30,14 @@ farm_add_boost_headers(farm_boost "${FARM_SERVER_DEPS_DIR}")
 farm_add_nlohmann_json(farm_nlohmann_json "${FARM_SERVER_DEPS_DIR}")
 farm_add_fmt(farm_fmt "${FARM_SERVER_DEPS_DIR}")
 
+file(GLOB FARM_SERVER_ENTITY_SOURCES
+    CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/controllers/app/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/controllers/http/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/handling/*.cpp")
+list(FILTER FARM_SERVER_ENTITY_SOURCES EXCLUDE REGEX ".*/Users\\.cpp$")
+list(FILTER FARM_SERVER_ENTITY_SOURCES EXCLUDE REGEX ".*/Health\\.cpp$")
+
 set(OPENSSL_INCLUDE_DIR "${FARM_SERVER_DEPS_DIR}/postgresql/include")
 farm_require_path("${OPENSSL_INCLUDE_DIR}/openssl/evp.h" "OpenSSL headers")
 if(WIN32)
@@ -88,6 +96,7 @@ set(FARM_SERVER_CORE_SOURCES
         src/database/Database.cpp
         src/handling/Health.cpp
         src/handling/Users.cpp
+        ${FARM_SERVER_ENTITY_SOURCES}
         src/security/Encoding.cpp
         src/security/JwtService.cpp
         src/security/PasswordHasher.cpp

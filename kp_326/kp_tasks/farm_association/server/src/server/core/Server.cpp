@@ -315,4 +315,8 @@ int Server::run(const ServerSettings& settings) {
   return 0;
 }
 
+const AppRouter& Server::routerForTests() const {
+  return router_;
+}
+
 } // namespace fasc::server::core

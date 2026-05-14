@@ -16,6 +16,8 @@ unsigned statusFrom(const fasc::server::views::ErrorView& error) {
     return 400;
   case ErrorViewCode::Unauthorized:
     return 401;
+  case ErrorViewCode::NotFound:
+    return 404;
   case ErrorViewCode::Conflict:
     return 409;
   case ErrorViewCode::InternalServerError:
@@ -27,11 +29,13 @@ unsigned statusFrom(const fasc::server::views::ErrorView& error) {
 
 template <typename ResultType>
 HttpResponse responseFrom(const ResultType& result, unsigned success_status) {
+  // Ошибку сериализуем отдельно.
   if (result.hasError()) {
     return HttpResponse{statusFrom(result.error()), "application/json",
                         nlohmann::json(result.error()).dump()};
   }
 
+  // Успешный view получает заданный статус.
   return HttpResponse{success_status, "application/json",
                       nlohmann::json(result.success()).dump()};
 }

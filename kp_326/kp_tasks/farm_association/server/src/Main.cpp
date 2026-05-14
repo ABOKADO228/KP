@@ -1,6 +1,7 @@
 #include <controllers/app/Users.hpp>
 #include <controllers/http/Users.hpp>
 #include <database/Database.hpp>
+#include <handling/FarmEntityRoutes.hpp>
 #include <handling/Health.hpp>
 #include <handling/Users.hpp>
 #include <security/JwtService.hpp>
@@ -24,6 +25,7 @@ using fasc::server::core::HttpRequest;
 using fasc::server::core::Server;
 using fasc::server::core::ServerSettings;
 using fasc::server::handling::HealthHandler;
+using fasc::server::handling::registerFarmEntityRoutes;
 using fasc::server::handling::UserHandler;
 
 constexpr std::string_view kServerName = "farm-association-server";
@@ -156,6 +158,7 @@ int main(int argc, char* argv[]) {
               [&](const HttpRequest& request) { return user_handler.loginUser(request); });
   server.post("/users",
               [&](const HttpRequest& request) { return user_handler.createUser(request); });
+  registerFarmEntityRoutes(server, database);
 
   std::cout << fmt::format("{} starting on {}:{}\n", kServerName, settings.address, settings.port);
   return server.run(settings);

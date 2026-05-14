@@ -57,5 +57,4 @@ private:
 
   std::variant<SuccessType, ErrorType> value_;
 };
-
 } // namespace fasc::extended::fpp

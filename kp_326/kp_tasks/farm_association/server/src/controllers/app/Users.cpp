@@ -45,6 +45,7 @@ CreateUserResult UserController::createUser(CreateUserCommand command) {
 }
 
 AuthResult UserController::registerUser(RegisterUserCommand command) {
+  // Сначала создаем пользователя.
   const CreateUserResult user_result =
       createUserWithPassword(std::move(command.name), std::move(command.password));
   if (user_result.hasError()) {
@@ -58,6 +59,7 @@ AuthResult UserController::registerUser(RegisterUserCommand command) {
 }
 
 AuthResult UserController::loginUser(LoginUserCommand command) {
+  // Проверяем входные данные до БД.
   if (const UserError error = validateName(command.name); !error.message.empty()) {
     return AuthResult::failure(error);
   }
@@ -67,6 +69,7 @@ AuthResult UserController::loginUser(LoginUserCommand command) {
   }
 
   try {
+    // Ищем пользователя в одной транзакции.
     AuthResultDto result = db_.invokeTransactionally([&] {
     using query = odb::query<User>;
 
@@ -100,6 +103,7 @@ AuthResult UserController::loginUser(LoginUserCommand command) {
 
 CreateUserResult UserController::createUserWithPassword(std::string name,
                                                            std::string password) {
+  // Проверяем входные данные до БД.
   if (const UserError error = validateName(name); !error.message.empty()) {
     return CreateUserResult::failure(error);
   }
@@ -109,6 +113,7 @@ CreateUserResult UserController::createUserWithPassword(std::string name,
   }
 
   try {
+    // Создаем запись в одной транзакции.
     UserDto user_dto = db_.invokeTransactionally([&] {
     using query = odb::query<User>;
 

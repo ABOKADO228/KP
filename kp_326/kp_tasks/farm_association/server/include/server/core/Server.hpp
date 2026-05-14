@@ -69,6 +69,10 @@ public:
   ///@returns код завершения процесса.
   int run(const ServerSettings& settings);
 
+  ///Возвращает router для endpoint-тестов.
+  ///@returns внутренний router сервера.
+  const AppRouter& routerForTests() const;
+
 private:
   AppRouter router_;
 };

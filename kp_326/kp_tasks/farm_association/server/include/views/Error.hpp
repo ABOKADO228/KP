@@ -12,6 +12,9 @@ enum class ErrorViewCode {
   ///Ошибка авторизации.
   Unauthorized,
 
+  ///Запрошенная сущность не найдена.
+  NotFound,
+
   ///Конфликт состояния или уникальности.
   Conflict,
 

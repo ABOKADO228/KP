@@ -23,8 +23,10 @@ UserHttpController::UserHttpController(UserController& users) : users_(users) {}
 
 UserViewResult UserHttpController::createUser(std::string_view body) {
   try {
+    // Разбираем входной JSON.
     auto command = nlohmann::json::parse(body).get<CreateUserCommand>();
 
+    // Маппим app result в view result.
     const auto result = users_.createUser(std::move(command));
     if (result.hasError()) {
       return UserViewResult::failure(errorView(result.error()));
@@ -39,7 +41,10 @@ UserViewResult UserHttpController::createUser(std::string_view body) {
 
 AuthViewResult UserHttpController::registerUser(std::string_view body) {
   try {
+    // Разбираем входной JSON.
     auto command = nlohmann::json::parse(body).get<RegisterUserCommand>();
+
+    // Маппим app result в view result.
     const auto result = users_.registerUser(std::move(command));
     if (result.hasError()) {
       return AuthViewResult::failure(errorView(result.error()));
@@ -55,7 +60,10 @@ AuthViewResult UserHttpController::registerUser(std::string_view body) {
 
 AuthViewResult UserHttpController::loginUser(std::string_view body) {
   try {
+    // Разбираем входной JSON.
     auto command = nlohmann::json::parse(body).get<LoginUserCommand>();
+
+    // Маппим app result в view result.
     const auto result = users_.loginUser(std::move(command));
     if (result.hasError()) {
       return AuthViewResult::failure(errorView(result.error()));

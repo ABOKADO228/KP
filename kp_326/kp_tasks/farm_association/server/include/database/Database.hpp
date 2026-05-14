@@ -5,10 +5,27 @@
 #include <odb/database.hxx>
 #include <odb/exceptions.hxx>
 #include <odb/transaction.hxx>
+#include <optional>
+#include <string>
 #include <type_traits>
+#include <unordered_map>
 #include <utility>
+#include <vector>
 
 namespace fasc::server::database {
+
+///SQL-параметр для низкоуровневой операции database layer.
+struct SqlParameter {
+  ///Текстовое значение параметра.
+  std::string text;
+
+  ///Признак SQL NULL.
+  bool isNull{};
+};
+
+///Строка результата SQL-запроса.
+using SqlRow = std::unordered_map<std::string, std::optional<std::string>>;
+
 ///RAII-обертка над @c odb::transaction.
 ///@note Если @c commit() не вызван, ODB откатит активную транзакцию при уничтожении объекта.
 class Transaction {
@@ -143,6 +160,20 @@ public:
   ///@note Использовать только для низкоуровневых сценариев, которые не покрыты методами @c Database.
   ///@returns const-ссылка на @c odb::database.
   const odb::database& raw() const;
+
+  ///Выполняет SELECT через ODB PostgreSQL connection.
+  ///@param sql    SQL-запрос с позиционными параметрами PostgreSQL.
+  ///@param values значения параметров.
+  ///@returns строки результата.
+  std::vector<SqlRow> querySql(const std::string& sql,
+                               const std::vector<SqlParameter>& values);
+
+  ///Выполняет команду изменения данных через ODB PostgreSQL connection.
+  ///@param sql    SQL-команда с позиционными параметрами PostgreSQL.
+  ///@param values значения параметров.
+  ///@returns количество затронутых строк.
+  unsigned long long executeSql(const std::string& sql,
+                                const std::vector<SqlParameter>& values);
 
 private:
   std::unique_ptr<odb::database> underlying;
