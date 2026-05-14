@@ -4,8 +4,8 @@
 #include <views/User.hpp>
 
 #include <nlohmann/json.hpp>
-
-///Преобразует JSON-запрос в команду создания пользователя.
+namespace fasc::server::marshalling {
+/// Преобразует JSON-запрос в команду создания пользователя.
 ///@param json    JSON-объект с входными данными.
 ///@param command команда, в которую будут записаны распарсенные данные.
 ///@throws @c nlohmann::json::exception, если поле @c name отсутствует или имеет неверный тип.
@@ -24,7 +24,7 @@ inline void from_json(const nlohmann::json& json, LoginUserCommand& command) {
   command.password = json.at("password").get<std::string>();
 }
 
-///Преобразует публичный view пользователя в JSON.
+/// Преобразует публичный view пользователя в JSON.
 ///@note Используется для ответа наружу, а не для persistence-сериализации.
 ///@param json JSON-объект, в который будет записано представление.
 ///@param view публичное представление пользователя.
@@ -34,3 +34,4 @@ inline void to_json(nlohmann::json& json, const UserView& view) {
       {"name", view.name},
   };
 }
+} // namespace fasc::server::marshalling

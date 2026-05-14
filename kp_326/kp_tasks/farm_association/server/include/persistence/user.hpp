@@ -5,6 +5,7 @@
 #include <string>
 #include <utility>
 
+namespace fasc::server::persistence {
 class User {
 public:
   User() = default;
@@ -35,3 +36,4 @@ private:
 #pragma db object(User)
 #pragma db member(User::id_) id auto
 #pragma db member(User::name_) unique
+} // namespace fasc::server::persistence
