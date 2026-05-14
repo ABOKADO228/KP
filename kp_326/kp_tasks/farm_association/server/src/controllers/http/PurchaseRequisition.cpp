@@ -32,7 +32,7 @@ PurchaseRequisitionRowsViewResult PurchaseRequisitionHttpController::list() cons
   if (result.hasError()) {
     return PurchaseRequisitionRowsViewResult::failure(errorView(result.error()));
   }
-  return PurchaseRequisitionRowsViewResult::success(fasc::server::views::PurchaseRequisitionRowsView{result.success().rows});
+  return PurchaseRequisitionRowsViewResult::success(fasc::server::views::toView(result.success().rows));
 }
 
 PurchaseRequisitionRowViewResult PurchaseRequisitionHttpController::load(
@@ -41,7 +41,7 @@ PurchaseRequisitionRowViewResult PurchaseRequisitionHttpController::load(
   if (result.hasError()) {
     return PurchaseRequisitionRowViewResult::failure(errorView(result.error()));
   }
-  return PurchaseRequisitionRowViewResult::success(fasc::server::views::PurchaseRequisitionRowView{result.success().data});
+  return PurchaseRequisitionRowViewResult::success(fasc::server::views::toView(result.success().data));
 }
 
 PurchaseRequisitionMutationViewResult PurchaseRequisitionHttpController::create(std::string_view body) const {

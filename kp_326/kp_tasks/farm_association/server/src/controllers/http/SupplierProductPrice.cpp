@@ -32,7 +32,7 @@ SupplierProductPriceRowsViewResult SupplierProductPriceHttpController::list() co
   if (result.hasError()) {
     return SupplierProductPriceRowsViewResult::failure(errorView(result.error()));
   }
-  return SupplierProductPriceRowsViewResult::success(fasc::server::views::SupplierProductPriceRowsView{result.success().rows});
+  return SupplierProductPriceRowsViewResult::success(fasc::server::views::toView(result.success().rows));
 }
 
 SupplierProductPriceRowViewResult SupplierProductPriceHttpController::load(
@@ -41,7 +41,7 @@ SupplierProductPriceRowViewResult SupplierProductPriceHttpController::load(
   if (result.hasError()) {
     return SupplierProductPriceRowViewResult::failure(errorView(result.error()));
   }
-  return SupplierProductPriceRowViewResult::success(fasc::server::views::SupplierProductPriceRowView{result.success().data});
+  return SupplierProductPriceRowViewResult::success(fasc::server::views::toView(result.success().data));
 }
 
 SupplierProductPriceMutationViewResult SupplierProductPriceHttpController::create(std::string_view body) const {

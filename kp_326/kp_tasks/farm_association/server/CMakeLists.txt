@@ -38,12 +38,14 @@ file(GLOB FARM_SERVER_ENTITY_SOURCES
 list(FILTER FARM_SERVER_ENTITY_SOURCES EXCLUDE REGEX ".*/Users\\.cpp$")
 list(FILTER FARM_SERVER_ENTITY_SOURCES EXCLUDE REGEX ".*/Health\\.cpp$")
 
-set(OPENSSL_INCLUDE_DIR "${FARM_SERVER_DEPS_DIR}/postgresql/include")
-farm_require_path("${OPENSSL_INCLUDE_DIR}/openssl/evp.h" "OpenSSL headers")
 if(WIN32)
+    set(OPENSSL_INCLUDE_DIR "${FARM_SERVER_DEPS_DIR}/postgresql/include")
+    farm_require_path("${OPENSSL_INCLUDE_DIR}/openssl/evp.h" "OpenSSL headers")
     set(OPENSSL_CRYPTO_LIBRARY "${FARM_SERVER_DEPS_DIR}/postgresql/lib/libcrypto.lib")
     farm_require_path("${OPENSSL_CRYPTO_LIBRARY}" "OpenSSL libcrypto import library")
 else()
+    set(OPENSSL_INCLUDE_DIR "${FARM_SERVER_DEPS_DIR}/openssl/include")
+    farm_require_path("${OPENSSL_INCLUDE_DIR}/openssl/evp.h" "OpenSSL headers")
     farm_find_local_library(OPENSSL_CRYPTO_LIBRARY "${FARM_SERVER_DEPS_DIR}" "libcrypto"
         REQUIRED
         NAMES crypto libcrypto

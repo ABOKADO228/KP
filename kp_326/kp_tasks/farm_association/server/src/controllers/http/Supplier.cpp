@@ -32,7 +32,7 @@ SupplierRowsViewResult SupplierHttpController::list() const {
   if (result.hasError()) {
     return SupplierRowsViewResult::failure(errorView(result.error()));
   }
-  return SupplierRowsViewResult::success(fasc::server::views::SupplierRowsView{result.success().rows});
+  return SupplierRowsViewResult::success(fasc::server::views::toView(result.success().rows));
 }
 
 SupplierRowViewResult SupplierHttpController::load(
@@ -41,7 +41,7 @@ SupplierRowViewResult SupplierHttpController::load(
   if (result.hasError()) {
     return SupplierRowViewResult::failure(errorView(result.error()));
   }
-  return SupplierRowViewResult::success(fasc::server::views::SupplierRowView{result.success().data});
+  return SupplierRowViewResult::success(fasc::server::views::toView(result.success().data));
 }
 
 SupplierMutationViewResult SupplierHttpController::create(std::string_view body) const {

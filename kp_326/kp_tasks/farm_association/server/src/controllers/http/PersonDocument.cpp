@@ -32,7 +32,7 @@ PersonDocumentRowsViewResult PersonDocumentHttpController::list() const {
   if (result.hasError()) {
     return PersonDocumentRowsViewResult::failure(errorView(result.error()));
   }
-  return PersonDocumentRowsViewResult::success(fasc::server::views::PersonDocumentRowsView{result.success().rows});
+  return PersonDocumentRowsViewResult::success(fasc::server::views::toView(result.success().rows));
 }
 
 PersonDocumentRowViewResult PersonDocumentHttpController::load(
@@ -41,7 +41,7 @@ PersonDocumentRowViewResult PersonDocumentHttpController::load(
   if (result.hasError()) {
     return PersonDocumentRowViewResult::failure(errorView(result.error()));
   }
-  return PersonDocumentRowViewResult::success(fasc::server::views::PersonDocumentRowView{result.success().data});
+  return PersonDocumentRowViewResult::success(fasc::server::views::toView(result.success().data));
 }
 
 PersonDocumentMutationViewResult PersonDocumentHttpController::create(std::string_view body) const {

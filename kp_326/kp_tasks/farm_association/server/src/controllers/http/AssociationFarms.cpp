@@ -32,7 +32,7 @@ AssociationFarmsRowsViewResult AssociationFarmsHttpController::list() const {
   if (result.hasError()) {
     return AssociationFarmsRowsViewResult::failure(errorView(result.error()));
   }
-  return AssociationFarmsRowsViewResult::success(fasc::server::views::AssociationFarmsRowsView{result.success().rows});
+  return AssociationFarmsRowsViewResult::success(fasc::server::views::toView(result.success().rows));
 }
 
 AssociationFarmsRowViewResult AssociationFarmsHttpController::load(
@@ -41,7 +41,7 @@ AssociationFarmsRowViewResult AssociationFarmsHttpController::load(
   if (result.hasError()) {
     return AssociationFarmsRowViewResult::failure(errorView(result.error()));
   }
-  return AssociationFarmsRowViewResult::success(fasc::server::views::AssociationFarmsRowView{result.success().data});
+  return AssociationFarmsRowViewResult::success(fasc::server::views::toView(result.success().data));
 }
 
 AssociationFarmsMutationViewResult AssociationFarmsHttpController::create(std::string_view body) const {

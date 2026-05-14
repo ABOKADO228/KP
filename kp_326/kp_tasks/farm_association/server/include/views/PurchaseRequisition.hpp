@@ -1,26 +1,30 @@
 #pragma once
 
-#include <persistence/PurchaseRequisition.hpp>
-
+#include <optional>
+#include <string>
 #include <vector>
 
 namespace fasc::server::views {
 
-/// View строки таблицы purchase_requisition.
 struct PurchaseRequisitionRowView {
-  /// Данные строки.
-  fasc::server::persistence::PurchaseRequisitionEntity data;
+  int id{};
+  int farmId{};
+  int productId{};
+  int quantity{};
+  std::optional<double> maxPricePerUnit{};
+  std::optional<std::string> offerDate{};
+  std::optional<std::string> requiredDate{};
+  std::optional<int> priority{};
+  std::optional<std::string> validUntil{};
+  std::optional<std::string> status{};
+  std::optional<std::string> notes{};
 };
 
-/// View списка строк таблицы purchase_requisition.
 struct PurchaseRequisitionRowsView {
-  /// Строки таблицы.
-  std::vector<fasc::server::persistence::PurchaseRequisitionEntity> rows;
+  std::vector<PurchaseRequisitionRowView> rows{};
 };
 
-/// View результата изменения таблицы purchase_requisition.
 struct PurchaseRequisitionMutationView {
-  /// Количество затронутых строк.
   unsigned long long affectedRows{};
 };
 

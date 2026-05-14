@@ -1,26 +1,22 @@
 #pragma once
 
-#include <persistence/Unit.hpp>
-
+#include <optional>
+#include <string>
 #include <vector>
 
 namespace fasc::server::views {
 
-/// View строки таблицы unit.
 struct UnitRowView {
-  /// Данные строки.
-  fasc::server::persistence::UnitEntity data;
+  int id{};
+  std::optional<std::string> code{};
+  std::optional<std::string> name{};
 };
 
-/// View списка строк таблицы unit.
 struct UnitRowsView {
-  /// Строки таблицы.
-  std::vector<fasc::server::persistence::UnitEntity> rows;
+  std::vector<UnitRowView> rows{};
 };
 
-/// View результата изменения таблицы unit.
 struct UnitMutationView {
-  /// Количество затронутых строк.
   unsigned long long affectedRows{};
 };
 

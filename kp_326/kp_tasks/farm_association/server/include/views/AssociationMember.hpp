@@ -1,26 +1,26 @@
 #pragma once
 
-#include <persistence/AssociationMember.hpp>
-
+#include <optional>
+#include <string>
 #include <vector>
 
 namespace fasc::server::views {
 
-/// View строки таблицы association_member.
 struct AssociationMemberRowView {
-  /// Данные строки.
-  fasc::server::persistence::AssociationMemberEntity data;
+  int id{};
+  int associationId{};
+  int personId{};
+  std::optional<std::string> membershipNumber{};
+  std::string joinedDate{};
+  std::optional<std::string> status{};
+  std::optional<std::string> notes{};
 };
 
-/// View списка строк таблицы association_member.
 struct AssociationMemberRowsView {
-  /// Строки таблицы.
-  std::vector<fasc::server::persistence::AssociationMemberEntity> rows;
+  std::vector<AssociationMemberRowView> rows{};
 };
 
-/// View результата изменения таблицы association_member.
 struct AssociationMemberMutationView {
-  /// Количество затронутых строк.
   unsigned long long affectedRows{};
 };
 

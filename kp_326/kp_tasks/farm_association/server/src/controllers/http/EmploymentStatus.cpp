@@ -32,7 +32,7 @@ EmploymentStatusRowsViewResult EmploymentStatusHttpController::list() const {
   if (result.hasError()) {
     return EmploymentStatusRowsViewResult::failure(errorView(result.error()));
   }
-  return EmploymentStatusRowsViewResult::success(fasc::server::views::EmploymentStatusRowsView{result.success().rows});
+  return EmploymentStatusRowsViewResult::success(fasc::server::views::toView(result.success().rows));
 }
 
 EmploymentStatusRowViewResult EmploymentStatusHttpController::load(
@@ -41,7 +41,7 @@ EmploymentStatusRowViewResult EmploymentStatusHttpController::load(
   if (result.hasError()) {
     return EmploymentStatusRowViewResult::failure(errorView(result.error()));
   }
-  return EmploymentStatusRowViewResult::success(fasc::server::views::EmploymentStatusRowView{result.success().data});
+  return EmploymentStatusRowViewResult::success(fasc::server::views::toView(result.success().data));
 }
 
 EmploymentStatusMutationViewResult EmploymentStatusHttpController::create(std::string_view body) const {

@@ -2,6 +2,9 @@
 
 #include <controllers/dto/SalesRequisition.hpp>
 #include <views/SalesRequisition.hpp>
+#include <optional>
+#include <odb/nullable.hxx>
+#include <persistence/SalesRequisition.hpp>
 
 #include <nlohmann/json.hpp>
 
@@ -85,19 +88,95 @@ inline void from_json(const nlohmann::json& json, SalesRequisitionUpdateDto& val
 
 namespace fasc::server::views {
 
-/// Сериализует view строки таблицы sales_requisition.
+namespace detail {
+
+template <typename T>
+inline std::optional<T> toOptional(const odb::nullable<T>& value) {
+  if (value.null()) {
+    return std::nullopt;
+  }
+  return value.get();
+}
+
+inline nlohmann::json SalesRequisitionRowPayload(const SalesRequisitionRowView& view) {
+  nlohmann::json json = nlohmann::json::object();
+  json["id"] = view.id;
+  if (view.farmId) {
+    json["farm_id"] = *view.farmId;
+  } else {
+    json["farm_id"] = nullptr;
+  }
+  json["product_id"] = view.productId;
+  json["quantity"] = view.quantity;
+  if (view.pricePerUnit) {
+    json["price_per_unit"] = *view.pricePerUnit;
+  } else {
+    json["price_per_unit"] = nullptr;
+  }
+  json["offer_date"] = view.offerDate;
+  if (view.validUntil) {
+    json["valid_until"] = *view.validUntil;
+  } else {
+    json["valid_until"] = nullptr;
+  }
+  if (view.status) {
+    json["status"] = *view.status;
+  } else {
+    json["status"] = nullptr;
+  }
+  if (view.notes) {
+    json["notes"] = *view.notes;
+  } else {
+    json["notes"] = nullptr;
+  }
+  return json;
+}
+
+} // namespace detail
+
+inline SalesRequisitionRowView toView(const fasc::server::persistence::SalesRequisitionEntity& entity) {
+  return SalesRequisitionRowView{
+      entity.id,
+      detail::toOptional(entity.farmId),
+      entity.productId,
+      entity.quantity,
+      detail::toOptional(entity.pricePerUnit),
+      entity.offerDate,
+      detail::toOptional(entity.validUntil),
+      detail::toOptional(entity.status),
+      detail::toOptional(entity.notes)
+  };
+}
+
+inline SalesRequisitionRowsView toView(const std::vector<fasc::server::persistence::SalesRequisitionEntity>& rows) {
+  SalesRequisitionRowsView view;
+  view.rows.reserve(rows.size());
+  for (const auto& row : rows) {
+    view.rows.push_back(toView(row));
+  }
+  return view;
+}
+
 inline void to_json(nlohmann::json& json, const SalesRequisitionRowView& view) {
-  json = nlohmann::json{{"resource", "sales_requisition"}, {"data", view.data}};
+  json = nlohmann::json::object();
+  json["resource"] = "sales_requisition";
+  json["data"] = detail::SalesRequisitionRowPayload(view);
 }
 
-/// Сериализует view списка таблицы sales_requisition.
 inline void to_json(nlohmann::json& json, const SalesRequisitionRowsView& view) {
-  json = nlohmann::json{{"resource", "sales_requisition"}, {"rows", view.rows}};
+  json = nlohmann::json::object();
+  json["resource"] = "sales_requisition";
+  nlohmann::json rows = nlohmann::json::array();
+  for (const auto& row : view.rows) {
+    rows.push_back(detail::SalesRequisitionRowPayload(row));
+  }
+  json["rows"] = rows;
 }
 
-/// Сериализует view изменения таблицы sales_requisition.
 inline void to_json(nlohmann::json& json, const SalesRequisitionMutationView& view) {
-  json = nlohmann::json{{"resource", "sales_requisition"}, {"affectedRows", view.affectedRows}};
+  json = nlohmann::json::object();
+  json["resource"] = "sales_requisition";
+  json["affectedRows"] = view.affectedRows;
 }
 
 } // namespace fasc::server::views

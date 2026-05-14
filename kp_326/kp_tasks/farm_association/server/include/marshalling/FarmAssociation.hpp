@@ -2,6 +2,9 @@
 
 #include <controllers/dto/FarmAssociation.hpp>
 #include <views/FarmAssociation.hpp>
+#include <optional>
+#include <odb/nullable.hxx>
+#include <persistence/FarmAssociation.hpp>
 
 #include <nlohmann/json.hpp>
 
@@ -64,19 +67,89 @@ inline void from_json(const nlohmann::json& json, FarmAssociationUpdateDto& valu
 
 namespace fasc::server::views {
 
-/// Сериализует view строки таблицы farm_association.
+namespace detail {
+
+template <typename T>
+inline std::optional<T> toOptional(const odb::nullable<T>& value) {
+  if (value.null()) {
+    return std::nullopt;
+  }
+  return value.get();
+}
+
+inline nlohmann::json FarmAssociationRowPayload(const FarmAssociationRowView& view) {
+  nlohmann::json json = nlohmann::json::object();
+  json["id"] = view.id;
+  if (view.inn) {
+    json["inn"] = *view.inn;
+  } else {
+    json["inn"] = nullptr;
+  }
+  if (view.ogrn) {
+    json["ogrn"] = *view.ogrn;
+  } else {
+    json["ogrn"] = nullptr;
+  }
+  if (view.name) {
+    json["name"] = *view.name;
+  } else {
+    json["name"] = nullptr;
+  }
+  if (view.legalAddress) {
+    json["legal_address"] = *view.legalAddress;
+  } else {
+    json["legal_address"] = nullptr;
+  }
+  if (view.status) {
+    json["status"] = *view.status;
+  } else {
+    json["status"] = nullptr;
+  }
+  return json;
+}
+
+} // namespace detail
+
+inline FarmAssociationRowView toView(const fasc::server::persistence::FarmAssociationEntity& entity) {
+  return FarmAssociationRowView{
+      entity.id,
+      detail::toOptional(entity.inn),
+      detail::toOptional(entity.ogrn),
+      detail::toOptional(entity.name),
+      detail::toOptional(entity.legalAddress),
+      detail::toOptional(entity.status)
+  };
+}
+
+inline FarmAssociationRowsView toView(const std::vector<fasc::server::persistence::FarmAssociationEntity>& rows) {
+  FarmAssociationRowsView view;
+  view.rows.reserve(rows.size());
+  for (const auto& row : rows) {
+    view.rows.push_back(toView(row));
+  }
+  return view;
+}
+
 inline void to_json(nlohmann::json& json, const FarmAssociationRowView& view) {
-  json = nlohmann::json{{"resource", "farm_association"}, {"data", view.data}};
+  json = nlohmann::json::object();
+  json["resource"] = "farm_association";
+  json["data"] = detail::FarmAssociationRowPayload(view);
 }
 
-/// Сериализует view списка таблицы farm_association.
 inline void to_json(nlohmann::json& json, const FarmAssociationRowsView& view) {
-  json = nlohmann::json{{"resource", "farm_association"}, {"rows", view.rows}};
+  json = nlohmann::json::object();
+  json["resource"] = "farm_association";
+  nlohmann::json rows = nlohmann::json::array();
+  for (const auto& row : view.rows) {
+    rows.push_back(detail::FarmAssociationRowPayload(row));
+  }
+  json["rows"] = rows;
 }
 
-/// Сериализует view изменения таблицы farm_association.
 inline void to_json(nlohmann::json& json, const FarmAssociationMutationView& view) {
-  json = nlohmann::json{{"resource", "farm_association"}, {"affectedRows", view.affectedRows}};
+  json = nlohmann::json::object();
+  json["resource"] = "farm_association";
+  json["affectedRows"] = view.affectedRows;
 }
 
 } // namespace fasc::server::views

@@ -1,26 +1,28 @@
 #pragma once
 
-#include <persistence/SalesRequisition.hpp>
-
+#include <optional>
+#include <string>
 #include <vector>
 
 namespace fasc::server::views {
 
-/// View строки таблицы sales_requisition.
 struct SalesRequisitionRowView {
-  /// Данные строки.
-  fasc::server::persistence::SalesRequisitionEntity data;
+  int id{};
+  std::optional<int> farmId{};
+  int productId{};
+  int quantity{};
+  std::optional<double> pricePerUnit{};
+  std::string offerDate{};
+  std::optional<std::string> validUntil{};
+  std::optional<std::string> status{};
+  std::optional<std::string> notes{};
 };
 
-/// View списка строк таблицы sales_requisition.
 struct SalesRequisitionRowsView {
-  /// Строки таблицы.
-  std::vector<fasc::server::persistence::SalesRequisitionEntity> rows;
+  std::vector<SalesRequisitionRowView> rows{};
 };
 
-/// View результата изменения таблицы sales_requisition.
 struct SalesRequisitionMutationView {
-  /// Количество затронутых строк.
   unsigned long long affectedRows{};
 };
 

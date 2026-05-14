@@ -32,7 +32,7 @@ ContractRowsViewResult ContractHttpController::list() const {
   if (result.hasError()) {
     return ContractRowsViewResult::failure(errorView(result.error()));
   }
-  return ContractRowsViewResult::success(fasc::server::views::ContractRowsView{result.success().rows});
+  return ContractRowsViewResult::success(fasc::server::views::toView(result.success().rows));
 }
 
 ContractRowViewResult ContractHttpController::load(
@@ -41,7 +41,7 @@ ContractRowViewResult ContractHttpController::load(
   if (result.hasError()) {
     return ContractRowViewResult::failure(errorView(result.error()));
   }
-  return ContractRowViewResult::success(fasc::server::views::ContractRowView{result.success().data});
+  return ContractRowViewResult::success(fasc::server::views::toView(result.success().data));
 }
 
 ContractMutationViewResult ContractHttpController::create(std::string_view body) const {

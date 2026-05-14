@@ -32,7 +32,7 @@ IdentityDocumentTypeRowsViewResult IdentityDocumentTypeHttpController::list() co
   if (result.hasError()) {
     return IdentityDocumentTypeRowsViewResult::failure(errorView(result.error()));
   }
-  return IdentityDocumentTypeRowsViewResult::success(fasc::server::views::IdentityDocumentTypeRowsView{result.success().rows});
+  return IdentityDocumentTypeRowsViewResult::success(fasc::server::views::toView(result.success().rows));
 }
 
 IdentityDocumentTypeRowViewResult IdentityDocumentTypeHttpController::load(
@@ -41,7 +41,7 @@ IdentityDocumentTypeRowViewResult IdentityDocumentTypeHttpController::load(
   if (result.hasError()) {
     return IdentityDocumentTypeRowViewResult::failure(errorView(result.error()));
   }
-  return IdentityDocumentTypeRowViewResult::success(fasc::server::views::IdentityDocumentTypeRowView{result.success().data});
+  return IdentityDocumentTypeRowViewResult::success(fasc::server::views::toView(result.success().data));
 }
 
 IdentityDocumentTypeMutationViewResult IdentityDocumentTypeHttpController::create(std::string_view body) const {

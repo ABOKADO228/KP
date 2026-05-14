@@ -1,26 +1,29 @@
 #pragma once
 
-#include <persistence/Contract.hpp>
-
+#include <optional>
+#include <string>
 #include <vector>
 
 namespace fasc::server::views {
 
-/// View строки таблицы contract.
 struct ContractRowView {
-  /// Данные строки.
-  fasc::server::persistence::ContractEntity data;
+  int id{};
+  std::optional<int> supplierId{};
+  std::optional<int> farmId{};
+  int associationId{};
+  std::optional<std::string> contractNumber{};
+  std::string signDate{};
+  std::string startDate{};
+  std::optional<std::string> endDate{};
+  std::optional<std::string> status{};
+  std::optional<std::string> description{};
 };
 
-/// View списка строк таблицы contract.
 struct ContractRowsView {
-  /// Строки таблицы.
-  std::vector<fasc::server::persistence::ContractEntity> rows;
+  std::vector<ContractRowView> rows{};
 };
 
-/// View результата изменения таблицы contract.
 struct ContractMutationView {
-  /// Количество затронутых строк.
   unsigned long long affectedRows{};
 };
 

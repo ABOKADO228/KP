@@ -1,26 +1,29 @@
 #pragma once
 
-#include <persistence/FarmEmployee.hpp>
-
+#include <optional>
+#include <string>
 #include <vector>
 
 namespace fasc::server::views {
 
-/// View строки таблицы farm_employee.
 struct FarmEmployeeRowView {
-  /// Данные строки.
-  fasc::server::persistence::FarmEmployeeEntity data;
+  int id{};
+  int personId{};
+  int farmId{};
+  int roleId{};
+  int employmentStatusId{};
+  std::string hireDate{};
+  std::optional<std::string> dismissalDate{};
+  std::optional<double> salary{};
+  std::optional<std::string> employmentContractNumber{};
+  std::optional<int> isPrimaryWorkplace{};
 };
 
-/// View списка строк таблицы farm_employee.
 struct FarmEmployeeRowsView {
-  /// Строки таблицы.
-  std::vector<fasc::server::persistence::FarmEmployeeEntity> rows;
+  std::vector<FarmEmployeeRowView> rows{};
 };
 
-/// View результата изменения таблицы farm_employee.
 struct FarmEmployeeMutationView {
-  /// Количество затронутых строк.
   unsigned long long affectedRows{};
 };
 

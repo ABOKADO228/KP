@@ -64,7 +64,7 @@ mkdir -p "$DOWNLOADS" "$SOURCES"
 
 if command -v pacman >/dev/null 2>&1; then
   missing=()
-  for pkg in base-devel cmake ninja clang postgresql-libs; do
+  for pkg in base-devel cmake ninja clang openssl postgresql-libs; do
     if ! pacman -Q "$pkg" >/dev/null 2>&1; then
       missing+=("$pkg")
     fi
@@ -98,8 +98,15 @@ extract_tar_bz2 "$DOWNLOADS/libodb-2.4.0.tar.bz2" "$SOURCES/libodb-2.4.0"
 download "https://www.codesynthesis.com/download/odb/2.4/libodb-pgsql-2.4.0.tar.bz2" "$DOWNLOADS/libodb-pgsql-2.4.0.tar.bz2"
 extract_tar_bz2 "$DOWNLOADS/libodb-pgsql-2.4.0.tar.bz2" "$SOURCES/libodb-pgsql-2.4.0"
 
-rm -rf "$DEPS/boost" "$DEPS/nlohmann_json" "$DEPS/odb" "$DEPS/postgresql"
-mkdir -p "$DEPS/boost/include" "$DEPS/nlohmann_json/include" "$DEPS/odb/bin" "$DEPS/postgresql/include" "$DEPS/postgresql/lib"
+rm -rf "$DEPS/boost" "$DEPS/nlohmann_json" "$DEPS/odb" "$DEPS/openssl" "$DEPS/postgresql"
+mkdir -p \
+  "$DEPS/boost/include" \
+  "$DEPS/nlohmann_json/include" \
+  "$DEPS/odb/bin" \
+  "$DEPS/openssl/include" \
+  "$DEPS/openssl/lib" \
+  "$DEPS/postgresql/include" \
+  "$DEPS/postgresql/lib"
 
 cp -R "$SOURCES/boost_1_90_0/boost" "$DEPS/boost/include/"
 cp -R "$SOURCES/json-3.12.0/include/nlohmann" "$DEPS/nlohmann_json/include/"
@@ -126,6 +133,25 @@ if [[ -z "${libpq:-}" ]]; then
 fi
 
 ln -sf "$libpq" "$DEPS/postgresql/lib/libpq.so"
+
+if [[ -d /usr/include/openssl && -f /usr/include/openssl/evp.h ]]; then
+  cp -R /usr/include/openssl "$DEPS/openssl/include/"
+else
+  echo "Cannot find OpenSSL headers. Install openssl." >&2
+  exit 1
+fi
+
+libcrypto="$(ldconfig -p 2>/dev/null | awk '/libcrypto\.so/{print $NF; exit}')"
+if [[ -z "${libcrypto:-}" && -f /usr/lib/libcrypto.so ]]; then
+  libcrypto="/usr/lib/libcrypto.so"
+fi
+
+if [[ -z "${libcrypto:-}" ]]; then
+  echo "Cannot find libcrypto.so. Install openssl." >&2
+  exit 1
+fi
+
+ln -sf "$libcrypto" "$DEPS/openssl/lib/libcrypto.so"
 
 echo
 echo "Dependencies are ready in $DEPS"

@@ -2,6 +2,9 @@
 
 #include <controllers/dto/FarmPlotType.hpp>
 #include <views/FarmPlotType.hpp>
+#include <optional>
+#include <odb/nullable.hxx>
+#include <persistence/FarmPlotType.hpp>
 
 #include <nlohmann/json.hpp>
 
@@ -60,19 +63,79 @@ inline void from_json(const nlohmann::json& json, FarmPlotTypeUpdateDto& value) 
 
 namespace fasc::server::views {
 
-/// Сериализует view строки таблицы farm_plot_type.
+namespace detail {
+
+template <typename T>
+inline std::optional<T> toOptional(const odb::nullable<T>& value) {
+  if (value.null()) {
+    return std::nullopt;
+  }
+  return value.get();
+}
+
+inline nlohmann::json FarmPlotTypeRowPayload(const FarmPlotTypeRowView& view) {
+  nlohmann::json json = nlohmann::json::object();
+  json["id"] = view.id;
+  if (view.name) {
+    json["name"] = *view.name;
+  } else {
+    json["name"] = nullptr;
+  }
+  if (view.description) {
+    json["description"] = *view.description;
+  } else {
+    json["description"] = nullptr;
+  }
+  json["farm_plot_level"] = view.farmPlotLevel;
+  if (view.parentId) {
+    json["parent_id"] = *view.parentId;
+  } else {
+    json["parent_id"] = nullptr;
+  }
+  return json;
+}
+
+} // namespace detail
+
+inline FarmPlotTypeRowView toView(const fasc::server::persistence::FarmPlotTypeEntity& entity) {
+  return FarmPlotTypeRowView{
+      entity.id,
+      detail::toOptional(entity.name),
+      detail::toOptional(entity.description),
+      entity.farmPlotLevel,
+      detail::toOptional(entity.parentId)
+  };
+}
+
+inline FarmPlotTypeRowsView toView(const std::vector<fasc::server::persistence::FarmPlotTypeEntity>& rows) {
+  FarmPlotTypeRowsView view;
+  view.rows.reserve(rows.size());
+  for (const auto& row : rows) {
+    view.rows.push_back(toView(row));
+  }
+  return view;
+}
+
 inline void to_json(nlohmann::json& json, const FarmPlotTypeRowView& view) {
-  json = nlohmann::json{{"resource", "farm_plot_type"}, {"data", view.data}};
+  json = nlohmann::json::object();
+  json["resource"] = "farm_plot_type";
+  json["data"] = detail::FarmPlotTypeRowPayload(view);
 }
 
-/// Сериализует view списка таблицы farm_plot_type.
 inline void to_json(nlohmann::json& json, const FarmPlotTypeRowsView& view) {
-  json = nlohmann::json{{"resource", "farm_plot_type"}, {"rows", view.rows}};
+  json = nlohmann::json::object();
+  json["resource"] = "farm_plot_type";
+  nlohmann::json rows = nlohmann::json::array();
+  for (const auto& row : view.rows) {
+    rows.push_back(detail::FarmPlotTypeRowPayload(row));
+  }
+  json["rows"] = rows;
 }
 
-/// Сериализует view изменения таблицы farm_plot_type.
 inline void to_json(nlohmann::json& json, const FarmPlotTypeMutationView& view) {
-  json = nlohmann::json{{"resource", "farm_plot_type"}, {"affectedRows", view.affectedRows}};
+  json = nlohmann::json::object();
+  json["resource"] = "farm_plot_type";
+  json["affectedRows"] = view.affectedRows;
 }
 
 } // namespace fasc::server::views

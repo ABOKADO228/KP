@@ -2,6 +2,9 @@
 
 #include <controllers/dto/AssociationRole.hpp>
 #include <views/AssociationRole.hpp>
+#include <optional>
+#include <odb/nullable.hxx>
+#include <persistence/AssociationRole.hpp>
 
 #include <nlohmann/json.hpp>
 
@@ -53,19 +56,77 @@ inline void from_json(const nlohmann::json& json, AssociationRoleUpdateDto& valu
 
 namespace fasc::server::views {
 
-/// Сериализует view строки таблицы association_role.
+namespace detail {
+
+template <typename T>
+inline std::optional<T> toOptional(const odb::nullable<T>& value) {
+  if (value.null()) {
+    return std::nullopt;
+  }
+  return value.get();
+}
+
+inline nlohmann::json AssociationRoleRowPayload(const AssociationRoleRowView& view) {
+  nlohmann::json json = nlohmann::json::object();
+  json["id"] = view.id;
+  if (view.code) {
+    json["code"] = *view.code;
+  } else {
+    json["code"] = nullptr;
+  }
+  if (view.name) {
+    json["name"] = *view.name;
+  } else {
+    json["name"] = nullptr;
+  }
+  if (view.description) {
+    json["description"] = *view.description;
+  } else {
+    json["description"] = nullptr;
+  }
+  return json;
+}
+
+} // namespace detail
+
+inline AssociationRoleRowView toView(const fasc::server::persistence::AssociationRoleEntity& entity) {
+  return AssociationRoleRowView{
+      entity.id,
+      detail::toOptional(entity.code),
+      detail::toOptional(entity.name),
+      detail::toOptional(entity.description)
+  };
+}
+
+inline AssociationRoleRowsView toView(const std::vector<fasc::server::persistence::AssociationRoleEntity>& rows) {
+  AssociationRoleRowsView view;
+  view.rows.reserve(rows.size());
+  for (const auto& row : rows) {
+    view.rows.push_back(toView(row));
+  }
+  return view;
+}
+
 inline void to_json(nlohmann::json& json, const AssociationRoleRowView& view) {
-  json = nlohmann::json{{"resource", "association_role"}, {"data", view.data}};
+  json = nlohmann::json::object();
+  json["resource"] = "association_role";
+  json["data"] = detail::AssociationRoleRowPayload(view);
 }
 
-/// Сериализует view списка таблицы association_role.
 inline void to_json(nlohmann::json& json, const AssociationRoleRowsView& view) {
-  json = nlohmann::json{{"resource", "association_role"}, {"rows", view.rows}};
+  json = nlohmann::json::object();
+  json["resource"] = "association_role";
+  nlohmann::json rows = nlohmann::json::array();
+  for (const auto& row : view.rows) {
+    rows.push_back(detail::AssociationRoleRowPayload(row));
+  }
+  json["rows"] = rows;
 }
 
-/// Сериализует view изменения таблицы association_role.
 inline void to_json(nlohmann::json& json, const AssociationRoleMutationView& view) {
-  json = nlohmann::json{{"resource", "association_role"}, {"affectedRows", view.affectedRows}};
+  json = nlohmann::json::object();
+  json["resource"] = "association_role";
+  json["affectedRows"] = view.affectedRows;
 }
 
 } // namespace fasc::server::views

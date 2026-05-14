@@ -1,26 +1,26 @@
 #pragma once
 
-#include <persistence/PurchaseOrderItem.hpp>
-
+#include <optional>
+#include <string>
 #include <vector>
 
 namespace fasc::server::views {
 
-/// View строки таблицы purchase_order_item.
 struct PurchaseOrderItemRowView {
-  /// Данные строки.
-  fasc::server::persistence::PurchaseOrderItemEntity data;
+  int id{};
+  int purchaseOrderId{};
+  int productId{};
+  std::optional<double> quantity{};
+  std::optional<double> unitPrice{};
+  std::optional<double> vatRate{};
+  std::optional<std::string> currency{};
 };
 
-/// View списка строк таблицы purchase_order_item.
 struct PurchaseOrderItemRowsView {
-  /// Строки таблицы.
-  std::vector<fasc::server::persistence::PurchaseOrderItemEntity> rows;
+  std::vector<PurchaseOrderItemRowView> rows{};
 };
 
-/// View результата изменения таблицы purchase_order_item.
 struct PurchaseOrderItemMutationView {
-  /// Количество затронутых строк.
   unsigned long long affectedRows{};
 };
 

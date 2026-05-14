@@ -2,6 +2,9 @@
 
 #include <controllers/dto/FarmOwner.hpp>
 #include <views/FarmOwner.hpp>
+#include <optional>
+#include <odb/nullable.hxx>
+#include <persistence/FarmOwner.hpp>
 
 #include <nlohmann/json.hpp>
 
@@ -50,19 +53,73 @@ inline void from_json(const nlohmann::json& json, FarmOwnerUpdateDto& value) {
 
 namespace fasc::server::views {
 
-/// Сериализует view строки таблицы farm_owner.
+namespace detail {
+
+template <typename T>
+inline std::optional<T> toOptional(const odb::nullable<T>& value) {
+  if (value.null()) {
+    return std::nullopt;
+  }
+  return value.get();
+}
+
+inline nlohmann::json FarmOwnerRowPayload(const FarmOwnerRowView& view) {
+  nlohmann::json json = nlohmann::json::object();
+  json["id"] = view.id;
+  json["person_id"] = view.personId;
+  if (view.status) {
+    json["status"] = *view.status;
+  } else {
+    json["status"] = nullptr;
+  }
+  if (view.rating) {
+    json["rating"] = *view.rating;
+  } else {
+    json["rating"] = nullptr;
+  }
+  return json;
+}
+
+} // namespace detail
+
+inline FarmOwnerRowView toView(const fasc::server::persistence::FarmOwnerEntity& entity) {
+  return FarmOwnerRowView{
+      entity.id,
+      entity.personId,
+      detail::toOptional(entity.status),
+      detail::toOptional(entity.rating)
+  };
+}
+
+inline FarmOwnerRowsView toView(const std::vector<fasc::server::persistence::FarmOwnerEntity>& rows) {
+  FarmOwnerRowsView view;
+  view.rows.reserve(rows.size());
+  for (const auto& row : rows) {
+    view.rows.push_back(toView(row));
+  }
+  return view;
+}
+
 inline void to_json(nlohmann::json& json, const FarmOwnerRowView& view) {
-  json = nlohmann::json{{"resource", "farm_owner"}, {"data", view.data}};
+  json = nlohmann::json::object();
+  json["resource"] = "farm_owner";
+  json["data"] = detail::FarmOwnerRowPayload(view);
 }
 
-/// Сериализует view списка таблицы farm_owner.
 inline void to_json(nlohmann::json& json, const FarmOwnerRowsView& view) {
-  json = nlohmann::json{{"resource", "farm_owner"}, {"rows", view.rows}};
+  json = nlohmann::json::object();
+  json["resource"] = "farm_owner";
+  nlohmann::json rows = nlohmann::json::array();
+  for (const auto& row : view.rows) {
+    rows.push_back(detail::FarmOwnerRowPayload(row));
+  }
+  json["rows"] = rows;
 }
 
-/// Сериализует view изменения таблицы farm_owner.
 inline void to_json(nlohmann::json& json, const FarmOwnerMutationView& view) {
-  json = nlohmann::json{{"resource", "farm_owner"}, {"affectedRows", view.affectedRows}};
+  json = nlohmann::json::object();
+  json["resource"] = "farm_owner";
+  json["affectedRows"] = view.affectedRows;
 }
 
 } // namespace fasc::server::views

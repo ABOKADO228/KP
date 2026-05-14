@@ -2,6 +2,9 @@
 
 #include <controllers/dto/PurchaseOrder.hpp>
 #include <views/PurchaseOrder.hpp>
+#include <optional>
+#include <odb/nullable.hxx>
+#include <persistence/PurchaseOrder.hpp>
 
 #include <nlohmann/json.hpp>
 
@@ -92,19 +95,101 @@ inline void from_json(const nlohmann::json& json, PurchaseOrderUpdateDto& value)
 
 namespace fasc::server::views {
 
-/// Сериализует view строки таблицы purchase_order.
+namespace detail {
+
+template <typename T>
+inline std::optional<T> toOptional(const odb::nullable<T>& value) {
+  if (value.null()) {
+    return std::nullopt;
+  }
+  return value.get();
+}
+
+inline nlohmann::json PurchaseOrderRowPayload(const PurchaseOrderRowView& view) {
+  nlohmann::json json = nlohmann::json::object();
+  json["id"] = view.id;
+  json["association_id"] = view.associationId;
+  json["supplier_id"] = view.supplierId;
+  if (view.deliveryAddress) {
+    json["delivery_address"] = *view.deliveryAddress;
+  } else {
+    json["delivery_address"] = nullptr;
+  }
+  json["order_date"] = view.orderDate;
+  if (view.expectedDeliveryDate) {
+    json["expected_delivery_date"] = *view.expectedDeliveryDate;
+  } else {
+    json["expected_delivery_date"] = nullptr;
+  }
+  if (view.status) {
+    json["status"] = *view.status;
+  } else {
+    json["status"] = nullptr;
+  }
+  if (view.totalAmount) {
+    json["total_amount"] = *view.totalAmount;
+  } else {
+    json["total_amount"] = nullptr;
+  }
+  if (view.receivedAt) {
+    json["received_at"] = *view.receivedAt;
+  } else {
+    json["received_at"] = nullptr;
+  }
+  if (view.createdBy) {
+    json["created_by"] = *view.createdBy;
+  } else {
+    json["created_by"] = nullptr;
+  }
+  return json;
+}
+
+} // namespace detail
+
+inline PurchaseOrderRowView toView(const fasc::server::persistence::PurchaseOrderEntity& entity) {
+  return PurchaseOrderRowView{
+      entity.id,
+      entity.associationId,
+      entity.supplierId,
+      detail::toOptional(entity.deliveryAddress),
+      entity.orderDate,
+      detail::toOptional(entity.expectedDeliveryDate),
+      detail::toOptional(entity.status),
+      detail::toOptional(entity.totalAmount),
+      detail::toOptional(entity.receivedAt),
+      detail::toOptional(entity.createdBy)
+  };
+}
+
+inline PurchaseOrderRowsView toView(const std::vector<fasc::server::persistence::PurchaseOrderEntity>& rows) {
+  PurchaseOrderRowsView view;
+  view.rows.reserve(rows.size());
+  for (const auto& row : rows) {
+    view.rows.push_back(toView(row));
+  }
+  return view;
+}
+
 inline void to_json(nlohmann::json& json, const PurchaseOrderRowView& view) {
-  json = nlohmann::json{{"resource", "purchase_order"}, {"data", view.data}};
+  json = nlohmann::json::object();
+  json["resource"] = "purchase_order";
+  json["data"] = detail::PurchaseOrderRowPayload(view);
 }
 
-/// Сериализует view списка таблицы purchase_order.
 inline void to_json(nlohmann::json& json, const PurchaseOrderRowsView& view) {
-  json = nlohmann::json{{"resource", "purchase_order"}, {"rows", view.rows}};
+  json = nlohmann::json::object();
+  json["resource"] = "purchase_order";
+  nlohmann::json rows = nlohmann::json::array();
+  for (const auto& row : view.rows) {
+    rows.push_back(detail::PurchaseOrderRowPayload(row));
+  }
+  json["rows"] = rows;
 }
 
-/// Сериализует view изменения таблицы purchase_order.
 inline void to_json(nlohmann::json& json, const PurchaseOrderMutationView& view) {
-  json = nlohmann::json{{"resource", "purchase_order"}, {"affectedRows", view.affectedRows}};
+  json = nlohmann::json::object();
+  json["resource"] = "purchase_order";
+  json["affectedRows"] = view.affectedRows;
 }
 
 } // namespace fasc::server::views

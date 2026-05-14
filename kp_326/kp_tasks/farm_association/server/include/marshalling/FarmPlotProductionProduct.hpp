@@ -2,6 +2,9 @@
 
 #include <controllers/dto/FarmPlotProductionProduct.hpp>
 #include <views/FarmPlotProductionProduct.hpp>
+#include <optional>
+#include <odb/nullable.hxx>
+#include <persistence/FarmPlotProductionProduct.hpp>
 
 #include <nlohmann/json.hpp>
 
@@ -50,19 +53,65 @@ inline void from_json(const nlohmann::json& json, FarmPlotProductionProductUpdat
 
 namespace fasc::server::views {
 
-/// Сериализует view строки таблицы farm_plot_production_product.
+namespace detail {
+
+template <typename T>
+inline std::optional<T> toOptional(const odb::nullable<T>& value) {
+  if (value.null()) {
+    return std::nullopt;
+  }
+  return value.get();
+}
+
+inline nlohmann::json FarmPlotProductionProductRowPayload(const FarmPlotProductionProductRowView& view) {
+  nlohmann::json json = nlohmann::json::object();
+  json["product_id"] = view.productId;
+  json["farm_plot_id"] = view.farmPlotId;
+  json["quantity"] = view.quantity;
+  json["production_now"] = view.productionNow;
+  return json;
+}
+
+} // namespace detail
+
+inline FarmPlotProductionProductRowView toView(const fasc::server::persistence::FarmPlotProductionProductEntity& entity) {
+  return FarmPlotProductionProductRowView{
+      entity.productId,
+      entity.farmPlotId,
+      entity.quantity,
+      entity.productionNow
+  };
+}
+
+inline FarmPlotProductionProductRowsView toView(const std::vector<fasc::server::persistence::FarmPlotProductionProductEntity>& rows) {
+  FarmPlotProductionProductRowsView view;
+  view.rows.reserve(rows.size());
+  for (const auto& row : rows) {
+    view.rows.push_back(toView(row));
+  }
+  return view;
+}
+
 inline void to_json(nlohmann::json& json, const FarmPlotProductionProductRowView& view) {
-  json = nlohmann::json{{"resource", "farm_plot_production_product"}, {"data", view.data}};
+  json = nlohmann::json::object();
+  json["resource"] = "farm_plot_production_product";
+  json["data"] = detail::FarmPlotProductionProductRowPayload(view);
 }
 
-/// Сериализует view списка таблицы farm_plot_production_product.
 inline void to_json(nlohmann::json& json, const FarmPlotProductionProductRowsView& view) {
-  json = nlohmann::json{{"resource", "farm_plot_production_product"}, {"rows", view.rows}};
+  json = nlohmann::json::object();
+  json["resource"] = "farm_plot_production_product";
+  nlohmann::json rows = nlohmann::json::array();
+  for (const auto& row : view.rows) {
+    rows.push_back(detail::FarmPlotProductionProductRowPayload(row));
+  }
+  json["rows"] = rows;
 }
 
-/// Сериализует view изменения таблицы farm_plot_production_product.
 inline void to_json(nlohmann::json& json, const FarmPlotProductionProductMutationView& view) {
-  json = nlohmann::json{{"resource", "farm_plot_production_product"}, {"affectedRows", view.affectedRows}};
+  json = nlohmann::json::object();
+  json["resource"] = "farm_plot_production_product";
+  json["affectedRows"] = view.affectedRows;
 }
 
 } // namespace fasc::server::views

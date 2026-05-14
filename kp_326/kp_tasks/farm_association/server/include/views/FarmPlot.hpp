@@ -1,26 +1,26 @@
 #pragma once
 
-#include <persistence/FarmPlot.hpp>
-
+#include <optional>
+#include <string>
 #include <vector>
 
 namespace fasc::server::views {
 
-/// View строки таблицы farm_plot.
 struct FarmPlotRowView {
-  /// Данные строки.
-  fasc::server::persistence::FarmPlotEntity data;
+  int id{};
+  std::optional<int> farmPlotTypeId{};
+  std::optional<std::string> name{};
+  std::optional<double> area{};
+  std::optional<std::string> location{};
+  std::optional<std::string> cadastralNumber{};
+  std::optional<std::string> status{};
 };
 
-/// View списка строк таблицы farm_plot.
 struct FarmPlotRowsView {
-  /// Строки таблицы.
-  std::vector<fasc::server::persistence::FarmPlotEntity> rows;
+  std::vector<FarmPlotRowView> rows{};
 };
 
-/// View результата изменения таблицы farm_plot.
 struct FarmPlotMutationView {
-  /// Количество затронутых строк.
   unsigned long long affectedRows{};
 };
 

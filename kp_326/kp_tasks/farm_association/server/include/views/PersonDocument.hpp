@@ -1,26 +1,27 @@
 #pragma once
 
-#include <persistence/PersonDocument.hpp>
-
+#include <optional>
+#include <string>
 #include <vector>
 
 namespace fasc::server::views {
 
-/// View строки таблицы person_document.
 struct PersonDocumentRowView {
-  /// Данные строки.
-  fasc::server::persistence::PersonDocumentEntity data;
+  int id{};
+  int personId{};
+  int documentTypeId{};
+  std::optional<std::string> documentNumber{};
+  std::optional<std::string> issuedBy{};
+  std::optional<std::string> issuedDate{};
+  std::optional<std::string> expirationDate{};
+  std::optional<int> isPrimary{};
 };
 
-/// View списка строк таблицы person_document.
 struct PersonDocumentRowsView {
-  /// Строки таблицы.
-  std::vector<fasc::server::persistence::PersonDocumentEntity> rows;
+  std::vector<PersonDocumentRowView> rows{};
 };
 
-/// View результата изменения таблицы person_document.
 struct PersonDocumentMutationView {
-  /// Количество затронутых строк.
   unsigned long long affectedRows{};
 };
 

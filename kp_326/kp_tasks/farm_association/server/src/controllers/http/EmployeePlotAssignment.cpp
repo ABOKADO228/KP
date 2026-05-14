@@ -32,7 +32,7 @@ EmployeePlotAssignmentRowsViewResult EmployeePlotAssignmentHttpController::list(
   if (result.hasError()) {
     return EmployeePlotAssignmentRowsViewResult::failure(errorView(result.error()));
   }
-  return EmployeePlotAssignmentRowsViewResult::success(fasc::server::views::EmployeePlotAssignmentRowsView{result.success().rows});
+  return EmployeePlotAssignmentRowsViewResult::success(fasc::server::views::toView(result.success().rows));
 }
 
 EmployeePlotAssignmentRowViewResult EmployeePlotAssignmentHttpController::load(
@@ -41,7 +41,7 @@ EmployeePlotAssignmentRowViewResult EmployeePlotAssignmentHttpController::load(
   if (result.hasError()) {
     return EmployeePlotAssignmentRowViewResult::failure(errorView(result.error()));
   }
-  return EmployeePlotAssignmentRowViewResult::success(fasc::server::views::EmployeePlotAssignmentRowView{result.success().data});
+  return EmployeePlotAssignmentRowViewResult::success(fasc::server::views::toView(result.success().data));
 }
 
 EmployeePlotAssignmentMutationViewResult EmployeePlotAssignmentHttpController::create(std::string_view body) const {

@@ -2,6 +2,9 @@
 
 #include <controllers/dto/AssociationEmployee.hpp>
 #include <views/AssociationEmployee.hpp>
+#include <optional>
+#include <odb/nullable.hxx>
+#include <persistence/AssociationEmployee.hpp>
 
 #include <nlohmann/json.hpp>
 
@@ -85,19 +88,87 @@ inline void from_json(const nlohmann::json& json, AssociationEmployeeUpdateDto& 
 
 namespace fasc::server::views {
 
-/// Сериализует view строки таблицы association_employee.
+namespace detail {
+
+template <typename T>
+inline std::optional<T> toOptional(const odb::nullable<T>& value) {
+  if (value.null()) {
+    return std::nullopt;
+  }
+  return value.get();
+}
+
+inline nlohmann::json AssociationEmployeeRowPayload(const AssociationEmployeeRowView& view) {
+  nlohmann::json json = nlohmann::json::object();
+  json["id"] = view.id;
+  json["person_id"] = view.personId;
+  json["association_id"] = view.associationId;
+  json["role_id"] = view.roleId;
+  json["employment_status_id"] = view.employmentStatusId;
+  json["hire_date"] = view.hireDate;
+  if (view.dismissalDate) {
+    json["dismissal_date"] = *view.dismissalDate;
+  } else {
+    json["dismissal_date"] = nullptr;
+  }
+  if (view.salary) {
+    json["salary"] = *view.salary;
+  } else {
+    json["salary"] = nullptr;
+  }
+  if (view.contractNumber) {
+    json["contract_number"] = *view.contractNumber;
+  } else {
+    json["contract_number"] = nullptr;
+  }
+  return json;
+}
+
+} // namespace detail
+
+inline AssociationEmployeeRowView toView(const fasc::server::persistence::AssociationEmployeeEntity& entity) {
+  return AssociationEmployeeRowView{
+      entity.id,
+      entity.personId,
+      entity.associationId,
+      entity.roleId,
+      entity.employmentStatusId,
+      entity.hireDate,
+      detail::toOptional(entity.dismissalDate),
+      detail::toOptional(entity.salary),
+      detail::toOptional(entity.contractNumber)
+  };
+}
+
+inline AssociationEmployeeRowsView toView(const std::vector<fasc::server::persistence::AssociationEmployeeEntity>& rows) {
+  AssociationEmployeeRowsView view;
+  view.rows.reserve(rows.size());
+  for (const auto& row : rows) {
+    view.rows.push_back(toView(row));
+  }
+  return view;
+}
+
 inline void to_json(nlohmann::json& json, const AssociationEmployeeRowView& view) {
-  json = nlohmann::json{{"resource", "association_employee"}, {"data", view.data}};
+  json = nlohmann::json::object();
+  json["resource"] = "association_employee";
+  json["data"] = detail::AssociationEmployeeRowPayload(view);
 }
 
-/// Сериализует view списка таблицы association_employee.
 inline void to_json(nlohmann::json& json, const AssociationEmployeeRowsView& view) {
-  json = nlohmann::json{{"resource", "association_employee"}, {"rows", view.rows}};
+  json = nlohmann::json::object();
+  json["resource"] = "association_employee";
+  nlohmann::json rows = nlohmann::json::array();
+  for (const auto& row : view.rows) {
+    rows.push_back(detail::AssociationEmployeeRowPayload(row));
+  }
+  json["rows"] = rows;
 }
 
-/// Сериализует view изменения таблицы association_employee.
 inline void to_json(nlohmann::json& json, const AssociationEmployeeMutationView& view) {
-  json = nlohmann::json{{"resource", "association_employee"}, {"affectedRows", view.affectedRows}};
+  json = nlohmann::json::object();
+  json["resource"] = "association_employee";
+  json["affectedRows"] = view.affectedRows;
 }
 
 } // namespace fasc::server::views

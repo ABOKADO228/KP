@@ -2,6 +2,9 @@
 
 #include <controllers/dto/Farm.hpp>
 #include <views/Farm.hpp>
+#include <optional>
+#include <odb/nullable.hxx>
+#include <persistence/Farm.hpp>
 
 #include <nlohmann/json.hpp>
 
@@ -85,19 +88,107 @@ inline void from_json(const nlohmann::json& json, FarmUpdateDto& value) {
 
 namespace fasc::server::views {
 
-/// Сериализует view строки таблицы farm.
+namespace detail {
+
+template <typename T>
+inline std::optional<T> toOptional(const odb::nullable<T>& value) {
+  if (value.null()) {
+    return std::nullopt;
+  }
+  return value.get();
+}
+
+inline nlohmann::json FarmRowPayload(const FarmRowView& view) {
+  nlohmann::json json = nlohmann::json::object();
+  json["id"] = view.id;
+  if (view.name) {
+    json["name"] = *view.name;
+  } else {
+    json["name"] = nullptr;
+  }
+  if (view.legalName) {
+    json["legal_name"] = *view.legalName;
+  } else {
+    json["legal_name"] = nullptr;
+  }
+  if (view.legalAddress) {
+    json["legal_address"] = *view.legalAddress;
+  } else {
+    json["legal_address"] = nullptr;
+  }
+  if (view.actualAddress) {
+    json["actual_address"] = *view.actualAddress;
+  } else {
+    json["actual_address"] = nullptr;
+  }
+  if (view.inn) {
+    json["inn"] = *view.inn;
+  } else {
+    json["inn"] = nullptr;
+  }
+  if (view.ogrn) {
+    json["ogrn"] = *view.ogrn;
+  } else {
+    json["ogrn"] = nullptr;
+  }
+  if (view.status) {
+    json["status"] = *view.status;
+  } else {
+    json["status"] = nullptr;
+  }
+  if (view.farmType) {
+    json["farm_type"] = *view.farmType;
+  } else {
+    json["farm_type"] = nullptr;
+  }
+  return json;
+}
+
+} // namespace detail
+
+inline FarmRowView toView(const fasc::server::persistence::FarmEntity& entity) {
+  return FarmRowView{
+      entity.id,
+      detail::toOptional(entity.name),
+      detail::toOptional(entity.legalName),
+      detail::toOptional(entity.legalAddress),
+      detail::toOptional(entity.actualAddress),
+      detail::toOptional(entity.inn),
+      detail::toOptional(entity.ogrn),
+      detail::toOptional(entity.status),
+      detail::toOptional(entity.farmType)
+  };
+}
+
+inline FarmRowsView toView(const std::vector<fasc::server::persistence::FarmEntity>& rows) {
+  FarmRowsView view;
+  view.rows.reserve(rows.size());
+  for (const auto& row : rows) {
+    view.rows.push_back(toView(row));
+  }
+  return view;
+}
+
 inline void to_json(nlohmann::json& json, const FarmRowView& view) {
-  json = nlohmann::json{{"resource", "farm"}, {"data", view.data}};
+  json = nlohmann::json::object();
+  json["resource"] = "farm";
+  json["data"] = detail::FarmRowPayload(view);
 }
 
-/// Сериализует view списка таблицы farm.
 inline void to_json(nlohmann::json& json, const FarmRowsView& view) {
-  json = nlohmann::json{{"resource", "farm"}, {"rows", view.rows}};
+  json = nlohmann::json::object();
+  json["resource"] = "farm";
+  nlohmann::json rows = nlohmann::json::array();
+  for (const auto& row : view.rows) {
+    rows.push_back(detail::FarmRowPayload(row));
+  }
+  json["rows"] = rows;
 }
 
-/// Сериализует view изменения таблицы farm.
 inline void to_json(nlohmann::json& json, const FarmMutationView& view) {
-  json = nlohmann::json{{"resource", "farm"}, {"affectedRows", view.affectedRows}};
+  json = nlohmann::json::object();
+  json["resource"] = "farm";
+  json["affectedRows"] = view.affectedRows;
 }
 
 } // namespace fasc::server::views

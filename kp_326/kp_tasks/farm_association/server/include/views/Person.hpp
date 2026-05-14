@@ -1,26 +1,27 @@
 #pragma once
 
-#include <persistence/Person.hpp>
-
+#include <optional>
+#include <string>
 #include <vector>
 
 namespace fasc::server::views {
 
-/// View строки таблицы person.
 struct PersonRowView {
-  /// Данные строки.
-  fasc::server::persistence::PersonEntity data;
+  int id{};
+  std::optional<std::string> firstName{};
+  std::optional<std::string> lastName{};
+  std::optional<std::string> middleName{};
+  std::optional<std::string> birthDate{};
+  std::optional<std::string> phone{};
+  std::optional<std::string> email{};
+  std::optional<std::string> address{};
 };
 
-/// View списка строк таблицы person.
 struct PersonRowsView {
-  /// Строки таблицы.
-  std::vector<fasc::server::persistence::PersonEntity> rows;
+  std::vector<PersonRowView> rows{};
 };
 
-/// View результата изменения таблицы person.
 struct PersonMutationView {
-  /// Количество затронутых строк.
   unsigned long long affectedRows{};
 };
 

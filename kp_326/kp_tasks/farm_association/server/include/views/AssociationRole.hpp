@@ -1,26 +1,23 @@
 #pragma once
 
-#include <persistence/AssociationRole.hpp>
-
+#include <optional>
+#include <string>
 #include <vector>
 
 namespace fasc::server::views {
 
-/// View строки таблицы association_role.
 struct AssociationRoleRowView {
-  /// Данные строки.
-  fasc::server::persistence::AssociationRoleEntity data;
+  int id{};
+  std::optional<std::string> code{};
+  std::optional<std::string> name{};
+  std::optional<std::string> description{};
 };
 
-/// View списка строк таблицы association_role.
 struct AssociationRoleRowsView {
-  /// Строки таблицы.
-  std::vector<fasc::server::persistence::AssociationRoleEntity> rows;
+  std::vector<AssociationRoleRowView> rows{};
 };
 
-/// View результата изменения таблицы association_role.
 struct AssociationRoleMutationView {
-  /// Количество затронутых строк.
   unsigned long long affectedRows{};
 };
 

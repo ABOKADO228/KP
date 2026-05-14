@@ -32,7 +32,7 @@ FarmEmployeeRowsViewResult FarmEmployeeHttpController::list() const {
   if (result.hasError()) {
     return FarmEmployeeRowsViewResult::failure(errorView(result.error()));
   }
-  return FarmEmployeeRowsViewResult::success(fasc::server::views::FarmEmployeeRowsView{result.success().rows});
+  return FarmEmployeeRowsViewResult::success(fasc::server::views::toView(result.success().rows));
 }
 
 FarmEmployeeRowViewResult FarmEmployeeHttpController::load(
@@ -41,7 +41,7 @@ FarmEmployeeRowViewResult FarmEmployeeHttpController::load(
   if (result.hasError()) {
     return FarmEmployeeRowViewResult::failure(errorView(result.error()));
   }
-  return FarmEmployeeRowViewResult::success(fasc::server::views::FarmEmployeeRowView{result.success().data});
+  return FarmEmployeeRowViewResult::success(fasc::server::views::toView(result.success().data));
 }
 
 FarmEmployeeMutationViewResult FarmEmployeeHttpController::create(std::string_view body) const {

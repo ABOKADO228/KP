@@ -2,6 +2,9 @@
 
 #include <controllers/dto/Product.hpp>
 #include <views/Product.hpp>
+#include <optional>
+#include <odb/nullable.hxx>
+#include <persistence/Product.hpp>
 
 #include <nlohmann/json.hpp>
 
@@ -50,19 +53,73 @@ inline void from_json(const nlohmann::json& json, ProductUpdateDto& value) {
 
 namespace fasc::server::views {
 
-/// Сериализует view строки таблицы product.
+namespace detail {
+
+template <typename T>
+inline std::optional<T> toOptional(const odb::nullable<T>& value) {
+  if (value.null()) {
+    return std::nullopt;
+  }
+  return value.get();
+}
+
+inline nlohmann::json ProductRowPayload(const ProductRowView& view) {
+  nlohmann::json json = nlohmann::json::object();
+  json["id"] = view.id;
+  json["type_id"] = view.typeId;
+  if (view.name) {
+    json["name"] = *view.name;
+  } else {
+    json["name"] = nullptr;
+  }
+  if (view.unitId) {
+    json["unit_id"] = *view.unitId;
+  } else {
+    json["unit_id"] = nullptr;
+  }
+  return json;
+}
+
+} // namespace detail
+
+inline ProductRowView toView(const fasc::server::persistence::ProductEntity& entity) {
+  return ProductRowView{
+      entity.id,
+      entity.typeId,
+      detail::toOptional(entity.name),
+      detail::toOptional(entity.unitId)
+  };
+}
+
+inline ProductRowsView toView(const std::vector<fasc::server::persistence::ProductEntity>& rows) {
+  ProductRowsView view;
+  view.rows.reserve(rows.size());
+  for (const auto& row : rows) {
+    view.rows.push_back(toView(row));
+  }
+  return view;
+}
+
 inline void to_json(nlohmann::json& json, const ProductRowView& view) {
-  json = nlohmann::json{{"resource", "product"}, {"data", view.data}};
+  json = nlohmann::json::object();
+  json["resource"] = "product";
+  json["data"] = detail::ProductRowPayload(view);
 }
 
-/// Сериализует view списка таблицы product.
 inline void to_json(nlohmann::json& json, const ProductRowsView& view) {
-  json = nlohmann::json{{"resource", "product"}, {"rows", view.rows}};
+  json = nlohmann::json::object();
+  json["resource"] = "product";
+  nlohmann::json rows = nlohmann::json::array();
+  for (const auto& row : view.rows) {
+    rows.push_back(detail::ProductRowPayload(row));
+  }
+  json["rows"] = rows;
 }
 
-/// Сериализует view изменения таблицы product.
 inline void to_json(nlohmann::json& json, const ProductMutationView& view) {
-  json = nlohmann::json{{"resource", "product"}, {"affectedRows", view.affectedRows}};
+  json = nlohmann::json::object();
+  json["resource"] = "product";
+  json["affectedRows"] = view.affectedRows;
 }
 
 } // namespace fasc::server::views

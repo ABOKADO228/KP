@@ -2,6 +2,9 @@
 
 #include <controllers/dto/PurchaseRequisition.hpp>
 #include <views/PurchaseRequisition.hpp>
+#include <optional>
+#include <odb/nullable.hxx>
+#include <persistence/PurchaseRequisition.hpp>
 
 #include <nlohmann/json.hpp>
 
@@ -99,19 +102,107 @@ inline void from_json(const nlohmann::json& json, PurchaseRequisitionUpdateDto& 
 
 namespace fasc::server::views {
 
-/// Сериализует view строки таблицы purchase_requisition.
+namespace detail {
+
+template <typename T>
+inline std::optional<T> toOptional(const odb::nullable<T>& value) {
+  if (value.null()) {
+    return std::nullopt;
+  }
+  return value.get();
+}
+
+inline nlohmann::json PurchaseRequisitionRowPayload(const PurchaseRequisitionRowView& view) {
+  nlohmann::json json = nlohmann::json::object();
+  json["id"] = view.id;
+  json["farm_id"] = view.farmId;
+  json["product_id"] = view.productId;
+  json["quantity"] = view.quantity;
+  if (view.maxPricePerUnit) {
+    json["max_price_per_unit"] = *view.maxPricePerUnit;
+  } else {
+    json["max_price_per_unit"] = nullptr;
+  }
+  if (view.offerDate) {
+    json["offer_date"] = *view.offerDate;
+  } else {
+    json["offer_date"] = nullptr;
+  }
+  if (view.requiredDate) {
+    json["required_date"] = *view.requiredDate;
+  } else {
+    json["required_date"] = nullptr;
+  }
+  if (view.priority) {
+    json["priority"] = *view.priority;
+  } else {
+    json["priority"] = nullptr;
+  }
+  if (view.validUntil) {
+    json["valid_until"] = *view.validUntil;
+  } else {
+    json["valid_until"] = nullptr;
+  }
+  if (view.status) {
+    json["status"] = *view.status;
+  } else {
+    json["status"] = nullptr;
+  }
+  if (view.notes) {
+    json["notes"] = *view.notes;
+  } else {
+    json["notes"] = nullptr;
+  }
+  return json;
+}
+
+} // namespace detail
+
+inline PurchaseRequisitionRowView toView(const fasc::server::persistence::PurchaseRequisitionEntity& entity) {
+  return PurchaseRequisitionRowView{
+      entity.id,
+      entity.farmId,
+      entity.productId,
+      entity.quantity,
+      detail::toOptional(entity.maxPricePerUnit),
+      detail::toOptional(entity.offerDate),
+      detail::toOptional(entity.requiredDate),
+      detail::toOptional(entity.priority),
+      detail::toOptional(entity.validUntil),
+      detail::toOptional(entity.status),
+      detail::toOptional(entity.notes)
+  };
+}
+
+inline PurchaseRequisitionRowsView toView(const std::vector<fasc::server::persistence::PurchaseRequisitionEntity>& rows) {
+  PurchaseRequisitionRowsView view;
+  view.rows.reserve(rows.size());
+  for (const auto& row : rows) {
+    view.rows.push_back(toView(row));
+  }
+  return view;
+}
+
 inline void to_json(nlohmann::json& json, const PurchaseRequisitionRowView& view) {
-  json = nlohmann::json{{"resource", "purchase_requisition"}, {"data", view.data}};
+  json = nlohmann::json::object();
+  json["resource"] = "purchase_requisition";
+  json["data"] = detail::PurchaseRequisitionRowPayload(view);
 }
 
-/// Сериализует view списка таблицы purchase_requisition.
 inline void to_json(nlohmann::json& json, const PurchaseRequisitionRowsView& view) {
-  json = nlohmann::json{{"resource", "purchase_requisition"}, {"rows", view.rows}};
+  json = nlohmann::json::object();
+  json["resource"] = "purchase_requisition";
+  nlohmann::json rows = nlohmann::json::array();
+  for (const auto& row : view.rows) {
+    rows.push_back(detail::PurchaseRequisitionRowPayload(row));
+  }
+  json["rows"] = rows;
 }
 
-/// Сериализует view изменения таблицы purchase_requisition.
 inline void to_json(nlohmann::json& json, const PurchaseRequisitionMutationView& view) {
-  json = nlohmann::json{{"resource", "purchase_requisition"}, {"affectedRows", view.affectedRows}};
+  json = nlohmann::json::object();
+  json["resource"] = "purchase_requisition";
+  json["affectedRows"] = view.affectedRows;
 }
 
 } // namespace fasc::server::views

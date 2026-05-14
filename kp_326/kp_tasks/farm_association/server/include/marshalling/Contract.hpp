@@ -2,6 +2,9 @@
 
 #include <controllers/dto/Contract.hpp>
 #include <views/Contract.hpp>
+#include <optional>
+#include <odb/nullable.hxx>
+#include <persistence/Contract.hpp>
 
 #include <nlohmann/json.hpp>
 
@@ -92,19 +95,101 @@ inline void from_json(const nlohmann::json& json, ContractUpdateDto& value) {
 
 namespace fasc::server::views {
 
-/// Сериализует view строки таблицы contract.
+namespace detail {
+
+template <typename T>
+inline std::optional<T> toOptional(const odb::nullable<T>& value) {
+  if (value.null()) {
+    return std::nullopt;
+  }
+  return value.get();
+}
+
+inline nlohmann::json ContractRowPayload(const ContractRowView& view) {
+  nlohmann::json json = nlohmann::json::object();
+  json["id"] = view.id;
+  if (view.supplierId) {
+    json["supplier_id"] = *view.supplierId;
+  } else {
+    json["supplier_id"] = nullptr;
+  }
+  if (view.farmId) {
+    json["farm_id"] = *view.farmId;
+  } else {
+    json["farm_id"] = nullptr;
+  }
+  json["association_id"] = view.associationId;
+  if (view.contractNumber) {
+    json["contract_number"] = *view.contractNumber;
+  } else {
+    json["contract_number"] = nullptr;
+  }
+  json["sign_date"] = view.signDate;
+  json["start_date"] = view.startDate;
+  if (view.endDate) {
+    json["end_date"] = *view.endDate;
+  } else {
+    json["end_date"] = nullptr;
+  }
+  if (view.status) {
+    json["status"] = *view.status;
+  } else {
+    json["status"] = nullptr;
+  }
+  if (view.description) {
+    json["description"] = *view.description;
+  } else {
+    json["description"] = nullptr;
+  }
+  return json;
+}
+
+} // namespace detail
+
+inline ContractRowView toView(const fasc::server::persistence::ContractEntity& entity) {
+  return ContractRowView{
+      entity.id,
+      detail::toOptional(entity.supplierId),
+      detail::toOptional(entity.farmId),
+      entity.associationId,
+      detail::toOptional(entity.contractNumber),
+      entity.signDate,
+      entity.startDate,
+      detail::toOptional(entity.endDate),
+      detail::toOptional(entity.status),
+      detail::toOptional(entity.description)
+  };
+}
+
+inline ContractRowsView toView(const std::vector<fasc::server::persistence::ContractEntity>& rows) {
+  ContractRowsView view;
+  view.rows.reserve(rows.size());
+  for (const auto& row : rows) {
+    view.rows.push_back(toView(row));
+  }
+  return view;
+}
+
 inline void to_json(nlohmann::json& json, const ContractRowView& view) {
-  json = nlohmann::json{{"resource", "contract"}, {"data", view.data}};
+  json = nlohmann::json::object();
+  json["resource"] = "contract";
+  json["data"] = detail::ContractRowPayload(view);
 }
 
-/// Сериализует view списка таблицы contract.
 inline void to_json(nlohmann::json& json, const ContractRowsView& view) {
-  json = nlohmann::json{{"resource", "contract"}, {"rows", view.rows}};
+  json = nlohmann::json::object();
+  json["resource"] = "contract";
+  nlohmann::json rows = nlohmann::json::array();
+  for (const auto& row : view.rows) {
+    rows.push_back(detail::ContractRowPayload(row));
+  }
+  json["rows"] = rows;
 }
 
-/// Сериализует view изменения таблицы contract.
 inline void to_json(nlohmann::json& json, const ContractMutationView& view) {
-  json = nlohmann::json{{"resource", "contract"}, {"affectedRows", view.affectedRows}};
+  json = nlohmann::json::object();
+  json["resource"] = "contract";
+  json["affectedRows"] = view.affectedRows;
 }
 
 } // namespace fasc::server::views

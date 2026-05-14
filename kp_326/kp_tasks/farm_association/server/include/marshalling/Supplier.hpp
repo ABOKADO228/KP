@@ -2,6 +2,9 @@
 
 #include <controllers/dto/Supplier.hpp>
 #include <views/Supplier.hpp>
+#include <optional>
+#include <odb/nullable.hxx>
+#include <persistence/Supplier.hpp>
 
 #include <nlohmann/json.hpp>
 
@@ -50,19 +53,77 @@ inline void from_json(const nlohmann::json& json, SupplierUpdateDto& value) {
 
 namespace fasc::server::views {
 
-/// Сериализует view строки таблицы supplier.
+namespace detail {
+
+template <typename T>
+inline std::optional<T> toOptional(const odb::nullable<T>& value) {
+  if (value.null()) {
+    return std::nullopt;
+  }
+  return value.get();
+}
+
+inline nlohmann::json SupplierRowPayload(const SupplierRowView& view) {
+  nlohmann::json json = nlohmann::json::object();
+  json["id"] = view.id;
+  if (view.name) {
+    json["name"] = *view.name;
+  } else {
+    json["name"] = nullptr;
+  }
+  if (view.legalAddress) {
+    json["legal_address"] = *view.legalAddress;
+  } else {
+    json["legal_address"] = nullptr;
+  }
+  if (view.status) {
+    json["status"] = *view.status;
+  } else {
+    json["status"] = nullptr;
+  }
+  return json;
+}
+
+} // namespace detail
+
+inline SupplierRowView toView(const fasc::server::persistence::SupplierEntity& entity) {
+  return SupplierRowView{
+      entity.id,
+      detail::toOptional(entity.name),
+      detail::toOptional(entity.legalAddress),
+      detail::toOptional(entity.status)
+  };
+}
+
+inline SupplierRowsView toView(const std::vector<fasc::server::persistence::SupplierEntity>& rows) {
+  SupplierRowsView view;
+  view.rows.reserve(rows.size());
+  for (const auto& row : rows) {
+    view.rows.push_back(toView(row));
+  }
+  return view;
+}
+
 inline void to_json(nlohmann::json& json, const SupplierRowView& view) {
-  json = nlohmann::json{{"resource", "supplier"}, {"data", view.data}};
+  json = nlohmann::json::object();
+  json["resource"] = "supplier";
+  json["data"] = detail::SupplierRowPayload(view);
 }
 
-/// Сериализует view списка таблицы supplier.
 inline void to_json(nlohmann::json& json, const SupplierRowsView& view) {
-  json = nlohmann::json{{"resource", "supplier"}, {"rows", view.rows}};
+  json = nlohmann::json::object();
+  json["resource"] = "supplier";
+  nlohmann::json rows = nlohmann::json::array();
+  for (const auto& row : view.rows) {
+    rows.push_back(detail::SupplierRowPayload(row));
+  }
+  json["rows"] = rows;
 }
 
-/// Сериализует view изменения таблицы supplier.
 inline void to_json(nlohmann::json& json, const SupplierMutationView& view) {
-  json = nlohmann::json{{"resource", "supplier"}, {"affectedRows", view.affectedRows}};
+  json = nlohmann::json::object();
+  json["resource"] = "supplier";
+  json["affectedRows"] = view.affectedRows;
 }
 
 } // namespace fasc::server::views

@@ -32,7 +32,7 @@ PersonRowsViewResult PersonHttpController::list() const {
   if (result.hasError()) {
     return PersonRowsViewResult::failure(errorView(result.error()));
   }
-  return PersonRowsViewResult::success(fasc::server::views::PersonRowsView{result.success().rows});
+  return PersonRowsViewResult::success(fasc::server::views::toView(result.success().rows));
 }
 
 PersonRowViewResult PersonHttpController::load(
@@ -41,7 +41,7 @@ PersonRowViewResult PersonHttpController::load(
   if (result.hasError()) {
     return PersonRowViewResult::failure(errorView(result.error()));
   }
-  return PersonRowViewResult::success(fasc::server::views::PersonRowView{result.success().data});
+  return PersonRowViewResult::success(fasc::server::views::toView(result.success().data));
 }
 
 PersonMutationViewResult PersonHttpController::create(std::string_view body) const {

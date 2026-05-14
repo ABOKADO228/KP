@@ -32,7 +32,7 @@ PurchaseOrderItemRowsViewResult PurchaseOrderItemHttpController::list() const {
   if (result.hasError()) {
     return PurchaseOrderItemRowsViewResult::failure(errorView(result.error()));
   }
-  return PurchaseOrderItemRowsViewResult::success(fasc::server::views::PurchaseOrderItemRowsView{result.success().rows});
+  return PurchaseOrderItemRowsViewResult::success(fasc::server::views::toView(result.success().rows));
 }
 
 PurchaseOrderItemRowViewResult PurchaseOrderItemHttpController::load(
@@ -41,7 +41,7 @@ PurchaseOrderItemRowViewResult PurchaseOrderItemHttpController::load(
   if (result.hasError()) {
     return PurchaseOrderItemRowViewResult::failure(errorView(result.error()));
   }
-  return PurchaseOrderItemRowViewResult::success(fasc::server::views::PurchaseOrderItemRowView{result.success().data});
+  return PurchaseOrderItemRowViewResult::success(fasc::server::views::toView(result.success().data));
 }
 
 PurchaseOrderItemMutationViewResult PurchaseOrderItemHttpController::create(std::string_view body) const {

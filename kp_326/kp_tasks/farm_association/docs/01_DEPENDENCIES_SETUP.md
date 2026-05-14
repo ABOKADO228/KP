@@ -42,6 +42,7 @@ ODB compiler     генерация persistence mapping
 libodb           runtime ODB
 libodb-pgsql     PostgreSQL backend для ODB
 PostgreSQL libpq клиентская библиотека PostgreSQL
+OpenSSL        криптография для JWT и PostgreSQL-клиента
 GoogleTest       unit/integration tests
 ```
 
@@ -58,6 +59,7 @@ compiled/runtime
   libodb
   libodb-pgsql
   libpq
+  libcrypto
   GoogleTest
 ```
 
@@ -149,7 +151,7 @@ CMake подключает его через `add_subdirectory`, поэтому 
 ### Системные пакеты
 
 ```bash
-sudo pacman -S --needed base-devel cmake ninja clang curl unzip postgresql postgresql-libs
+sudo pacman -S --needed base-devel cmake ninja clang curl unzip postgresql postgresql-libs openssl
 ```
 
 Синтаксис:
@@ -179,6 +181,7 @@ curl             скачивание файлов
 unzip            распаковка zip
 postgresql       сервер PostgreSQL и утилиты
 postgresql-libs  libpq и заголовки клиента PostgreSQL
+openssl          libcrypto и заголовки OpenSSL
 ```
 
 ### Bootstrap
@@ -198,7 +201,7 @@ chmod +x file
   выполнить shell-скрипт из текущего репозитория
 ```
 
-Linux-скрипт скачивает Boost, nlohmann/json, fmt, ODB compiler, libodb, libodb-pgsql и GoogleTest. Для PostgreSQL он использует системный `libpq`, потому что на Manjaro это нормальная пакетная зависимость.
+Linux-скрипт скачивает Boost, nlohmann/json, fmt, ODB compiler, libodb, libodb-pgsql и GoogleTest. Для PostgreSQL и OpenSSL он использует системные пакеты, а потом копирует `libpq` и `libcrypto` в `server/third_party`.
 
 ## Проверка результата
 
@@ -217,6 +220,7 @@ Get-ChildItem server\third_party\_sources
 ```
 
 Если CMake сообщает, что не найден `GoogleTest sources`, `odb`, `libpq-fe.h` или `boost/version.hpp`, значит bootstrap не был выполнен или завершился неуспешно.
+Если CMake сообщает, что не найден `openssl/evp.h` или `libcrypto`, значит на Manjaro не установлен `openssl` или bootstrap не был выполнен заново.
 
 ## Git-контроль
 
@@ -305,6 +309,8 @@ server/third_party/_sources/fmt-12.1.0/CMakeLists.txt
 server/third_party/_sources/googletest-1.17.0/CMakeLists.txt
 server/third_party/odb/bin/odb
 server/third_party/postgresql/include/libpq-fe.h
+server/third_party/openssl/include/openssl/evp.h
+server/third_party/openssl/lib/libcrypto.so
 ```
 
 На Windows ODB compiler обычно лежит как:
@@ -414,7 +420,7 @@ Get-ChildItem server\build\tests -Filter *.dll
 Решение:
 
 ```bash
-sudo pacman -S --needed postgresql-libs
+sudo pacman -S --needed postgresql-libs openssl
 ./tools/bootstrap-deps.sh
 ```
 
@@ -458,7 +464,9 @@ FORCE=1 ./tools/bootstrap-deps.sh
 7. googletest CMakeLists.txt существует
 8. odb или odb.exe существует
 9. libpq-fe.h существует
-10. git ls-files server/third_party показывает только .gitkeep
+10. openssl/evp.h существует
+11. libcrypto.so или libcrypto.lib существует
+12. git ls-files server/third_party показывает только .gitkeep
 ```
 
 Windows:
@@ -469,6 +477,8 @@ Test-Path server\third_party\nlohmann_json\include\nlohmann\json.hpp
 Test-Path server\third_party\_sources\fmt-12.1.0\CMakeLists.txt
 Test-Path server\third_party\_sources\googletest-1.17.0\CMakeLists.txt
 Test-Path server\third_party\postgresql\include\libpq-fe.h
+Test-Path server\third_party\openssl\include\openssl\evp.h
+Test-Path server\third_party\openssl\lib\libcrypto.so
 git ls-files server/third_party
 ```
 
@@ -480,5 +490,7 @@ test -f server/third_party/nlohmann_json/include/nlohmann/json.hpp
 test -f server/third_party/_sources/fmt-12.1.0/CMakeLists.txt
 test -f server/third_party/_sources/googletest-1.17.0/CMakeLists.txt
 test -f server/third_party/postgresql/include/libpq-fe.h
+test -f server/third_party/openssl/include/openssl/evp.h
+test -f server/third_party/openssl/lib/libcrypto.so
 git ls-files server/third_party
 ```

@@ -32,7 +32,7 @@ AssociationRoleRowsViewResult AssociationRoleHttpController::list() const {
   if (result.hasError()) {
     return AssociationRoleRowsViewResult::failure(errorView(result.error()));
   }
-  return AssociationRoleRowsViewResult::success(fasc::server::views::AssociationRoleRowsView{result.success().rows});
+  return AssociationRoleRowsViewResult::success(fasc::server::views::toView(result.success().rows));
 }
 
 AssociationRoleRowViewResult AssociationRoleHttpController::load(
@@ -41,7 +41,7 @@ AssociationRoleRowViewResult AssociationRoleHttpController::load(
   if (result.hasError()) {
     return AssociationRoleRowViewResult::failure(errorView(result.error()));
   }
-  return AssociationRoleRowViewResult::success(fasc::server::views::AssociationRoleRowView{result.success().data});
+  return AssociationRoleRowViewResult::success(fasc::server::views::toView(result.success().data));
 }
 
 AssociationRoleMutationViewResult AssociationRoleHttpController::create(std::string_view body) const {

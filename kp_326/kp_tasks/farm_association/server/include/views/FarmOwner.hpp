@@ -1,26 +1,23 @@
 #pragma once
 
-#include <persistence/FarmOwner.hpp>
-
+#include <optional>
+#include <string>
 #include <vector>
 
 namespace fasc::server::views {
 
-/// View строки таблицы farm_owner.
 struct FarmOwnerRowView {
-  /// Данные строки.
-  fasc::server::persistence::FarmOwnerEntity data;
+  int id{};
+  int personId{};
+  std::optional<std::string> status{};
+  std::optional<double> rating{};
 };
 
-/// View списка строк таблицы farm_owner.
 struct FarmOwnerRowsView {
-  /// Строки таблицы.
-  std::vector<fasc::server::persistence::FarmOwnerEntity> rows;
+  std::vector<FarmOwnerRowView> rows{};
 };
 
-/// View результата изменения таблицы farm_owner.
 struct FarmOwnerMutationView {
-  /// Количество затронутых строк.
   unsigned long long affectedRows{};
 };
 

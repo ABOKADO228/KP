@@ -32,7 +32,7 @@ FarmRoleRowsViewResult FarmRoleHttpController::list() const {
   if (result.hasError()) {
     return FarmRoleRowsViewResult::failure(errorView(result.error()));
   }
-  return FarmRoleRowsViewResult::success(fasc::server::views::FarmRoleRowsView{result.success().rows});
+  return FarmRoleRowsViewResult::success(fasc::server::views::toView(result.success().rows));
 }
 
 FarmRoleRowViewResult FarmRoleHttpController::load(
@@ -41,7 +41,7 @@ FarmRoleRowViewResult FarmRoleHttpController::load(
   if (result.hasError()) {
     return FarmRoleRowViewResult::failure(errorView(result.error()));
   }
-  return FarmRoleRowViewResult::success(fasc::server::views::FarmRoleRowView{result.success().data});
+  return FarmRoleRowViewResult::success(fasc::server::views::toView(result.success().data));
 }
 
 FarmRoleMutationViewResult FarmRoleHttpController::create(std::string_view body) const {

@@ -32,7 +32,7 @@ AssociationEmployeeRowsViewResult AssociationEmployeeHttpController::list() cons
   if (result.hasError()) {
     return AssociationEmployeeRowsViewResult::failure(errorView(result.error()));
   }
-  return AssociationEmployeeRowsViewResult::success(fasc::server::views::AssociationEmployeeRowsView{result.success().rows});
+  return AssociationEmployeeRowsViewResult::success(fasc::server::views::toView(result.success().rows));
 }
 
 AssociationEmployeeRowViewResult AssociationEmployeeHttpController::load(
@@ -41,7 +41,7 @@ AssociationEmployeeRowViewResult AssociationEmployeeHttpController::load(
   if (result.hasError()) {
     return AssociationEmployeeRowViewResult::failure(errorView(result.error()));
   }
-  return AssociationEmployeeRowViewResult::success(fasc::server::views::AssociationEmployeeRowView{result.success().data});
+  return AssociationEmployeeRowViewResult::success(fasc::server::views::toView(result.success().data));
 }
 
 AssociationEmployeeMutationViewResult AssociationEmployeeHttpController::create(std::string_view body) const {

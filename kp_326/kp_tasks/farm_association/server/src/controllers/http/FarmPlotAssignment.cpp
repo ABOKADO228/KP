@@ -32,7 +32,7 @@ FarmPlotAssignmentRowsViewResult FarmPlotAssignmentHttpController::list() const 
   if (result.hasError()) {
     return FarmPlotAssignmentRowsViewResult::failure(errorView(result.error()));
   }
-  return FarmPlotAssignmentRowsViewResult::success(fasc::server::views::FarmPlotAssignmentRowsView{result.success().rows});
+  return FarmPlotAssignmentRowsViewResult::success(fasc::server::views::toView(result.success().rows));
 }
 
 FarmPlotAssignmentRowViewResult FarmPlotAssignmentHttpController::load(
@@ -41,7 +41,7 @@ FarmPlotAssignmentRowViewResult FarmPlotAssignmentHttpController::load(
   if (result.hasError()) {
     return FarmPlotAssignmentRowViewResult::failure(errorView(result.error()));
   }
-  return FarmPlotAssignmentRowViewResult::success(fasc::server::views::FarmPlotAssignmentRowView{result.success().data});
+  return FarmPlotAssignmentRowViewResult::success(fasc::server::views::toView(result.success().data));
 }
 
 FarmPlotAssignmentMutationViewResult FarmPlotAssignmentHttpController::create(std::string_view body) const {

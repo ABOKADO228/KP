@@ -32,7 +32,7 @@ SalesRequisitionRowsViewResult SalesRequisitionHttpController::list() const {
   if (result.hasError()) {
     return SalesRequisitionRowsViewResult::failure(errorView(result.error()));
   }
-  return SalesRequisitionRowsViewResult::success(fasc::server::views::SalesRequisitionRowsView{result.success().rows});
+  return SalesRequisitionRowsViewResult::success(fasc::server::views::toView(result.success().rows));
 }
 
 SalesRequisitionRowViewResult SalesRequisitionHttpController::load(
@@ -41,7 +41,7 @@ SalesRequisitionRowViewResult SalesRequisitionHttpController::load(
   if (result.hasError()) {
     return SalesRequisitionRowViewResult::failure(errorView(result.error()));
   }
-  return SalesRequisitionRowViewResult::success(fasc::server::views::SalesRequisitionRowView{result.success().data});
+  return SalesRequisitionRowViewResult::success(fasc::server::views::toView(result.success().data));
 }
 
 SalesRequisitionMutationViewResult SalesRequisitionHttpController::create(std::string_view body) const {

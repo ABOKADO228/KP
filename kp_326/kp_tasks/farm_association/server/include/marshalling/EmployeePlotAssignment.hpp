@@ -2,6 +2,9 @@
 
 #include <controllers/dto/EmployeePlotAssignment.hpp>
 #include <views/EmployeePlotAssignment.hpp>
+#include <optional>
+#include <odb/nullable.hxx>
+#include <persistence/EmployeePlotAssignment.hpp>
 
 #include <nlohmann/json.hpp>
 
@@ -71,19 +74,83 @@ inline void from_json(const nlohmann::json& json, EmployeePlotAssignmentUpdateDt
 
 namespace fasc::server::views {
 
-/// Сериализует view строки таблицы employee_plot_assignment.
+namespace detail {
+
+template <typename T>
+inline std::optional<T> toOptional(const odb::nullable<T>& value) {
+  if (value.null()) {
+    return std::nullopt;
+  }
+  return value.get();
+}
+
+inline nlohmann::json EmployeePlotAssignmentRowPayload(const EmployeePlotAssignmentRowView& view) {
+  nlohmann::json json = nlohmann::json::object();
+  json["id"] = view.id;
+  json["farm_employee_id"] = view.farmEmployeeId;
+  json["farm_plot_id"] = view.farmPlotId;
+  if (view.assignmentType) {
+    json["assignment_type"] = *view.assignmentType;
+  } else {
+    json["assignment_type"] = nullptr;
+  }
+  json["assigned_at"] = view.assignedAt;
+  if (view.unassignedAt) {
+    json["unassigned_at"] = *view.unassignedAt;
+  } else {
+    json["unassigned_at"] = nullptr;
+  }
+  if (view.notes) {
+    json["notes"] = *view.notes;
+  } else {
+    json["notes"] = nullptr;
+  }
+  return json;
+}
+
+} // namespace detail
+
+inline EmployeePlotAssignmentRowView toView(const fasc::server::persistence::EmployeePlotAssignmentEntity& entity) {
+  return EmployeePlotAssignmentRowView{
+      entity.id,
+      entity.farmEmployeeId,
+      entity.farmPlotId,
+      detail::toOptional(entity.assignmentType),
+      entity.assignedAt,
+      detail::toOptional(entity.unassignedAt),
+      detail::toOptional(entity.notes)
+  };
+}
+
+inline EmployeePlotAssignmentRowsView toView(const std::vector<fasc::server::persistence::EmployeePlotAssignmentEntity>& rows) {
+  EmployeePlotAssignmentRowsView view;
+  view.rows.reserve(rows.size());
+  for (const auto& row : rows) {
+    view.rows.push_back(toView(row));
+  }
+  return view;
+}
+
 inline void to_json(nlohmann::json& json, const EmployeePlotAssignmentRowView& view) {
-  json = nlohmann::json{{"resource", "employee_plot_assignment"}, {"data", view.data}};
+  json = nlohmann::json::object();
+  json["resource"] = "employee_plot_assignment";
+  json["data"] = detail::EmployeePlotAssignmentRowPayload(view);
 }
 
-/// Сериализует view списка таблицы employee_plot_assignment.
 inline void to_json(nlohmann::json& json, const EmployeePlotAssignmentRowsView& view) {
-  json = nlohmann::json{{"resource", "employee_plot_assignment"}, {"rows", view.rows}};
+  json = nlohmann::json::object();
+  json["resource"] = "employee_plot_assignment";
+  nlohmann::json rows = nlohmann::json::array();
+  for (const auto& row : view.rows) {
+    rows.push_back(detail::EmployeePlotAssignmentRowPayload(row));
+  }
+  json["rows"] = rows;
 }
 
-/// Сериализует view изменения таблицы employee_plot_assignment.
 inline void to_json(nlohmann::json& json, const EmployeePlotAssignmentMutationView& view) {
-  json = nlohmann::json{{"resource", "employee_plot_assignment"}, {"affectedRows", view.affectedRows}};
+  json = nlohmann::json::object();
+  json["resource"] = "employee_plot_assignment";
+  json["affectedRows"] = view.affectedRows;
 }
 
 } // namespace fasc::server::views

@@ -166,16 +166,27 @@ ODB генерирует схему:
 server/build/generated/persistence/user.sql
 ```
 
+В проекте есть и SQL-схема предметной области:
+
+```text
+database/dump-mydb-sprinthost-public.sql
+```
+
 Применение на Manjaro:
 
 ```bash
 psql -h localhost -p 5432 -U postgres -d farm_association -f server/build/generated/persistence/user.sql
 ```
 
+```bash
+psql -h localhost -p 5432 -U postgres -d farm_association -f database/dump-mydb-sprinthost-public.sql
+```
+
 Применение на Windows через локальный PostgreSQL из `third_party`:
 
 ```powershell
 $pg = "$PWD\server\third_party\postgresql"
+& "$pg\bin\psql.exe" -h localhost -p 5432 -U postgres -d farm_association -f database\dump-mydb-sprinthost-public.sql
 & "$pg\bin\psql.exe" -h localhost -p 5432 -U postgres -d farm_association -f server\build\generated\persistence\user.sql
 ```
 
@@ -216,7 +227,10 @@ Manjaro:
 
 ```text
 GET  /health
+POST /auth/register
+POST /auth/login
 POST /users
+CRUD /api/*
 ```
 
 И слушает:

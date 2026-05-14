@@ -1,26 +1,25 @@
 #pragma once
 
-#include <persistence/ProductType.hpp>
-
+#include <optional>
+#include <string>
 #include <vector>
 
 namespace fasc::server::views {
 
-/// View строки таблицы product_type.
 struct ProductTypeRowView {
-  /// Данные строки.
-  fasc::server::persistence::ProductTypeEntity data;
+  int id{};
+  std::optional<int> parentId{};
+  std::optional<std::string> sku{};
+  int productLevel{};
+  std::optional<std::string> name{};
+  std::optional<std::string> description{};
 };
 
-/// View списка строк таблицы product_type.
 struct ProductTypeRowsView {
-  /// Строки таблицы.
-  std::vector<fasc::server::persistence::ProductTypeEntity> rows;
+  std::vector<ProductTypeRowView> rows{};
 };
 
-/// View результата изменения таблицы product_type.
 struct ProductTypeMutationView {
-  /// Количество затронутых строк.
   unsigned long long affectedRows{};
 };
 

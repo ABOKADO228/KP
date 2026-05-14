@@ -2,6 +2,9 @@
 
 #include <controllers/dto/PersonDocument.hpp>
 #include <views/PersonDocument.hpp>
+#include <optional>
+#include <odb/nullable.hxx>
+#include <persistence/PersonDocument.hpp>
 
 #include <nlohmann/json.hpp>
 
@@ -78,19 +81,93 @@ inline void from_json(const nlohmann::json& json, PersonDocumentUpdateDto& value
 
 namespace fasc::server::views {
 
-/// Сериализует view строки таблицы person_document.
+namespace detail {
+
+template <typename T>
+inline std::optional<T> toOptional(const odb::nullable<T>& value) {
+  if (value.null()) {
+    return std::nullopt;
+  }
+  return value.get();
+}
+
+inline nlohmann::json PersonDocumentRowPayload(const PersonDocumentRowView& view) {
+  nlohmann::json json = nlohmann::json::object();
+  json["id"] = view.id;
+  json["person_id"] = view.personId;
+  json["document_type_id"] = view.documentTypeId;
+  if (view.documentNumber) {
+    json["document_number"] = *view.documentNumber;
+  } else {
+    json["document_number"] = nullptr;
+  }
+  if (view.issuedBy) {
+    json["issued_by"] = *view.issuedBy;
+  } else {
+    json["issued_by"] = nullptr;
+  }
+  if (view.issuedDate) {
+    json["issued_date"] = *view.issuedDate;
+  } else {
+    json["issued_date"] = nullptr;
+  }
+  if (view.expirationDate) {
+    json["expiration_date"] = *view.expirationDate;
+  } else {
+    json["expiration_date"] = nullptr;
+  }
+  if (view.isPrimary) {
+    json["is_primary"] = *view.isPrimary;
+  } else {
+    json["is_primary"] = nullptr;
+  }
+  return json;
+}
+
+} // namespace detail
+
+inline PersonDocumentRowView toView(const fasc::server::persistence::PersonDocumentEntity& entity) {
+  return PersonDocumentRowView{
+      entity.id,
+      entity.personId,
+      entity.documentTypeId,
+      detail::toOptional(entity.documentNumber),
+      detail::toOptional(entity.issuedBy),
+      detail::toOptional(entity.issuedDate),
+      detail::toOptional(entity.expirationDate),
+      detail::toOptional(entity.isPrimary)
+  };
+}
+
+inline PersonDocumentRowsView toView(const std::vector<fasc::server::persistence::PersonDocumentEntity>& rows) {
+  PersonDocumentRowsView view;
+  view.rows.reserve(rows.size());
+  for (const auto& row : rows) {
+    view.rows.push_back(toView(row));
+  }
+  return view;
+}
+
 inline void to_json(nlohmann::json& json, const PersonDocumentRowView& view) {
-  json = nlohmann::json{{"resource", "person_document"}, {"data", view.data}};
+  json = nlohmann::json::object();
+  json["resource"] = "person_document";
+  json["data"] = detail::PersonDocumentRowPayload(view);
 }
 
-/// Сериализует view списка таблицы person_document.
 inline void to_json(nlohmann::json& json, const PersonDocumentRowsView& view) {
-  json = nlohmann::json{{"resource", "person_document"}, {"rows", view.rows}};
+  json = nlohmann::json::object();
+  json["resource"] = "person_document";
+  nlohmann::json rows = nlohmann::json::array();
+  for (const auto& row : view.rows) {
+    rows.push_back(detail::PersonDocumentRowPayload(row));
+  }
+  json["rows"] = rows;
 }
 
-/// Сериализует view изменения таблицы person_document.
 inline void to_json(nlohmann::json& json, const PersonDocumentMutationView& view) {
-  json = nlohmann::json{{"resource", "person_document"}, {"affectedRows", view.affectedRows}};
+  json = nlohmann::json::object();
+  json["resource"] = "person_document";
+  json["affectedRows"] = view.affectedRows;
 }
 
 } // namespace fasc::server::views

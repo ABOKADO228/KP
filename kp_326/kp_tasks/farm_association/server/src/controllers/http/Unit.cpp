@@ -32,7 +32,7 @@ UnitRowsViewResult UnitHttpController::list() const {
   if (result.hasError()) {
     return UnitRowsViewResult::failure(errorView(result.error()));
   }
-  return UnitRowsViewResult::success(fasc::server::views::UnitRowsView{result.success().rows});
+  return UnitRowsViewResult::success(fasc::server::views::toView(result.success().rows));
 }
 
 UnitRowViewResult UnitHttpController::load(
@@ -41,7 +41,7 @@ UnitRowViewResult UnitHttpController::load(
   if (result.hasError()) {
     return UnitRowViewResult::failure(errorView(result.error()));
   }
-  return UnitRowViewResult::success(fasc::server::views::UnitRowView{result.success().data});
+  return UnitRowViewResult::success(fasc::server::views::toView(result.success().data));
 }
 
 UnitMutationViewResult UnitHttpController::create(std::string_view body) const {
