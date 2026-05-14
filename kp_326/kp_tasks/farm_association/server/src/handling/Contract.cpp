@@ -1,10 +1,13 @@
 #include <handling/Contract.hpp>
 
+#include <controllers/app/Contract.hpp>
+
 #include <marshalling/Contract.hpp>
 #include <marshalling/User.hpp>
 
 #include <nlohmann/json.hpp>
 
+#include <memory>
 #include <stdexcept>
 
 namespace fasc::server::handling {
@@ -95,6 +98,18 @@ fasc::server::core::HttpResponse ContractHandler::erase(
   } catch (const std::exception& exception) {
     return badRequest(exception);
   }
+}
+
+void registerContractRoutes(fasc::server::core::Server& server,
+                           fasc::server::database::Database& database) {
+  auto contractController = std::make_shared<fasc::server::controllers::app::ContractController>(database);
+  auto contractHttpController = std::make_shared<fasc::server::controllers::http::ContractHttpController>(*contractController);
+  auto contractHandler = std::make_shared<ContractHandler>(*contractHttpController);
+  server.get("/api/contract", [contractController, contractHttpController, contractHandler](const fasc::server::core::HttpRequest& request) { return contractHandler->list(request); });
+  server.post("/api/contract", [contractController, contractHttpController, contractHandler](const fasc::server::core::HttpRequest& request) { return contractHandler->create(request); });
+  server.get("/api/contract/item", [contractController, contractHttpController, contractHandler](const fasc::server::core::HttpRequest& request) { return contractHandler->load(request); });
+  server.put("/api/contract/item", [contractController, contractHttpController, contractHandler](const fasc::server::core::HttpRequest& request) { return contractHandler->update(request); });
+  server.del("/api/contract/item", [contractController, contractHttpController, contractHandler](const fasc::server::core::HttpRequest& request) { return contractHandler->erase(request); });
 }
 
 } // namespace fasc::server::handling

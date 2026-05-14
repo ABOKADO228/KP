@@ -1,10 +1,13 @@
 #include <handling/AssociationEmployee.hpp>
 
+#include <controllers/app/AssociationEmployee.hpp>
+
 #include <marshalling/AssociationEmployee.hpp>
 #include <marshalling/User.hpp>
 
 #include <nlohmann/json.hpp>
 
+#include <memory>
 #include <stdexcept>
 
 namespace fasc::server::handling {
@@ -95,6 +98,18 @@ fasc::server::core::HttpResponse AssociationEmployeeHandler::erase(
   } catch (const std::exception& exception) {
     return badRequest(exception);
   }
+}
+
+void registerAssociationEmployeeRoutes(fasc::server::core::Server& server,
+                           fasc::server::database::Database& database) {
+  auto associationemployeeController = std::make_shared<fasc::server::controllers::app::AssociationEmployeeController>(database);
+  auto associationemployeeHttpController = std::make_shared<fasc::server::controllers::http::AssociationEmployeeHttpController>(*associationemployeeController);
+  auto associationemployeeHandler = std::make_shared<AssociationEmployeeHandler>(*associationemployeeHttpController);
+  server.get("/api/association_employee", [associationemployeeController, associationemployeeHttpController, associationemployeeHandler](const fasc::server::core::HttpRequest& request) { return associationemployeeHandler->list(request); });
+  server.post("/api/association_employee", [associationemployeeController, associationemployeeHttpController, associationemployeeHandler](const fasc::server::core::HttpRequest& request) { return associationemployeeHandler->create(request); });
+  server.get("/api/association_employee/item", [associationemployeeController, associationemployeeHttpController, associationemployeeHandler](const fasc::server::core::HttpRequest& request) { return associationemployeeHandler->load(request); });
+  server.put("/api/association_employee/item", [associationemployeeController, associationemployeeHttpController, associationemployeeHandler](const fasc::server::core::HttpRequest& request) { return associationemployeeHandler->update(request); });
+  server.del("/api/association_employee/item", [associationemployeeController, associationemployeeHttpController, associationemployeeHandler](const fasc::server::core::HttpRequest& request) { return associationemployeeHandler->erase(request); });
 }
 
 } // namespace fasc::server::handling

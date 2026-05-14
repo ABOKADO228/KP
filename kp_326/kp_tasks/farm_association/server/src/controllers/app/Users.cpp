@@ -3,12 +3,10 @@
 #include <persistence/User.hpp>
 #include <persistence/user-odb.hxx>
 
-#include <odb/database.hxx>
-#include <odb/result.hxx>
-
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace fasc::server::controllers::app {
 
@@ -73,13 +71,12 @@ AuthResult UserController::loginUser(LoginUserCommand command) {
     AuthResultDto result = db_.invokeTransactionally([&] {
     using query = odb::query<User>;
 
-    odb::result<User> users = db_.raw().query<User>(query::name == command.name);
-    auto iterator = users.begin();
-    if (iterator == users.end()) {
+    std::vector<User> users = db_.query<User>(query::name == command.name);
+    if (users.empty()) {
       return AuthResultDto{};
     }
 
-    const User user = *iterator;
+    const User& user = users.front();
     if (!passwordHasher_.verify(command.password, user.passwordHash())) {
       return AuthResultDto{};
     }
@@ -117,8 +114,8 @@ CreateUserResult UserController::createUserWithPassword(std::string name,
     UserDto user_dto = db_.invokeTransactionally([&] {
     using query = odb::query<User>;
 
-    odb::result<User> existing = db_.raw().query<User>(query::name == name);
-    if (existing.begin() != existing.end()) {
+    std::vector<User> existing = db_.query<User>(query::name == name);
+    if (!existing.empty()) {
       return UserDto{};
     }
 

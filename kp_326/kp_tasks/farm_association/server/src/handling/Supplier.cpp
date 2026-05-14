@@ -1,10 +1,13 @@
 #include <handling/Supplier.hpp>
 
+#include <controllers/app/Supplier.hpp>
+
 #include <marshalling/Supplier.hpp>
 #include <marshalling/User.hpp>
 
 #include <nlohmann/json.hpp>
 
+#include <memory>
 #include <stdexcept>
 
 namespace fasc::server::handling {
@@ -95,6 +98,18 @@ fasc::server::core::HttpResponse SupplierHandler::erase(
   } catch (const std::exception& exception) {
     return badRequest(exception);
   }
+}
+
+void registerSupplierRoutes(fasc::server::core::Server& server,
+                           fasc::server::database::Database& database) {
+  auto supplierController = std::make_shared<fasc::server::controllers::app::SupplierController>(database);
+  auto supplierHttpController = std::make_shared<fasc::server::controllers::http::SupplierHttpController>(*supplierController);
+  auto supplierHandler = std::make_shared<SupplierHandler>(*supplierHttpController);
+  server.get("/api/supplier", [supplierController, supplierHttpController, supplierHandler](const fasc::server::core::HttpRequest& request) { return supplierHandler->list(request); });
+  server.post("/api/supplier", [supplierController, supplierHttpController, supplierHandler](const fasc::server::core::HttpRequest& request) { return supplierHandler->create(request); });
+  server.get("/api/supplier/item", [supplierController, supplierHttpController, supplierHandler](const fasc::server::core::HttpRequest& request) { return supplierHandler->load(request); });
+  server.put("/api/supplier/item", [supplierController, supplierHttpController, supplierHandler](const fasc::server::core::HttpRequest& request) { return supplierHandler->update(request); });
+  server.del("/api/supplier/item", [supplierController, supplierHttpController, supplierHandler](const fasc::server::core::HttpRequest& request) { return supplierHandler->erase(request); });
 }
 
 } // namespace fasc::server::handling

@@ -26,27 +26,6 @@ std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& 
   return it->second;
 }
 
-std::string columnsSql(const std::vector<std::string>& columns) {
-  std::string sql;
-  for (std::size_t i = 0; i < columns.size(); ++i) {
-    if (i != 0) {
-      sql += ", ";
-    }
-    sql += columns[i];
-  }
-  return sql;
-}
-
-std::string whereSql(const std::vector<std::string>& keys, std::size_t offset = 0) {
-  std::string sql;
-  for (std::size_t i = 0; i < keys.size(); ++i) {
-    if (i != 0) {
-      sql += " AND ";
-    }
-    sql += keys[i] + " = $" + std::to_string(i + 1 + offset);
-  }
-  return sql;
-}
 
 fasc::server::persistence::IdentityDocumentTypeEntity rowToEntity(const fasc::server::database::SqlRow& row) {
   fasc::server::persistence::IdentityDocumentTypeEntity entity;
@@ -83,9 +62,8 @@ IdentityDocumentTypeController::IdentityDocumentTypeController(fasc::server::dat
 IdentityDocumentTypeRowsResult IdentityDocumentTypeController::list() const {
   static const std::vector<std::string> columns{"id", "code", "name", "description"};
   try {
-    const std::string sql = "SELECT " + columnsSql(columns) + " FROM public.identity_document_type";
     const auto rows = db_.invokeTransactionally([&] {
-      return db_.querySql(sql, {});
+      return db_.selectRows("public.identity_document_type", columns);
     });
 
     fasc::server::controllers::dto::IdentityDocumentTypeRowsDto dto;
@@ -104,17 +82,14 @@ IdentityDocumentTypeRowResult IdentityDocumentTypeController::load(const fasc::s
   static const std::vector<std::string> columns{"id", "code", "name", "description"};
   static const std::vector<std::string> keys{"id"};
   try {
-    const std::vector<fasc::server::database::SqlParameter> values = keyValues(key);
-    const std::string sql = "SELECT " + columnsSql(columns) + " FROM public.identity_document_type WHERE " +
-                            whereSql(keys) + " LIMIT 1";
-    const auto rows = db_.invokeTransactionally([&] {
-      return db_.querySql(sql, values);
+    const auto row = db_.invokeTransactionally([&] {
+      return db_.selectOneRow("public.identity_document_type", columns, keys, keyValues(key));
     });
-    if (rows.empty()) {
+    if (!row.has_value()) {
       return IdentityDocumentTypeRowResult::failure(FarmEntityError{FarmEntityErrorCode::NotFound, "Row not found"});
     }
     return IdentityDocumentTypeRowResult::success(
-        fasc::server::controllers::dto::IdentityDocumentTypeRowDto{rowToEntity(rows.front())});
+        fasc::server::controllers::dto::IdentityDocumentTypeRowDto{rowToEntity(*row)});
   } catch (const std::exception& exception) {
     return IdentityDocumentTypeRowResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
@@ -151,16 +126,8 @@ IdentityDocumentTypeMutationResult IdentityDocumentTypeController::create(
   }
 
   try {
-    std::string sql = "INSERT INTO public.identity_document_type (" + columnsSql(columns) + ") VALUES (";
-    for (std::size_t i = 0; i < values.size(); ++i) {
-      if (i != 0) {
-        sql += ", ";
-      }
-      sql += "$" + std::to_string(i + 1);
-    }
-    sql += ")";
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.executeSql(sql, values);
+      return db_.insertRow("public.identity_document_type", columns, values);
     });
     return IdentityDocumentTypeMutationResult::success(
         fasc::server::controllers::dto::IdentityDocumentTypeMutationDto{affectedRows});
@@ -194,18 +161,8 @@ IdentityDocumentTypeMutationResult IdentityDocumentTypeController::update(
   }
 
   try {
-    std::string sql = "UPDATE public.identity_document_type SET ";
-    for (std::size_t i = 0; i < columns.size(); ++i) {
-      if (i != 0) {
-        sql += ", ";
-      }
-      sql += columns[i] + " = $" + std::to_string(i + 1);
-    }
-    sql += " WHERE " + whereSql(keys, values.size());
-    const std::vector<fasc::server::database::SqlParameter> keyParams = keyValues(key);
-    values.insert(values.end(), keyParams.begin(), keyParams.end());
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.executeSql(sql, values);
+      return db_.updateRows("public.identity_document_type", columns, values, keys, keyValues(key));
     });
     return IdentityDocumentTypeMutationResult::success(
         fasc::server::controllers::dto::IdentityDocumentTypeMutationDto{affectedRows});
@@ -219,10 +176,8 @@ IdentityDocumentTypeMutationResult IdentityDocumentTypeController::erase(
     const fasc::server::controllers::dto::IdentityDocumentTypeKeyDto& key) const {
   static const std::vector<std::string> keys{"id"};
   try {
-    const std::vector<fasc::server::database::SqlParameter> values = keyValues(key);
-    const std::string sql = "DELETE FROM public.identity_document_type WHERE " + whereSql(keys);
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.executeSql(sql, values);
+      return db_.deleteRows("public.identity_document_type", keys, keyValues(key));
     });
     return IdentityDocumentTypeMutationResult::success(
         fasc::server::controllers::dto::IdentityDocumentTypeMutationDto{affectedRows});

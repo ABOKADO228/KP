@@ -4,6 +4,7 @@
 #include <memory>
 #include <odb/database.hxx>
 #include <odb/exceptions.hxx>
+#include <odb/result.hxx>
 #include <odb/transaction.hxx>
 #include <optional>
 #include <string>
@@ -151,6 +152,18 @@ public:
     return underlying->erase<Entity>(id);
   }
 
+  ///Runs an ODB query through the wrapper and materializes the result.
+  ///@note Use inside an active transaction or via @c invokeTransactionally().
+  template <typename Entity, typename Query>
+  std::vector<Entity> query(Query&& query) {
+    odb::result<Entity> result = underlying->query<Entity>(std::forward<Query>(query));
+    std::vector<Entity> entities;
+    for (auto iterator = result.begin(); iterator != result.end(); ++iterator) {
+      entities.push_back(*iterator);
+    }
+    return entities;
+  }
+
   ///Возвращает доступ к сырому ODB database object.
   ///@note Использовать только для низкоуровневых сценариев, которые не покрыты методами @c Database.
   ///@returns ссылка на @c odb::database.
@@ -160,6 +173,30 @@ public:
   ///@note Использовать только для низкоуровневых сценариев, которые не покрыты методами @c Database.
   ///@returns const-ссылка на @c odb::database.
   const odb::database& raw() const;
+
+  // Table-level CRUD helpers for application controllers. They keep SQL assembly
+  // in the database wrapper while still using positional PostgreSQL parameters.
+  std::vector<SqlRow> selectRows(const std::string& table,
+                                 const std::vector<std::string>& columns);
+
+  std::optional<SqlRow> selectOneRow(const std::string& table,
+                                     const std::vector<std::string>& columns,
+                                     const std::vector<std::string>& keyColumns,
+                                     const std::vector<SqlParameter>& keyValues);
+
+  unsigned long long insertRow(const std::string& table,
+                               const std::vector<std::string>& columns,
+                               const std::vector<SqlParameter>& values);
+
+  unsigned long long updateRows(const std::string& table,
+                                const std::vector<std::string>& columns,
+                                const std::vector<SqlParameter>& values,
+                                const std::vector<std::string>& keyColumns,
+                                const std::vector<SqlParameter>& keyValues);
+
+  unsigned long long deleteRows(const std::string& table,
+                                const std::vector<std::string>& keyColumns,
+                                const std::vector<SqlParameter>& keyValues);
 
   ///Выполняет SELECT через ODB PostgreSQL connection.
   ///@param sql    SQL-запрос с позиционными параметрами PostgreSQL.

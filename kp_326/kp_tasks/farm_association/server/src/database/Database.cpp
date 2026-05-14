@@ -9,9 +9,11 @@
 #include <odb/pgsql/database.hxx>
 #include <odb/transaction.hxx>
 
+#include <cctype>
 #include <cstdlib>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace {
@@ -40,6 +42,102 @@ std::vector<const char*> parameterPointers(
     pointers.push_back(value.isNull ? nullptr : value.text.c_str());
   }
   return pointers;
+}
+
+void requireIdentifierSegment(std::string_view identifier) {
+  if (identifier.empty() ||
+      !(std::isalpha(static_cast<unsigned char>(identifier.front())) ||
+        identifier.front() == '_')) {
+    throw std::invalid_argument{"Invalid SQL identifier: " + std::string{identifier}};
+  }
+
+  for (const char ch : identifier) {
+    if (!(std::isalnum(static_cast<unsigned char>(ch)) || ch == '_')) {
+      throw std::invalid_argument{"Invalid SQL identifier: " + std::string{identifier}};
+    }
+  }
+}
+
+std::string requireIdentifierPath(const std::string& identifier) {
+  std::size_t start = 0;
+  while (start <= identifier.size()) {
+    const std::size_t dot = identifier.find('.', start);
+    const std::string_view segment{
+        identifier.data() + start,
+        (dot == std::string::npos ? identifier.size() : dot) - start};
+    requireIdentifierSegment(segment);
+
+    if (dot == std::string::npos) {
+      break;
+    }
+    start = dot + 1;
+  }
+
+  return identifier;
+}
+
+std::string columnsSql(const std::vector<std::string>& columns) {
+  if (columns.empty()) {
+    throw std::invalid_argument{"At least one column is required"};
+  }
+
+  std::string sql;
+  for (std::size_t i = 0; i < columns.size(); ++i) {
+    if (i != 0) {
+      sql += ", ";
+    }
+    sql += requireIdentifierPath(columns[i]);
+  }
+  return sql;
+}
+
+std::string placeholdersSql(std::size_t count) {
+  std::string sql;
+  for (std::size_t i = 0; i < count; ++i) {
+    if (i != 0) {
+      sql += ", ";
+    }
+    sql += "$" + std::to_string(i + 1);
+  }
+  return sql;
+}
+
+std::string assignmentsSql(const std::vector<std::string>& columns) {
+  if (columns.empty()) {
+    throw std::invalid_argument{"At least one column is required"};
+  }
+
+  std::string sql;
+  for (std::size_t i = 0; i < columns.size(); ++i) {
+    if (i != 0) {
+      sql += ", ";
+    }
+    sql += requireIdentifierPath(columns[i]) + " = $" + std::to_string(i + 1);
+  }
+  return sql;
+}
+
+std::string whereSql(const std::vector<std::string>& keyColumns, std::size_t offset = 0) {
+  if (keyColumns.empty()) {
+    throw std::invalid_argument{"At least one key column is required"};
+  }
+
+  std::string sql;
+  for (std::size_t i = 0; i < keyColumns.size(); ++i) {
+    if (i != 0) {
+      sql += " AND ";
+    }
+    sql += requireIdentifierPath(keyColumns[i]) + " = $" + std::to_string(i + 1 + offset);
+  }
+  return sql;
+}
+
+void requireSameSize(std::string_view name,
+                     const std::vector<std::string>& columns,
+                     const std::vector<fasc::server::database::SqlParameter>& values) {
+  if (columns.size() != values.size()) {
+    throw std::invalid_argument{std::string{name} + " columns and values size mismatch"};
+  }
 }
 
 } // namespace
@@ -94,6 +192,63 @@ odb::database& Database::raw() {
 
 const odb::database& Database::raw() const {
   return *underlying;
+}
+
+std::vector<SqlRow> Database::selectRows(const std::string& table,
+                                         const std::vector<std::string>& columns) {
+  const std::string sql = "SELECT " + columnsSql(columns) + " FROM " +
+                          requireIdentifierPath(table);
+  return querySql(sql, {});
+}
+
+std::optional<SqlRow> Database::selectOneRow(const std::string& table,
+                                             const std::vector<std::string>& columns,
+                                             const std::vector<std::string>& keyColumns,
+                                             const std::vector<SqlParameter>& keyValues) {
+  requireSameSize("key", keyColumns, keyValues);
+  const std::string sql = "SELECT " + columnsSql(columns) + " FROM " +
+                          requireIdentifierPath(table) + " WHERE " + whereSql(keyColumns) +
+                          " LIMIT 1";
+  const auto rows = querySql(sql, keyValues);
+  if (rows.empty()) {
+    return std::nullopt;
+  }
+  return rows.front();
+}
+
+unsigned long long Database::insertRow(const std::string& table,
+                                       const std::vector<std::string>& columns,
+                                       const std::vector<SqlParameter>& values) {
+  requireSameSize("insert", columns, values);
+  const std::string sql = "INSERT INTO " + requireIdentifierPath(table) + " (" +
+                          columnsSql(columns) + ") VALUES (" + placeholdersSql(values.size()) +
+                          ")";
+  return executeSql(sql, values);
+}
+
+unsigned long long Database::updateRows(const std::string& table,
+                                        const std::vector<std::string>& columns,
+                                        const std::vector<SqlParameter>& values,
+                                        const std::vector<std::string>& keyColumns,
+                                        const std::vector<SqlParameter>& keyValues) {
+  requireSameSize("update", columns, values);
+  requireSameSize("key", keyColumns, keyValues);
+
+  std::vector<SqlParameter> parameters = values;
+  parameters.insert(parameters.end(), keyValues.begin(), keyValues.end());
+  const std::string sql = "UPDATE " + requireIdentifierPath(table) + " SET " +
+                          assignmentsSql(columns) + " WHERE " +
+                          whereSql(keyColumns, values.size());
+  return executeSql(sql, parameters);
+}
+
+unsigned long long Database::deleteRows(const std::string& table,
+                                        const std::vector<std::string>& keyColumns,
+                                        const std::vector<SqlParameter>& keyValues) {
+  requireSameSize("key", keyColumns, keyValues);
+  const std::string sql = "DELETE FROM " + requireIdentifierPath(table) + " WHERE " +
+                          whereSql(keyColumns);
+  return executeSql(sql, keyValues);
 }
 
 std::vector<SqlRow> Database::querySql(const std::string& sql,

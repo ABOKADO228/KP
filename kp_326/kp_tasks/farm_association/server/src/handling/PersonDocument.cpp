@@ -1,10 +1,13 @@
 #include <handling/PersonDocument.hpp>
 
+#include <controllers/app/PersonDocument.hpp>
+
 #include <marshalling/PersonDocument.hpp>
 #include <marshalling/User.hpp>
 
 #include <nlohmann/json.hpp>
 
+#include <memory>
 #include <stdexcept>
 
 namespace fasc::server::handling {
@@ -95,6 +98,18 @@ fasc::server::core::HttpResponse PersonDocumentHandler::erase(
   } catch (const std::exception& exception) {
     return badRequest(exception);
   }
+}
+
+void registerPersonDocumentRoutes(fasc::server::core::Server& server,
+                           fasc::server::database::Database& database) {
+  auto persondocumentController = std::make_shared<fasc::server::controllers::app::PersonDocumentController>(database);
+  auto persondocumentHttpController = std::make_shared<fasc::server::controllers::http::PersonDocumentHttpController>(*persondocumentController);
+  auto persondocumentHandler = std::make_shared<PersonDocumentHandler>(*persondocumentHttpController);
+  server.get("/api/person_document", [persondocumentController, persondocumentHttpController, persondocumentHandler](const fasc::server::core::HttpRequest& request) { return persondocumentHandler->list(request); });
+  server.post("/api/person_document", [persondocumentController, persondocumentHttpController, persondocumentHandler](const fasc::server::core::HttpRequest& request) { return persondocumentHandler->create(request); });
+  server.get("/api/person_document/item", [persondocumentController, persondocumentHttpController, persondocumentHandler](const fasc::server::core::HttpRequest& request) { return persondocumentHandler->load(request); });
+  server.put("/api/person_document/item", [persondocumentController, persondocumentHttpController, persondocumentHandler](const fasc::server::core::HttpRequest& request) { return persondocumentHandler->update(request); });
+  server.del("/api/person_document/item", [persondocumentController, persondocumentHttpController, persondocumentHandler](const fasc::server::core::HttpRequest& request) { return persondocumentHandler->erase(request); });
 }
 
 } // namespace fasc::server::handling

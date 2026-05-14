@@ -26,27 +26,6 @@ std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& 
   return it->second;
 }
 
-std::string columnsSql(const std::vector<std::string>& columns) {
-  std::string sql;
-  for (std::size_t i = 0; i < columns.size(); ++i) {
-    if (i != 0) {
-      sql += ", ";
-    }
-    sql += columns[i];
-  }
-  return sql;
-}
-
-std::string whereSql(const std::vector<std::string>& keys, std::size_t offset = 0) {
-  std::string sql;
-  for (std::size_t i = 0; i < keys.size(); ++i) {
-    if (i != 0) {
-      sql += " AND ";
-    }
-    sql += keys[i] + " = $" + std::to_string(i + 1 + offset);
-  }
-  return sql;
-}
 
 fasc::server::persistence::PersonDocumentEntity rowToEntity(const fasc::server::database::SqlRow& row) {
   fasc::server::persistence::PersonDocumentEntity entity;
@@ -95,9 +74,8 @@ PersonDocumentController::PersonDocumentController(fasc::server::database::Datab
 PersonDocumentRowsResult PersonDocumentController::list() const {
   static const std::vector<std::string> columns{"id", "person_id", "document_type_id", "document_number", "issued_by", "issued_date", "expiration_date", "is_primary"};
   try {
-    const std::string sql = "SELECT " + columnsSql(columns) + " FROM public.person_document";
     const auto rows = db_.invokeTransactionally([&] {
-      return db_.querySql(sql, {});
+      return db_.selectRows("public.person_document", columns);
     });
 
     fasc::server::controllers::dto::PersonDocumentRowsDto dto;
@@ -116,17 +94,14 @@ PersonDocumentRowResult PersonDocumentController::load(const fasc::server::contr
   static const std::vector<std::string> columns{"id", "person_id", "document_type_id", "document_number", "issued_by", "issued_date", "expiration_date", "is_primary"};
   static const std::vector<std::string> keys{"id"};
   try {
-    const std::vector<fasc::server::database::SqlParameter> values = keyValues(key);
-    const std::string sql = "SELECT " + columnsSql(columns) + " FROM public.person_document WHERE " +
-                            whereSql(keys) + " LIMIT 1";
-    const auto rows = db_.invokeTransactionally([&] {
-      return db_.querySql(sql, values);
+    const auto row = db_.invokeTransactionally([&] {
+      return db_.selectOneRow("public.person_document", columns, keys, keyValues(key));
     });
-    if (rows.empty()) {
+    if (!row.has_value()) {
       return PersonDocumentRowResult::failure(FarmEntityError{FarmEntityErrorCode::NotFound, "Row not found"});
     }
     return PersonDocumentRowResult::success(
-        fasc::server::controllers::dto::PersonDocumentRowDto{rowToEntity(rows.front())});
+        fasc::server::controllers::dto::PersonDocumentRowDto{rowToEntity(*row)});
   } catch (const std::exception& exception) {
     return PersonDocumentRowResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
@@ -179,16 +154,8 @@ PersonDocumentMutationResult PersonDocumentController::create(
   }
 
   try {
-    std::string sql = "INSERT INTO public.person_document (" + columnsSql(columns) + ") VALUES (";
-    for (std::size_t i = 0; i < values.size(); ++i) {
-      if (i != 0) {
-        sql += ", ";
-      }
-      sql += "$" + std::to_string(i + 1);
-    }
-    sql += ")";
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.executeSql(sql, values);
+      return db_.insertRow("public.person_document", columns, values);
     });
     return PersonDocumentMutationResult::success(
         fasc::server::controllers::dto::PersonDocumentMutationDto{affectedRows});
@@ -238,18 +205,8 @@ PersonDocumentMutationResult PersonDocumentController::update(
   }
 
   try {
-    std::string sql = "UPDATE public.person_document SET ";
-    for (std::size_t i = 0; i < columns.size(); ++i) {
-      if (i != 0) {
-        sql += ", ";
-      }
-      sql += columns[i] + " = $" + std::to_string(i + 1);
-    }
-    sql += " WHERE " + whereSql(keys, values.size());
-    const std::vector<fasc::server::database::SqlParameter> keyParams = keyValues(key);
-    values.insert(values.end(), keyParams.begin(), keyParams.end());
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.executeSql(sql, values);
+      return db_.updateRows("public.person_document", columns, values, keys, keyValues(key));
     });
     return PersonDocumentMutationResult::success(
         fasc::server::controllers::dto::PersonDocumentMutationDto{affectedRows});
@@ -263,10 +220,8 @@ PersonDocumentMutationResult PersonDocumentController::erase(
     const fasc::server::controllers::dto::PersonDocumentKeyDto& key) const {
   static const std::vector<std::string> keys{"id"};
   try {
-    const std::vector<fasc::server::database::SqlParameter> values = keyValues(key);
-    const std::string sql = "DELETE FROM public.person_document WHERE " + whereSql(keys);
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.executeSql(sql, values);
+      return db_.deleteRows("public.person_document", keys, keyValues(key));
     });
     return PersonDocumentMutationResult::success(
         fasc::server::controllers::dto::PersonDocumentMutationDto{affectedRows});

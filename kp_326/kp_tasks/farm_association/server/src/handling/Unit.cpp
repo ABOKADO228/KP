@@ -1,10 +1,13 @@
 #include <handling/Unit.hpp>
 
+#include <controllers/app/Unit.hpp>
+
 #include <marshalling/Unit.hpp>
 #include <marshalling/User.hpp>
 
 #include <nlohmann/json.hpp>
 
+#include <memory>
 #include <stdexcept>
 
 namespace fasc::server::handling {
@@ -95,6 +98,18 @@ fasc::server::core::HttpResponse UnitHandler::erase(
   } catch (const std::exception& exception) {
     return badRequest(exception);
   }
+}
+
+void registerUnitRoutes(fasc::server::core::Server& server,
+                           fasc::server::database::Database& database) {
+  auto unitController = std::make_shared<fasc::server::controllers::app::UnitController>(database);
+  auto unitHttpController = std::make_shared<fasc::server::controllers::http::UnitHttpController>(*unitController);
+  auto unitHandler = std::make_shared<UnitHandler>(*unitHttpController);
+  server.get("/api/unit", [unitController, unitHttpController, unitHandler](const fasc::server::core::HttpRequest& request) { return unitHandler->list(request); });
+  server.post("/api/unit", [unitController, unitHttpController, unitHandler](const fasc::server::core::HttpRequest& request) { return unitHandler->create(request); });
+  server.get("/api/unit/item", [unitController, unitHttpController, unitHandler](const fasc::server::core::HttpRequest& request) { return unitHandler->load(request); });
+  server.put("/api/unit/item", [unitController, unitHttpController, unitHandler](const fasc::server::core::HttpRequest& request) { return unitHandler->update(request); });
+  server.del("/api/unit/item", [unitController, unitHttpController, unitHandler](const fasc::server::core::HttpRequest& request) { return unitHandler->erase(request); });
 }
 
 } // namespace fasc::server::handling

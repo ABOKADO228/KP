@@ -1,10 +1,13 @@
 #include <handling/SupplierProductPrice.hpp>
 
+#include <controllers/app/SupplierProductPrice.hpp>
+
 #include <marshalling/SupplierProductPrice.hpp>
 #include <marshalling/User.hpp>
 
 #include <nlohmann/json.hpp>
 
+#include <memory>
 #include <stdexcept>
 
 namespace fasc::server::handling {
@@ -95,6 +98,18 @@ fasc::server::core::HttpResponse SupplierProductPriceHandler::erase(
   } catch (const std::exception& exception) {
     return badRequest(exception);
   }
+}
+
+void registerSupplierProductPriceRoutes(fasc::server::core::Server& server,
+                           fasc::server::database::Database& database) {
+  auto supplierproductpriceController = std::make_shared<fasc::server::controllers::app::SupplierProductPriceController>(database);
+  auto supplierproductpriceHttpController = std::make_shared<fasc::server::controllers::http::SupplierProductPriceHttpController>(*supplierproductpriceController);
+  auto supplierproductpriceHandler = std::make_shared<SupplierProductPriceHandler>(*supplierproductpriceHttpController);
+  server.get("/api/supplier_product_price", [supplierproductpriceController, supplierproductpriceHttpController, supplierproductpriceHandler](const fasc::server::core::HttpRequest& request) { return supplierproductpriceHandler->list(request); });
+  server.post("/api/supplier_product_price", [supplierproductpriceController, supplierproductpriceHttpController, supplierproductpriceHandler](const fasc::server::core::HttpRequest& request) { return supplierproductpriceHandler->create(request); });
+  server.get("/api/supplier_product_price/item", [supplierproductpriceController, supplierproductpriceHttpController, supplierproductpriceHandler](const fasc::server::core::HttpRequest& request) { return supplierproductpriceHandler->load(request); });
+  server.put("/api/supplier_product_price/item", [supplierproductpriceController, supplierproductpriceHttpController, supplierproductpriceHandler](const fasc::server::core::HttpRequest& request) { return supplierproductpriceHandler->update(request); });
+  server.del("/api/supplier_product_price/item", [supplierproductpriceController, supplierproductpriceHttpController, supplierproductpriceHandler](const fasc::server::core::HttpRequest& request) { return supplierproductpriceHandler->erase(request); });
 }
 
 } // namespace fasc::server::handling

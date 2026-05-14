@@ -1,10 +1,13 @@
 #include <handling/SalesRequisition.hpp>
 
+#include <controllers/app/SalesRequisition.hpp>
+
 #include <marshalling/SalesRequisition.hpp>
 #include <marshalling/User.hpp>
 
 #include <nlohmann/json.hpp>
 
+#include <memory>
 #include <stdexcept>
 
 namespace fasc::server::handling {
@@ -95,6 +98,18 @@ fasc::server::core::HttpResponse SalesRequisitionHandler::erase(
   } catch (const std::exception& exception) {
     return badRequest(exception);
   }
+}
+
+void registerSalesRequisitionRoutes(fasc::server::core::Server& server,
+                           fasc::server::database::Database& database) {
+  auto salesrequisitionController = std::make_shared<fasc::server::controllers::app::SalesRequisitionController>(database);
+  auto salesrequisitionHttpController = std::make_shared<fasc::server::controllers::http::SalesRequisitionHttpController>(*salesrequisitionController);
+  auto salesrequisitionHandler = std::make_shared<SalesRequisitionHandler>(*salesrequisitionHttpController);
+  server.get("/api/sales_requisition", [salesrequisitionController, salesrequisitionHttpController, salesrequisitionHandler](const fasc::server::core::HttpRequest& request) { return salesrequisitionHandler->list(request); });
+  server.post("/api/sales_requisition", [salesrequisitionController, salesrequisitionHttpController, salesrequisitionHandler](const fasc::server::core::HttpRequest& request) { return salesrequisitionHandler->create(request); });
+  server.get("/api/sales_requisition/item", [salesrequisitionController, salesrequisitionHttpController, salesrequisitionHandler](const fasc::server::core::HttpRequest& request) { return salesrequisitionHandler->load(request); });
+  server.put("/api/sales_requisition/item", [salesrequisitionController, salesrequisitionHttpController, salesrequisitionHandler](const fasc::server::core::HttpRequest& request) { return salesrequisitionHandler->update(request); });
+  server.del("/api/sales_requisition/item", [salesrequisitionController, salesrequisitionHttpController, salesrequisitionHandler](const fasc::server::core::HttpRequest& request) { return salesrequisitionHandler->erase(request); });
 }
 
 } // namespace fasc::server::handling

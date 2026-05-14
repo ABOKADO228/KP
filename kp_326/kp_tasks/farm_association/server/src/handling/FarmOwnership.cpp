@@ -1,10 +1,13 @@
 #include <handling/FarmOwnership.hpp>
 
+#include <controllers/app/FarmOwnership.hpp>
+
 #include <marshalling/FarmOwnership.hpp>
 #include <marshalling/User.hpp>
 
 #include <nlohmann/json.hpp>
 
+#include <memory>
 #include <stdexcept>
 
 namespace fasc::server::handling {
@@ -95,6 +98,18 @@ fasc::server::core::HttpResponse FarmOwnershipHandler::erase(
   } catch (const std::exception& exception) {
     return badRequest(exception);
   }
+}
+
+void registerFarmOwnershipRoutes(fasc::server::core::Server& server,
+                           fasc::server::database::Database& database) {
+  auto farmownershipController = std::make_shared<fasc::server::controllers::app::FarmOwnershipController>(database);
+  auto farmownershipHttpController = std::make_shared<fasc::server::controllers::http::FarmOwnershipHttpController>(*farmownershipController);
+  auto farmownershipHandler = std::make_shared<FarmOwnershipHandler>(*farmownershipHttpController);
+  server.get("/api/farm_ownership", [farmownershipController, farmownershipHttpController, farmownershipHandler](const fasc::server::core::HttpRequest& request) { return farmownershipHandler->list(request); });
+  server.post("/api/farm_ownership", [farmownershipController, farmownershipHttpController, farmownershipHandler](const fasc::server::core::HttpRequest& request) { return farmownershipHandler->create(request); });
+  server.get("/api/farm_ownership/item", [farmownershipController, farmownershipHttpController, farmownershipHandler](const fasc::server::core::HttpRequest& request) { return farmownershipHandler->load(request); });
+  server.put("/api/farm_ownership/item", [farmownershipController, farmownershipHttpController, farmownershipHandler](const fasc::server::core::HttpRequest& request) { return farmownershipHandler->update(request); });
+  server.del("/api/farm_ownership/item", [farmownershipController, farmownershipHttpController, farmownershipHandler](const fasc::server::core::HttpRequest& request) { return farmownershipHandler->erase(request); });
 }
 
 } // namespace fasc::server::handling

@@ -26,27 +26,6 @@ std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& 
   return it->second;
 }
 
-std::string columnsSql(const std::vector<std::string>& columns) {
-  std::string sql;
-  for (std::size_t i = 0; i < columns.size(); ++i) {
-    if (i != 0) {
-      sql += ", ";
-    }
-    sql += columns[i];
-  }
-  return sql;
-}
-
-std::string whereSql(const std::vector<std::string>& keys, std::size_t offset = 0) {
-  std::string sql;
-  for (std::size_t i = 0; i < keys.size(); ++i) {
-    if (i != 0) {
-      sql += " AND ";
-    }
-    sql += keys[i] + " = $" + std::to_string(i + 1 + offset);
-  }
-  return sql;
-}
 
 fasc::server::persistence::AssociationRoleEntity rowToEntity(const fasc::server::database::SqlRow& row) {
   fasc::server::persistence::AssociationRoleEntity entity;
@@ -83,9 +62,8 @@ AssociationRoleController::AssociationRoleController(fasc::server::database::Dat
 AssociationRoleRowsResult AssociationRoleController::list() const {
   static const std::vector<std::string> columns{"id", "code", "name", "description"};
   try {
-    const std::string sql = "SELECT " + columnsSql(columns) + " FROM public.association_role";
     const auto rows = db_.invokeTransactionally([&] {
-      return db_.querySql(sql, {});
+      return db_.selectRows("public.association_role", columns);
     });
 
     fasc::server::controllers::dto::AssociationRoleRowsDto dto;
@@ -104,17 +82,14 @@ AssociationRoleRowResult AssociationRoleController::load(const fasc::server::con
   static const std::vector<std::string> columns{"id", "code", "name", "description"};
   static const std::vector<std::string> keys{"id"};
   try {
-    const std::vector<fasc::server::database::SqlParameter> values = keyValues(key);
-    const std::string sql = "SELECT " + columnsSql(columns) + " FROM public.association_role WHERE " +
-                            whereSql(keys) + " LIMIT 1";
-    const auto rows = db_.invokeTransactionally([&] {
-      return db_.querySql(sql, values);
+    const auto row = db_.invokeTransactionally([&] {
+      return db_.selectOneRow("public.association_role", columns, keys, keyValues(key));
     });
-    if (rows.empty()) {
+    if (!row.has_value()) {
       return AssociationRoleRowResult::failure(FarmEntityError{FarmEntityErrorCode::NotFound, "Row not found"});
     }
     return AssociationRoleRowResult::success(
-        fasc::server::controllers::dto::AssociationRoleRowDto{rowToEntity(rows.front())});
+        fasc::server::controllers::dto::AssociationRoleRowDto{rowToEntity(*row)});
   } catch (const std::exception& exception) {
     return AssociationRoleRowResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
@@ -151,16 +126,8 @@ AssociationRoleMutationResult AssociationRoleController::create(
   }
 
   try {
-    std::string sql = "INSERT INTO public.association_role (" + columnsSql(columns) + ") VALUES (";
-    for (std::size_t i = 0; i < values.size(); ++i) {
-      if (i != 0) {
-        sql += ", ";
-      }
-      sql += "$" + std::to_string(i + 1);
-    }
-    sql += ")";
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.executeSql(sql, values);
+      return db_.insertRow("public.association_role", columns, values);
     });
     return AssociationRoleMutationResult::success(
         fasc::server::controllers::dto::AssociationRoleMutationDto{affectedRows});
@@ -194,18 +161,8 @@ AssociationRoleMutationResult AssociationRoleController::update(
   }
 
   try {
-    std::string sql = "UPDATE public.association_role SET ";
-    for (std::size_t i = 0; i < columns.size(); ++i) {
-      if (i != 0) {
-        sql += ", ";
-      }
-      sql += columns[i] + " = $" + std::to_string(i + 1);
-    }
-    sql += " WHERE " + whereSql(keys, values.size());
-    const std::vector<fasc::server::database::SqlParameter> keyParams = keyValues(key);
-    values.insert(values.end(), keyParams.begin(), keyParams.end());
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.executeSql(sql, values);
+      return db_.updateRows("public.association_role", columns, values, keys, keyValues(key));
     });
     return AssociationRoleMutationResult::success(
         fasc::server::controllers::dto::AssociationRoleMutationDto{affectedRows});
@@ -219,10 +176,8 @@ AssociationRoleMutationResult AssociationRoleController::erase(
     const fasc::server::controllers::dto::AssociationRoleKeyDto& key) const {
   static const std::vector<std::string> keys{"id"};
   try {
-    const std::vector<fasc::server::database::SqlParameter> values = keyValues(key);
-    const std::string sql = "DELETE FROM public.association_role WHERE " + whereSql(keys);
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.executeSql(sql, values);
+      return db_.deleteRows("public.association_role", keys, keyValues(key));
     });
     return AssociationRoleMutationResult::success(
         fasc::server::controllers::dto::AssociationRoleMutationDto{affectedRows});

@@ -1,10 +1,13 @@
 #include <handling/Product.hpp>
 
+#include <controllers/app/Product.hpp>
+
 #include <marshalling/Product.hpp>
 #include <marshalling/User.hpp>
 
 #include <nlohmann/json.hpp>
 
+#include <memory>
 #include <stdexcept>
 
 namespace fasc::server::handling {
@@ -95,6 +98,18 @@ fasc::server::core::HttpResponse ProductHandler::erase(
   } catch (const std::exception& exception) {
     return badRequest(exception);
   }
+}
+
+void registerProductRoutes(fasc::server::core::Server& server,
+                           fasc::server::database::Database& database) {
+  auto productController = std::make_shared<fasc::server::controllers::app::ProductController>(database);
+  auto productHttpController = std::make_shared<fasc::server::controllers::http::ProductHttpController>(*productController);
+  auto productHandler = std::make_shared<ProductHandler>(*productHttpController);
+  server.get("/api/product", [productController, productHttpController, productHandler](const fasc::server::core::HttpRequest& request) { return productHandler->list(request); });
+  server.post("/api/product", [productController, productHttpController, productHandler](const fasc::server::core::HttpRequest& request) { return productHandler->create(request); });
+  server.get("/api/product/item", [productController, productHttpController, productHandler](const fasc::server::core::HttpRequest& request) { return productHandler->load(request); });
+  server.put("/api/product/item", [productController, productHttpController, productHandler](const fasc::server::core::HttpRequest& request) { return productHandler->update(request); });
+  server.del("/api/product/item", [productController, productHttpController, productHandler](const fasc::server::core::HttpRequest& request) { return productHandler->erase(request); });
 }
 
 } // namespace fasc::server::handling

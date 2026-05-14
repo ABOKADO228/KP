@@ -1,10 +1,13 @@
 #include <handling/IdentityDocumentType.hpp>
 
+#include <controllers/app/IdentityDocumentType.hpp>
+
 #include <marshalling/IdentityDocumentType.hpp>
 #include <marshalling/User.hpp>
 
 #include <nlohmann/json.hpp>
 
+#include <memory>
 #include <stdexcept>
 
 namespace fasc::server::handling {
@@ -95,6 +98,18 @@ fasc::server::core::HttpResponse IdentityDocumentTypeHandler::erase(
   } catch (const std::exception& exception) {
     return badRequest(exception);
   }
+}
+
+void registerIdentityDocumentTypeRoutes(fasc::server::core::Server& server,
+                           fasc::server::database::Database& database) {
+  auto identitydocumenttypeController = std::make_shared<fasc::server::controllers::app::IdentityDocumentTypeController>(database);
+  auto identitydocumenttypeHttpController = std::make_shared<fasc::server::controllers::http::IdentityDocumentTypeHttpController>(*identitydocumenttypeController);
+  auto identitydocumenttypeHandler = std::make_shared<IdentityDocumentTypeHandler>(*identitydocumenttypeHttpController);
+  server.get("/api/identity_document_type", [identitydocumenttypeController, identitydocumenttypeHttpController, identitydocumenttypeHandler](const fasc::server::core::HttpRequest& request) { return identitydocumenttypeHandler->list(request); });
+  server.post("/api/identity_document_type", [identitydocumenttypeController, identitydocumenttypeHttpController, identitydocumenttypeHandler](const fasc::server::core::HttpRequest& request) { return identitydocumenttypeHandler->create(request); });
+  server.get("/api/identity_document_type/item", [identitydocumenttypeController, identitydocumenttypeHttpController, identitydocumenttypeHandler](const fasc::server::core::HttpRequest& request) { return identitydocumenttypeHandler->load(request); });
+  server.put("/api/identity_document_type/item", [identitydocumenttypeController, identitydocumenttypeHttpController, identitydocumenttypeHandler](const fasc::server::core::HttpRequest& request) { return identitydocumenttypeHandler->update(request); });
+  server.del("/api/identity_document_type/item", [identitydocumenttypeController, identitydocumenttypeHttpController, identitydocumenttypeHandler](const fasc::server::core::HttpRequest& request) { return identitydocumenttypeHandler->erase(request); });
 }
 
 } // namespace fasc::server::handling

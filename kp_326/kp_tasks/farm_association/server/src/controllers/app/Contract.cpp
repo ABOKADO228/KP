@@ -26,27 +26,6 @@ std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& 
   return it->second;
 }
 
-std::string columnsSql(const std::vector<std::string>& columns) {
-  std::string sql;
-  for (std::size_t i = 0; i < columns.size(); ++i) {
-    if (i != 0) {
-      sql += ", ";
-    }
-    sql += columns[i];
-  }
-  return sql;
-}
-
-std::string whereSql(const std::vector<std::string>& keys, std::size_t offset = 0) {
-  std::string sql;
-  for (std::size_t i = 0; i < keys.size(); ++i) {
-    if (i != 0) {
-      sql += " AND ";
-    }
-    sql += keys[i] + " = $" + std::to_string(i + 1 + offset);
-  }
-  return sql;
-}
 
 fasc::server::persistence::ContractEntity rowToEntity(const fasc::server::database::SqlRow& row) {
   fasc::server::persistence::ContractEntity entity;
@@ -101,9 +80,8 @@ ContractController::ContractController(fasc::server::database::Database& db) : d
 ContractRowsResult ContractController::list() const {
   static const std::vector<std::string> columns{"id", "supplier_id", "farm_id", "association_id", "contract_number", "sign_date", "start_date", "end_date", "status", "description"};
   try {
-    const std::string sql = "SELECT " + columnsSql(columns) + " FROM public.contract";
     const auto rows = db_.invokeTransactionally([&] {
-      return db_.querySql(sql, {});
+      return db_.selectRows("public.contract", columns);
     });
 
     fasc::server::controllers::dto::ContractRowsDto dto;
@@ -122,17 +100,14 @@ ContractRowResult ContractController::load(const fasc::server::controllers::dto:
   static const std::vector<std::string> columns{"id", "supplier_id", "farm_id", "association_id", "contract_number", "sign_date", "start_date", "end_date", "status", "description"};
   static const std::vector<std::string> keys{"id"};
   try {
-    const std::vector<fasc::server::database::SqlParameter> values = keyValues(key);
-    const std::string sql = "SELECT " + columnsSql(columns) + " FROM public.contract WHERE " +
-                            whereSql(keys) + " LIMIT 1";
-    const auto rows = db_.invokeTransactionally([&] {
-      return db_.querySql(sql, values);
+    const auto row = db_.invokeTransactionally([&] {
+      return db_.selectOneRow("public.contract", columns, keys, keyValues(key));
     });
-    if (rows.empty()) {
+    if (!row.has_value()) {
       return ContractRowResult::failure(FarmEntityError{FarmEntityErrorCode::NotFound, "Row not found"});
     }
     return ContractRowResult::success(
-        fasc::server::controllers::dto::ContractRowDto{rowToEntity(rows.front())});
+        fasc::server::controllers::dto::ContractRowDto{rowToEntity(*row)});
   } catch (const std::exception& exception) {
     return ContractRowResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
@@ -197,16 +172,8 @@ ContractMutationResult ContractController::create(
   }
 
   try {
-    std::string sql = "INSERT INTO public.contract (" + columnsSql(columns) + ") VALUES (";
-    for (std::size_t i = 0; i < values.size(); ++i) {
-      if (i != 0) {
-        sql += ", ";
-      }
-      sql += "$" + std::to_string(i + 1);
-    }
-    sql += ")";
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.executeSql(sql, values);
+      return db_.insertRow("public.contract", columns, values);
     });
     return ContractMutationResult::success(
         fasc::server::controllers::dto::ContractMutationDto{affectedRows});
@@ -264,18 +231,8 @@ ContractMutationResult ContractController::update(
   }
 
   try {
-    std::string sql = "UPDATE public.contract SET ";
-    for (std::size_t i = 0; i < columns.size(); ++i) {
-      if (i != 0) {
-        sql += ", ";
-      }
-      sql += columns[i] + " = $" + std::to_string(i + 1);
-    }
-    sql += " WHERE " + whereSql(keys, values.size());
-    const std::vector<fasc::server::database::SqlParameter> keyParams = keyValues(key);
-    values.insert(values.end(), keyParams.begin(), keyParams.end());
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.executeSql(sql, values);
+      return db_.updateRows("public.contract", columns, values, keys, keyValues(key));
     });
     return ContractMutationResult::success(
         fasc::server::controllers::dto::ContractMutationDto{affectedRows});
@@ -289,10 +246,8 @@ ContractMutationResult ContractController::erase(
     const fasc::server::controllers::dto::ContractKeyDto& key) const {
   static const std::vector<std::string> keys{"id"};
   try {
-    const std::vector<fasc::server::database::SqlParameter> values = keyValues(key);
-    const std::string sql = "DELETE FROM public.contract WHERE " + whereSql(keys);
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.executeSql(sql, values);
+      return db_.deleteRows("public.contract", keys, keyValues(key));
     });
     return ContractMutationResult::success(
         fasc::server::controllers::dto::ContractMutationDto{affectedRows});

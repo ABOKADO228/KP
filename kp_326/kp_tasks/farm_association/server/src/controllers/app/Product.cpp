@@ -26,27 +26,6 @@ std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& 
   return it->second;
 }
 
-std::string columnsSql(const std::vector<std::string>& columns) {
-  std::string sql;
-  for (std::size_t i = 0; i < columns.size(); ++i) {
-    if (i != 0) {
-      sql += ", ";
-    }
-    sql += columns[i];
-  }
-  return sql;
-}
-
-std::string whereSql(const std::vector<std::string>& keys, std::size_t offset = 0) {
-  std::string sql;
-  for (std::size_t i = 0; i < keys.size(); ++i) {
-    if (i != 0) {
-      sql += " AND ";
-    }
-    sql += keys[i] + " = $" + std::to_string(i + 1 + offset);
-  }
-  return sql;
-}
 
 fasc::server::persistence::ProductEntity rowToEntity(const fasc::server::database::SqlRow& row) {
   fasc::server::persistence::ProductEntity entity;
@@ -79,9 +58,8 @@ ProductController::ProductController(fasc::server::database::Database& db) : db_
 ProductRowsResult ProductController::list() const {
   static const std::vector<std::string> columns{"id", "type_id", "name", "unit_id"};
   try {
-    const std::string sql = "SELECT " + columnsSql(columns) + " FROM public.product";
     const auto rows = db_.invokeTransactionally([&] {
-      return db_.querySql(sql, {});
+      return db_.selectRows("public.product", columns);
     });
 
     fasc::server::controllers::dto::ProductRowsDto dto;
@@ -100,17 +78,14 @@ ProductRowResult ProductController::load(const fasc::server::controllers::dto::P
   static const std::vector<std::string> columns{"id", "type_id", "name", "unit_id"};
   static const std::vector<std::string> keys{"id"};
   try {
-    const std::vector<fasc::server::database::SqlParameter> values = keyValues(key);
-    const std::string sql = "SELECT " + columnsSql(columns) + " FROM public.product WHERE " +
-                            whereSql(keys) + " LIMIT 1";
-    const auto rows = db_.invokeTransactionally([&] {
-      return db_.querySql(sql, values);
+    const auto row = db_.invokeTransactionally([&] {
+      return db_.selectOneRow("public.product", columns, keys, keyValues(key));
     });
-    if (rows.empty()) {
+    if (!row.has_value()) {
       return ProductRowResult::failure(FarmEntityError{FarmEntityErrorCode::NotFound, "Row not found"});
     }
     return ProductRowResult::success(
-        fasc::server::controllers::dto::ProductRowDto{rowToEntity(rows.front())});
+        fasc::server::controllers::dto::ProductRowDto{rowToEntity(*row)});
   } catch (const std::exception& exception) {
     return ProductRowResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
@@ -143,16 +118,8 @@ ProductMutationResult ProductController::create(
   }
 
   try {
-    std::string sql = "INSERT INTO public.product (" + columnsSql(columns) + ") VALUES (";
-    for (std::size_t i = 0; i < values.size(); ++i) {
-      if (i != 0) {
-        sql += ", ";
-      }
-      sql += "$" + std::to_string(i + 1);
-    }
-    sql += ")";
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.executeSql(sql, values);
+      return db_.insertRow("public.product", columns, values);
     });
     return ProductMutationResult::success(
         fasc::server::controllers::dto::ProductMutationDto{affectedRows});
@@ -186,18 +153,8 @@ ProductMutationResult ProductController::update(
   }
 
   try {
-    std::string sql = "UPDATE public.product SET ";
-    for (std::size_t i = 0; i < columns.size(); ++i) {
-      if (i != 0) {
-        sql += ", ";
-      }
-      sql += columns[i] + " = $" + std::to_string(i + 1);
-    }
-    sql += " WHERE " + whereSql(keys, values.size());
-    const std::vector<fasc::server::database::SqlParameter> keyParams = keyValues(key);
-    values.insert(values.end(), keyParams.begin(), keyParams.end());
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.executeSql(sql, values);
+      return db_.updateRows("public.product", columns, values, keys, keyValues(key));
     });
     return ProductMutationResult::success(
         fasc::server::controllers::dto::ProductMutationDto{affectedRows});
@@ -211,10 +168,8 @@ ProductMutationResult ProductController::erase(
     const fasc::server::controllers::dto::ProductKeyDto& key) const {
   static const std::vector<std::string> keys{"id"};
   try {
-    const std::vector<fasc::server::database::SqlParameter> values = keyValues(key);
-    const std::string sql = "DELETE FROM public.product WHERE " + whereSql(keys);
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.executeSql(sql, values);
+      return db_.deleteRows("public.product", keys, keyValues(key));
     });
     return ProductMutationResult::success(
         fasc::server::controllers::dto::ProductMutationDto{affectedRows});

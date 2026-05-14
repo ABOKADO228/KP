@@ -1,10 +1,13 @@
 #include <handling/FarmPlot.hpp>
 
+#include <controllers/app/FarmPlot.hpp>
+
 #include <marshalling/FarmPlot.hpp>
 #include <marshalling/User.hpp>
 
 #include <nlohmann/json.hpp>
 
+#include <memory>
 #include <stdexcept>
 
 namespace fasc::server::handling {
@@ -95,6 +98,18 @@ fasc::server::core::HttpResponse FarmPlotHandler::erase(
   } catch (const std::exception& exception) {
     return badRequest(exception);
   }
+}
+
+void registerFarmPlotRoutes(fasc::server::core::Server& server,
+                           fasc::server::database::Database& database) {
+  auto farmplotController = std::make_shared<fasc::server::controllers::app::FarmPlotController>(database);
+  auto farmplotHttpController = std::make_shared<fasc::server::controllers::http::FarmPlotHttpController>(*farmplotController);
+  auto farmplotHandler = std::make_shared<FarmPlotHandler>(*farmplotHttpController);
+  server.get("/api/farm_plot", [farmplotController, farmplotHttpController, farmplotHandler](const fasc::server::core::HttpRequest& request) { return farmplotHandler->list(request); });
+  server.post("/api/farm_plot", [farmplotController, farmplotHttpController, farmplotHandler](const fasc::server::core::HttpRequest& request) { return farmplotHandler->create(request); });
+  server.get("/api/farm_plot/item", [farmplotController, farmplotHttpController, farmplotHandler](const fasc::server::core::HttpRequest& request) { return farmplotHandler->load(request); });
+  server.put("/api/farm_plot/item", [farmplotController, farmplotHttpController, farmplotHandler](const fasc::server::core::HttpRequest& request) { return farmplotHandler->update(request); });
+  server.del("/api/farm_plot/item", [farmplotController, farmplotHttpController, farmplotHandler](const fasc::server::core::HttpRequest& request) { return farmplotHandler->erase(request); });
 }
 
 } // namespace fasc::server::handling

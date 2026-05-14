@@ -26,27 +26,6 @@ std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& 
   return it->second;
 }
 
-std::string columnsSql(const std::vector<std::string>& columns) {
-  std::string sql;
-  for (std::size_t i = 0; i < columns.size(); ++i) {
-    if (i != 0) {
-      sql += ", ";
-    }
-    sql += columns[i];
-  }
-  return sql;
-}
-
-std::string whereSql(const std::vector<std::string>& keys, std::size_t offset = 0) {
-  std::string sql;
-  for (std::size_t i = 0; i < keys.size(); ++i) {
-    if (i != 0) {
-      sql += " AND ";
-    }
-    sql += keys[i] + " = $" + std::to_string(i + 1 + offset);
-  }
-  return sql;
-}
 
 fasc::server::persistence::FarmEmployeeEntity rowToEntity(const fasc::server::database::SqlRow& row) {
   fasc::server::persistence::FarmEmployeeEntity entity;
@@ -93,9 +72,8 @@ FarmEmployeeController::FarmEmployeeController(fasc::server::database::Database&
 FarmEmployeeRowsResult FarmEmployeeController::list() const {
   static const std::vector<std::string> columns{"id", "person_id", "farm_id", "role_id", "employment_status_id", "hire_date", "dismissal_date", "salary", "employment_contract_number", "is_primary_workplace"};
   try {
-    const std::string sql = "SELECT " + columnsSql(columns) + " FROM public.farm_employee";
     const auto rows = db_.invokeTransactionally([&] {
-      return db_.querySql(sql, {});
+      return db_.selectRows("public.farm_employee", columns);
     });
 
     fasc::server::controllers::dto::FarmEmployeeRowsDto dto;
@@ -114,17 +92,14 @@ FarmEmployeeRowResult FarmEmployeeController::load(const fasc::server::controlle
   static const std::vector<std::string> columns{"id", "person_id", "farm_id", "role_id", "employment_status_id", "hire_date", "dismissal_date", "salary", "employment_contract_number", "is_primary_workplace"};
   static const std::vector<std::string> keys{"id"};
   try {
-    const std::vector<fasc::server::database::SqlParameter> values = keyValues(key);
-    const std::string sql = "SELECT " + columnsSql(columns) + " FROM public.farm_employee WHERE " +
-                            whereSql(keys) + " LIMIT 1";
-    const auto rows = db_.invokeTransactionally([&] {
-      return db_.querySql(sql, values);
+    const auto row = db_.invokeTransactionally([&] {
+      return db_.selectOneRow("public.farm_employee", columns, keys, keyValues(key));
     });
-    if (rows.empty()) {
+    if (!row.has_value()) {
       return FarmEmployeeRowResult::failure(FarmEntityError{FarmEntityErrorCode::NotFound, "Row not found"});
     }
     return FarmEmployeeRowResult::success(
-        fasc::server::controllers::dto::FarmEmployeeRowDto{rowToEntity(rows.front())});
+        fasc::server::controllers::dto::FarmEmployeeRowDto{rowToEntity(*row)});
   } catch (const std::exception& exception) {
     return FarmEmployeeRowResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
@@ -197,16 +172,8 @@ FarmEmployeeMutationResult FarmEmployeeController::create(
   }
 
   try {
-    std::string sql = "INSERT INTO public.farm_employee (" + columnsSql(columns) + ") VALUES (";
-    for (std::size_t i = 0; i < values.size(); ++i) {
-      if (i != 0) {
-        sql += ", ";
-      }
-      sql += "$" + std::to_string(i + 1);
-    }
-    sql += ")";
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.executeSql(sql, values);
+      return db_.insertRow("public.farm_employee", columns, values);
     });
     return FarmEmployeeMutationResult::success(
         fasc::server::controllers::dto::FarmEmployeeMutationDto{affectedRows});
@@ -264,18 +231,8 @@ FarmEmployeeMutationResult FarmEmployeeController::update(
   }
 
   try {
-    std::string sql = "UPDATE public.farm_employee SET ";
-    for (std::size_t i = 0; i < columns.size(); ++i) {
-      if (i != 0) {
-        sql += ", ";
-      }
-      sql += columns[i] + " = $" + std::to_string(i + 1);
-    }
-    sql += " WHERE " + whereSql(keys, values.size());
-    const std::vector<fasc::server::database::SqlParameter> keyParams = keyValues(key);
-    values.insert(values.end(), keyParams.begin(), keyParams.end());
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.executeSql(sql, values);
+      return db_.updateRows("public.farm_employee", columns, values, keys, keyValues(key));
     });
     return FarmEmployeeMutationResult::success(
         fasc::server::controllers::dto::FarmEmployeeMutationDto{affectedRows});
@@ -289,10 +246,8 @@ FarmEmployeeMutationResult FarmEmployeeController::erase(
     const fasc::server::controllers::dto::FarmEmployeeKeyDto& key) const {
   static const std::vector<std::string> keys{"id"};
   try {
-    const std::vector<fasc::server::database::SqlParameter> values = keyValues(key);
-    const std::string sql = "DELETE FROM public.farm_employee WHERE " + whereSql(keys);
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.executeSql(sql, values);
+      return db_.deleteRows("public.farm_employee", keys, keyValues(key));
     });
     return FarmEmployeeMutationResult::success(
         fasc::server::controllers::dto::FarmEmployeeMutationDto{affectedRows});

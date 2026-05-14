@@ -1,5 +1,8 @@
 #pragma once
 
+#include <database/Database.hpp>
+#include <server/core/Server.hpp>
+
 #include <controllers/http/FarmEmployee.hpp>
 #include <server/core/HttpTypes.hpp>
 
@@ -40,5 +43,11 @@ public:
 private:
   fasc::server::controllers::http::FarmEmployeeHttpController& controller_;
 };
+
+/// Registers HTTP routes for the FarmEmployee table.
+///@param server HTTP server.
+///@param database application database.
+void registerFarmEmployeeRoutes(fasc::server::core::Server& server,
+                           fasc::server::database::Database& database);
 
 } // namespace fasc::server::handling

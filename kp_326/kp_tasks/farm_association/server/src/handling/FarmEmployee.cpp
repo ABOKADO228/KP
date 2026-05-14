@@ -1,10 +1,13 @@
 #include <handling/FarmEmployee.hpp>
 
+#include <controllers/app/FarmEmployee.hpp>
+
 #include <marshalling/FarmEmployee.hpp>
 #include <marshalling/User.hpp>
 
 #include <nlohmann/json.hpp>
 
+#include <memory>
 #include <stdexcept>
 
 namespace fasc::server::handling {
@@ -95,6 +98,18 @@ fasc::server::core::HttpResponse FarmEmployeeHandler::erase(
   } catch (const std::exception& exception) {
     return badRequest(exception);
   }
+}
+
+void registerFarmEmployeeRoutes(fasc::server::core::Server& server,
+                           fasc::server::database::Database& database) {
+  auto farmemployeeController = std::make_shared<fasc::server::controllers::app::FarmEmployeeController>(database);
+  auto farmemployeeHttpController = std::make_shared<fasc::server::controllers::http::FarmEmployeeHttpController>(*farmemployeeController);
+  auto farmemployeeHandler = std::make_shared<FarmEmployeeHandler>(*farmemployeeHttpController);
+  server.get("/api/farm_employee", [farmemployeeController, farmemployeeHttpController, farmemployeeHandler](const fasc::server::core::HttpRequest& request) { return farmemployeeHandler->list(request); });
+  server.post("/api/farm_employee", [farmemployeeController, farmemployeeHttpController, farmemployeeHandler](const fasc::server::core::HttpRequest& request) { return farmemployeeHandler->create(request); });
+  server.get("/api/farm_employee/item", [farmemployeeController, farmemployeeHttpController, farmemployeeHandler](const fasc::server::core::HttpRequest& request) { return farmemployeeHandler->load(request); });
+  server.put("/api/farm_employee/item", [farmemployeeController, farmemployeeHttpController, farmemployeeHandler](const fasc::server::core::HttpRequest& request) { return farmemployeeHandler->update(request); });
+  server.del("/api/farm_employee/item", [farmemployeeController, farmemployeeHttpController, farmemployeeHandler](const fasc::server::core::HttpRequest& request) { return farmemployeeHandler->erase(request); });
 }
 
 } // namespace fasc::server::handling

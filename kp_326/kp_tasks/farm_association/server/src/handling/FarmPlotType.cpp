@@ -1,10 +1,13 @@
 #include <handling/FarmPlotType.hpp>
 
+#include <controllers/app/FarmPlotType.hpp>
+
 #include <marshalling/FarmPlotType.hpp>
 #include <marshalling/User.hpp>
 
 #include <nlohmann/json.hpp>
 
+#include <memory>
 #include <stdexcept>
 
 namespace fasc::server::handling {
@@ -95,6 +98,18 @@ fasc::server::core::HttpResponse FarmPlotTypeHandler::erase(
   } catch (const std::exception& exception) {
     return badRequest(exception);
   }
+}
+
+void registerFarmPlotTypeRoutes(fasc::server::core::Server& server,
+                           fasc::server::database::Database& database) {
+  auto farmplottypeController = std::make_shared<fasc::server::controllers::app::FarmPlotTypeController>(database);
+  auto farmplottypeHttpController = std::make_shared<fasc::server::controllers::http::FarmPlotTypeHttpController>(*farmplottypeController);
+  auto farmplottypeHandler = std::make_shared<FarmPlotTypeHandler>(*farmplottypeHttpController);
+  server.get("/api/farm_plot_type", [farmplottypeController, farmplottypeHttpController, farmplottypeHandler](const fasc::server::core::HttpRequest& request) { return farmplottypeHandler->list(request); });
+  server.post("/api/farm_plot_type", [farmplottypeController, farmplottypeHttpController, farmplottypeHandler](const fasc::server::core::HttpRequest& request) { return farmplottypeHandler->create(request); });
+  server.get("/api/farm_plot_type/item", [farmplottypeController, farmplottypeHttpController, farmplottypeHandler](const fasc::server::core::HttpRequest& request) { return farmplottypeHandler->load(request); });
+  server.put("/api/farm_plot_type/item", [farmplottypeController, farmplottypeHttpController, farmplottypeHandler](const fasc::server::core::HttpRequest& request) { return farmplottypeHandler->update(request); });
+  server.del("/api/farm_plot_type/item", [farmplottypeController, farmplottypeHttpController, farmplottypeHandler](const fasc::server::core::HttpRequest& request) { return farmplottypeHandler->erase(request); });
 }
 
 } // namespace fasc::server::handling

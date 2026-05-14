@@ -1,10 +1,13 @@
 #include <handling/Person.hpp>
 
+#include <controllers/app/Person.hpp>
+
 #include <marshalling/Person.hpp>
 #include <marshalling/User.hpp>
 
 #include <nlohmann/json.hpp>
 
+#include <memory>
 #include <stdexcept>
 
 namespace fasc::server::handling {
@@ -95,6 +98,18 @@ fasc::server::core::HttpResponse PersonHandler::erase(
   } catch (const std::exception& exception) {
     return badRequest(exception);
   }
+}
+
+void registerPersonRoutes(fasc::server::core::Server& server,
+                           fasc::server::database::Database& database) {
+  auto personController = std::make_shared<fasc::server::controllers::app::PersonController>(database);
+  auto personHttpController = std::make_shared<fasc::server::controllers::http::PersonHttpController>(*personController);
+  auto personHandler = std::make_shared<PersonHandler>(*personHttpController);
+  server.get("/api/person", [personController, personHttpController, personHandler](const fasc::server::core::HttpRequest& request) { return personHandler->list(request); });
+  server.post("/api/person", [personController, personHttpController, personHandler](const fasc::server::core::HttpRequest& request) { return personHandler->create(request); });
+  server.get("/api/person/item", [personController, personHttpController, personHandler](const fasc::server::core::HttpRequest& request) { return personHandler->load(request); });
+  server.put("/api/person/item", [personController, personHttpController, personHandler](const fasc::server::core::HttpRequest& request) { return personHandler->update(request); });
+  server.del("/api/person/item", [personController, personHttpController, personHandler](const fasc::server::core::HttpRequest& request) { return personHandler->erase(request); });
 }
 
 } // namespace fasc::server::handling

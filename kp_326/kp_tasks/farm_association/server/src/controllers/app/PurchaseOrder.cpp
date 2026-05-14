@@ -26,27 +26,6 @@ std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& 
   return it->second;
 }
 
-std::string columnsSql(const std::vector<std::string>& columns) {
-  std::string sql;
-  for (std::size_t i = 0; i < columns.size(); ++i) {
-    if (i != 0) {
-      sql += ", ";
-    }
-    sql += columns[i];
-  }
-  return sql;
-}
-
-std::string whereSql(const std::vector<std::string>& keys, std::size_t offset = 0) {
-  std::string sql;
-  for (std::size_t i = 0; i < keys.size(); ++i) {
-    if (i != 0) {
-      sql += " AND ";
-    }
-    sql += keys[i] + " = $" + std::to_string(i + 1 + offset);
-  }
-  return sql;
-}
 
 fasc::server::persistence::PurchaseOrderEntity rowToEntity(const fasc::server::database::SqlRow& row) {
   fasc::server::persistence::PurchaseOrderEntity entity;
@@ -101,9 +80,8 @@ PurchaseOrderController::PurchaseOrderController(fasc::server::database::Databas
 PurchaseOrderRowsResult PurchaseOrderController::list() const {
   static const std::vector<std::string> columns{"id", "association_id", "supplier_id", "delivery_address", "order_date", "expected_delivery_date", "status", "total_amount", "received_at", "created_by"};
   try {
-    const std::string sql = "SELECT " + columnsSql(columns) + " FROM public.purchase_order";
     const auto rows = db_.invokeTransactionally([&] {
-      return db_.querySql(sql, {});
+      return db_.selectRows("public.purchase_order", columns);
     });
 
     fasc::server::controllers::dto::PurchaseOrderRowsDto dto;
@@ -122,17 +100,14 @@ PurchaseOrderRowResult PurchaseOrderController::load(const fasc::server::control
   static const std::vector<std::string> columns{"id", "association_id", "supplier_id", "delivery_address", "order_date", "expected_delivery_date", "status", "total_amount", "received_at", "created_by"};
   static const std::vector<std::string> keys{"id"};
   try {
-    const std::vector<fasc::server::database::SqlParameter> values = keyValues(key);
-    const std::string sql = "SELECT " + columnsSql(columns) + " FROM public.purchase_order WHERE " +
-                            whereSql(keys) + " LIMIT 1";
-    const auto rows = db_.invokeTransactionally([&] {
-      return db_.querySql(sql, values);
+    const auto row = db_.invokeTransactionally([&] {
+      return db_.selectOneRow("public.purchase_order", columns, keys, keyValues(key));
     });
-    if (rows.empty()) {
+    if (!row.has_value()) {
       return PurchaseOrderRowResult::failure(FarmEntityError{FarmEntityErrorCode::NotFound, "Row not found"});
     }
     return PurchaseOrderRowResult::success(
-        fasc::server::controllers::dto::PurchaseOrderRowDto{rowToEntity(rows.front())});
+        fasc::server::controllers::dto::PurchaseOrderRowDto{rowToEntity(*row)});
   } catch (const std::exception& exception) {
     return PurchaseOrderRowResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
@@ -197,16 +172,8 @@ PurchaseOrderMutationResult PurchaseOrderController::create(
   }
 
   try {
-    std::string sql = "INSERT INTO public.purchase_order (" + columnsSql(columns) + ") VALUES (";
-    for (std::size_t i = 0; i < values.size(); ++i) {
-      if (i != 0) {
-        sql += ", ";
-      }
-      sql += "$" + std::to_string(i + 1);
-    }
-    sql += ")";
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.executeSql(sql, values);
+      return db_.insertRow("public.purchase_order", columns, values);
     });
     return PurchaseOrderMutationResult::success(
         fasc::server::controllers::dto::PurchaseOrderMutationDto{affectedRows});
@@ -264,18 +231,8 @@ PurchaseOrderMutationResult PurchaseOrderController::update(
   }
 
   try {
-    std::string sql = "UPDATE public.purchase_order SET ";
-    for (std::size_t i = 0; i < columns.size(); ++i) {
-      if (i != 0) {
-        sql += ", ";
-      }
-      sql += columns[i] + " = $" + std::to_string(i + 1);
-    }
-    sql += " WHERE " + whereSql(keys, values.size());
-    const std::vector<fasc::server::database::SqlParameter> keyParams = keyValues(key);
-    values.insert(values.end(), keyParams.begin(), keyParams.end());
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.executeSql(sql, values);
+      return db_.updateRows("public.purchase_order", columns, values, keys, keyValues(key));
     });
     return PurchaseOrderMutationResult::success(
         fasc::server::controllers::dto::PurchaseOrderMutationDto{affectedRows});
@@ -289,10 +246,8 @@ PurchaseOrderMutationResult PurchaseOrderController::erase(
     const fasc::server::controllers::dto::PurchaseOrderKeyDto& key) const {
   static const std::vector<std::string> keys{"id"};
   try {
-    const std::vector<fasc::server::database::SqlParameter> values = keyValues(key);
-    const std::string sql = "DELETE FROM public.purchase_order WHERE " + whereSql(keys);
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.executeSql(sql, values);
+      return db_.deleteRows("public.purchase_order", keys, keyValues(key));
     });
     return PurchaseOrderMutationResult::success(
         fasc::server::controllers::dto::PurchaseOrderMutationDto{affectedRows});

@@ -1,10 +1,13 @@
 #include <handling/AssociationFarms.hpp>
 
+#include <controllers/app/AssociationFarms.hpp>
+
 #include <marshalling/AssociationFarms.hpp>
 #include <marshalling/User.hpp>
 
 #include <nlohmann/json.hpp>
 
+#include <memory>
 #include <stdexcept>
 
 namespace fasc::server::handling {
@@ -100,6 +103,18 @@ fasc::server::core::HttpResponse AssociationFarmsHandler::erase(
   } catch (const std::exception& exception) {
     return badRequest(exception);
   }
+}
+
+void registerAssociationFarmsRoutes(fasc::server::core::Server& server,
+                           fasc::server::database::Database& database) {
+  auto associationfarmsController = std::make_shared<fasc::server::controllers::app::AssociationFarmsController>(database);
+  auto associationfarmsHttpController = std::make_shared<fasc::server::controllers::http::AssociationFarmsHttpController>(*associationfarmsController);
+  auto associationfarmsHandler = std::make_shared<AssociationFarmsHandler>(*associationfarmsHttpController);
+  server.get("/api/association_farms", [associationfarmsController, associationfarmsHttpController, associationfarmsHandler](const fasc::server::core::HttpRequest& request) { return associationfarmsHandler->list(request); });
+  server.post("/api/association_farms", [associationfarmsController, associationfarmsHttpController, associationfarmsHandler](const fasc::server::core::HttpRequest& request) { return associationfarmsHandler->create(request); });
+  server.get("/api/association_farms/item", [associationfarmsController, associationfarmsHttpController, associationfarmsHandler](const fasc::server::core::HttpRequest& request) { return associationfarmsHandler->load(request); });
+  server.put("/api/association_farms/item", [associationfarmsController, associationfarmsHttpController, associationfarmsHandler](const fasc::server::core::HttpRequest& request) { return associationfarmsHandler->update(request); });
+  server.del("/api/association_farms/item", [associationfarmsController, associationfarmsHttpController, associationfarmsHandler](const fasc::server::core::HttpRequest& request) { return associationfarmsHandler->erase(request); });
 }
 
 } // namespace fasc::server::handling

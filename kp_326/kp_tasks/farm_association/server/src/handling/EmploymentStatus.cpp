@@ -1,10 +1,13 @@
 #include <handling/EmploymentStatus.hpp>
 
+#include <controllers/app/EmploymentStatus.hpp>
+
 #include <marshalling/EmploymentStatus.hpp>
 #include <marshalling/User.hpp>
 
 #include <nlohmann/json.hpp>
 
+#include <memory>
 #include <stdexcept>
 
 namespace fasc::server::handling {
@@ -95,6 +98,18 @@ fasc::server::core::HttpResponse EmploymentStatusHandler::erase(
   } catch (const std::exception& exception) {
     return badRequest(exception);
   }
+}
+
+void registerEmploymentStatusRoutes(fasc::server::core::Server& server,
+                           fasc::server::database::Database& database) {
+  auto employmentstatusController = std::make_shared<fasc::server::controllers::app::EmploymentStatusController>(database);
+  auto employmentstatusHttpController = std::make_shared<fasc::server::controllers::http::EmploymentStatusHttpController>(*employmentstatusController);
+  auto employmentstatusHandler = std::make_shared<EmploymentStatusHandler>(*employmentstatusHttpController);
+  server.get("/api/employment_status", [employmentstatusController, employmentstatusHttpController, employmentstatusHandler](const fasc::server::core::HttpRequest& request) { return employmentstatusHandler->list(request); });
+  server.post("/api/employment_status", [employmentstatusController, employmentstatusHttpController, employmentstatusHandler](const fasc::server::core::HttpRequest& request) { return employmentstatusHandler->create(request); });
+  server.get("/api/employment_status/item", [employmentstatusController, employmentstatusHttpController, employmentstatusHandler](const fasc::server::core::HttpRequest& request) { return employmentstatusHandler->load(request); });
+  server.put("/api/employment_status/item", [employmentstatusController, employmentstatusHttpController, employmentstatusHandler](const fasc::server::core::HttpRequest& request) { return employmentstatusHandler->update(request); });
+  server.del("/api/employment_status/item", [employmentstatusController, employmentstatusHttpController, employmentstatusHandler](const fasc::server::core::HttpRequest& request) { return employmentstatusHandler->erase(request); });
 }
 
 } // namespace fasc::server::handling

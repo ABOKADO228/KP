@@ -1,10 +1,13 @@
 #include <handling/FarmRole.hpp>
 
+#include <controllers/app/FarmRole.hpp>
+
 #include <marshalling/FarmRole.hpp>
 #include <marshalling/User.hpp>
 
 #include <nlohmann/json.hpp>
 
+#include <memory>
 #include <stdexcept>
 
 namespace fasc::server::handling {
@@ -95,6 +98,18 @@ fasc::server::core::HttpResponse FarmRoleHandler::erase(
   } catch (const std::exception& exception) {
     return badRequest(exception);
   }
+}
+
+void registerFarmRoleRoutes(fasc::server::core::Server& server,
+                           fasc::server::database::Database& database) {
+  auto farmroleController = std::make_shared<fasc::server::controllers::app::FarmRoleController>(database);
+  auto farmroleHttpController = std::make_shared<fasc::server::controllers::http::FarmRoleHttpController>(*farmroleController);
+  auto farmroleHandler = std::make_shared<FarmRoleHandler>(*farmroleHttpController);
+  server.get("/api/farm_role", [farmroleController, farmroleHttpController, farmroleHandler](const fasc::server::core::HttpRequest& request) { return farmroleHandler->list(request); });
+  server.post("/api/farm_role", [farmroleController, farmroleHttpController, farmroleHandler](const fasc::server::core::HttpRequest& request) { return farmroleHandler->create(request); });
+  server.get("/api/farm_role/item", [farmroleController, farmroleHttpController, farmroleHandler](const fasc::server::core::HttpRequest& request) { return farmroleHandler->load(request); });
+  server.put("/api/farm_role/item", [farmroleController, farmroleHttpController, farmroleHandler](const fasc::server::core::HttpRequest& request) { return farmroleHandler->update(request); });
+  server.del("/api/farm_role/item", [farmroleController, farmroleHttpController, farmroleHandler](const fasc::server::core::HttpRequest& request) { return farmroleHandler->erase(request); });
 }
 
 } // namespace fasc::server::handling

@@ -1,10 +1,13 @@
 #include <handling/FarmPlotConsumptionProduct.hpp>
 
+#include <controllers/app/FarmPlotConsumptionProduct.hpp>
+
 #include <marshalling/FarmPlotConsumptionProduct.hpp>
 #include <marshalling/User.hpp>
 
 #include <nlohmann/json.hpp>
 
+#include <memory>
 #include <stdexcept>
 
 namespace fasc::server::handling {
@@ -100,6 +103,18 @@ fasc::server::core::HttpResponse FarmPlotConsumptionProductHandler::erase(
   } catch (const std::exception& exception) {
     return badRequest(exception);
   }
+}
+
+void registerFarmPlotConsumptionProductRoutes(fasc::server::core::Server& server,
+                           fasc::server::database::Database& database) {
+  auto farmplotconsumptionproductController = std::make_shared<fasc::server::controllers::app::FarmPlotConsumptionProductController>(database);
+  auto farmplotconsumptionproductHttpController = std::make_shared<fasc::server::controllers::http::FarmPlotConsumptionProductHttpController>(*farmplotconsumptionproductController);
+  auto farmplotconsumptionproductHandler = std::make_shared<FarmPlotConsumptionProductHandler>(*farmplotconsumptionproductHttpController);
+  server.get("/api/farm_plot_consumption_product", [farmplotconsumptionproductController, farmplotconsumptionproductHttpController, farmplotconsumptionproductHandler](const fasc::server::core::HttpRequest& request) { return farmplotconsumptionproductHandler->list(request); });
+  server.post("/api/farm_plot_consumption_product", [farmplotconsumptionproductController, farmplotconsumptionproductHttpController, farmplotconsumptionproductHandler](const fasc::server::core::HttpRequest& request) { return farmplotconsumptionproductHandler->create(request); });
+  server.get("/api/farm_plot_consumption_product/item", [farmplotconsumptionproductController, farmplotconsumptionproductHttpController, farmplotconsumptionproductHandler](const fasc::server::core::HttpRequest& request) { return farmplotconsumptionproductHandler->load(request); });
+  server.put("/api/farm_plot_consumption_product/item", [farmplotconsumptionproductController, farmplotconsumptionproductHttpController, farmplotconsumptionproductHandler](const fasc::server::core::HttpRequest& request) { return farmplotconsumptionproductHandler->update(request); });
+  server.del("/api/farm_plot_consumption_product/item", [farmplotconsumptionproductController, farmplotconsumptionproductHttpController, farmplotconsumptionproductHandler](const fasc::server::core::HttpRequest& request) { return farmplotconsumptionproductHandler->erase(request); });
 }
 
 } // namespace fasc::server::handling

@@ -1,10 +1,13 @@
 #include <handling/PurchaseOrder.hpp>
 
+#include <controllers/app/PurchaseOrder.hpp>
+
 #include <marshalling/PurchaseOrder.hpp>
 #include <marshalling/User.hpp>
 
 #include <nlohmann/json.hpp>
 
+#include <memory>
 #include <stdexcept>
 
 namespace fasc::server::handling {
@@ -95,6 +98,18 @@ fasc::server::core::HttpResponse PurchaseOrderHandler::erase(
   } catch (const std::exception& exception) {
     return badRequest(exception);
   }
+}
+
+void registerPurchaseOrderRoutes(fasc::server::core::Server& server,
+                           fasc::server::database::Database& database) {
+  auto purchaseorderController = std::make_shared<fasc::server::controllers::app::PurchaseOrderController>(database);
+  auto purchaseorderHttpController = std::make_shared<fasc::server::controllers::http::PurchaseOrderHttpController>(*purchaseorderController);
+  auto purchaseorderHandler = std::make_shared<PurchaseOrderHandler>(*purchaseorderHttpController);
+  server.get("/api/purchase_order", [purchaseorderController, purchaseorderHttpController, purchaseorderHandler](const fasc::server::core::HttpRequest& request) { return purchaseorderHandler->list(request); });
+  server.post("/api/purchase_order", [purchaseorderController, purchaseorderHttpController, purchaseorderHandler](const fasc::server::core::HttpRequest& request) { return purchaseorderHandler->create(request); });
+  server.get("/api/purchase_order/item", [purchaseorderController, purchaseorderHttpController, purchaseorderHandler](const fasc::server::core::HttpRequest& request) { return purchaseorderHandler->load(request); });
+  server.put("/api/purchase_order/item", [purchaseorderController, purchaseorderHttpController, purchaseorderHandler](const fasc::server::core::HttpRequest& request) { return purchaseorderHandler->update(request); });
+  server.del("/api/purchase_order/item", [purchaseorderController, purchaseorderHttpController, purchaseorderHandler](const fasc::server::core::HttpRequest& request) { return purchaseorderHandler->erase(request); });
 }
 
 } // namespace fasc::server::handling

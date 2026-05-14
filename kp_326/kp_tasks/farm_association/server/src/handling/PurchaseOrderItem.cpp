@@ -1,10 +1,13 @@
 #include <handling/PurchaseOrderItem.hpp>
 
+#include <controllers/app/PurchaseOrderItem.hpp>
+
 #include <marshalling/PurchaseOrderItem.hpp>
 #include <marshalling/User.hpp>
 
 #include <nlohmann/json.hpp>
 
+#include <memory>
 #include <stdexcept>
 
 namespace fasc::server::handling {
@@ -95,6 +98,18 @@ fasc::server::core::HttpResponse PurchaseOrderItemHandler::erase(
   } catch (const std::exception& exception) {
     return badRequest(exception);
   }
+}
+
+void registerPurchaseOrderItemRoutes(fasc::server::core::Server& server,
+                           fasc::server::database::Database& database) {
+  auto purchaseorderitemController = std::make_shared<fasc::server::controllers::app::PurchaseOrderItemController>(database);
+  auto purchaseorderitemHttpController = std::make_shared<fasc::server::controllers::http::PurchaseOrderItemHttpController>(*purchaseorderitemController);
+  auto purchaseorderitemHandler = std::make_shared<PurchaseOrderItemHandler>(*purchaseorderitemHttpController);
+  server.get("/api/purchase_order_item", [purchaseorderitemController, purchaseorderitemHttpController, purchaseorderitemHandler](const fasc::server::core::HttpRequest& request) { return purchaseorderitemHandler->list(request); });
+  server.post("/api/purchase_order_item", [purchaseorderitemController, purchaseorderitemHttpController, purchaseorderitemHandler](const fasc::server::core::HttpRequest& request) { return purchaseorderitemHandler->create(request); });
+  server.get("/api/purchase_order_item/item", [purchaseorderitemController, purchaseorderitemHttpController, purchaseorderitemHandler](const fasc::server::core::HttpRequest& request) { return purchaseorderitemHandler->load(request); });
+  server.put("/api/purchase_order_item/item", [purchaseorderitemController, purchaseorderitemHttpController, purchaseorderitemHandler](const fasc::server::core::HttpRequest& request) { return purchaseorderitemHandler->update(request); });
+  server.del("/api/purchase_order_item/item", [purchaseorderitemController, purchaseorderitemHttpController, purchaseorderitemHandler](const fasc::server::core::HttpRequest& request) { return purchaseorderitemHandler->erase(request); });
 }
 
 } // namespace fasc::server::handling

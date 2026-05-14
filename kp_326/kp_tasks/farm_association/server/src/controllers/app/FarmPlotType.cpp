@@ -26,27 +26,6 @@ std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& 
   return it->second;
 }
 
-std::string columnsSql(const std::vector<std::string>& columns) {
-  std::string sql;
-  for (std::size_t i = 0; i < columns.size(); ++i) {
-    if (i != 0) {
-      sql += ", ";
-    }
-    sql += columns[i];
-  }
-  return sql;
-}
-
-std::string whereSql(const std::vector<std::string>& keys, std::size_t offset = 0) {
-  std::string sql;
-  for (std::size_t i = 0; i < keys.size(); ++i) {
-    if (i != 0) {
-      sql += " AND ";
-    }
-    sql += keys[i] + " = $" + std::to_string(i + 1 + offset);
-  }
-  return sql;
-}
 
 fasc::server::persistence::FarmPlotTypeEntity rowToEntity(const fasc::server::database::SqlRow& row) {
   fasc::server::persistence::FarmPlotTypeEntity entity;
@@ -84,9 +63,8 @@ FarmPlotTypeController::FarmPlotTypeController(fasc::server::database::Database&
 FarmPlotTypeRowsResult FarmPlotTypeController::list() const {
   static const std::vector<std::string> columns{"id", "name", "description", "farm_plot_level", "parent_id"};
   try {
-    const std::string sql = "SELECT " + columnsSql(columns) + " FROM public.farm_plot_type";
     const auto rows = db_.invokeTransactionally([&] {
-      return db_.querySql(sql, {});
+      return db_.selectRows("public.farm_plot_type", columns);
     });
 
     fasc::server::controllers::dto::FarmPlotTypeRowsDto dto;
@@ -105,17 +83,14 @@ FarmPlotTypeRowResult FarmPlotTypeController::load(const fasc::server::controlle
   static const std::vector<std::string> columns{"id", "name", "description", "farm_plot_level", "parent_id"};
   static const std::vector<std::string> keys{"id"};
   try {
-    const std::vector<fasc::server::database::SqlParameter> values = keyValues(key);
-    const std::string sql = "SELECT " + columnsSql(columns) + " FROM public.farm_plot_type WHERE " +
-                            whereSql(keys) + " LIMIT 1";
-    const auto rows = db_.invokeTransactionally([&] {
-      return db_.querySql(sql, values);
+    const auto row = db_.invokeTransactionally([&] {
+      return db_.selectOneRow("public.farm_plot_type", columns, keys, keyValues(key));
     });
-    if (rows.empty()) {
+    if (!row.has_value()) {
       return FarmPlotTypeRowResult::failure(FarmEntityError{FarmEntityErrorCode::NotFound, "Row not found"});
     }
     return FarmPlotTypeRowResult::success(
-        fasc::server::controllers::dto::FarmPlotTypeRowDto{rowToEntity(rows.front())});
+        fasc::server::controllers::dto::FarmPlotTypeRowDto{rowToEntity(*row)});
   } catch (const std::exception& exception) {
     return FarmPlotTypeRowResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
@@ -160,16 +135,8 @@ FarmPlotTypeMutationResult FarmPlotTypeController::create(
   }
 
   try {
-    std::string sql = "INSERT INTO public.farm_plot_type (" + columnsSql(columns) + ") VALUES (";
-    for (std::size_t i = 0; i < values.size(); ++i) {
-      if (i != 0) {
-        sql += ", ";
-      }
-      sql += "$" + std::to_string(i + 1);
-    }
-    sql += ")";
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.executeSql(sql, values);
+      return db_.insertRow("public.farm_plot_type", columns, values);
     });
     return FarmPlotTypeMutationResult::success(
         fasc::server::controllers::dto::FarmPlotTypeMutationDto{affectedRows});
@@ -207,18 +174,8 @@ FarmPlotTypeMutationResult FarmPlotTypeController::update(
   }
 
   try {
-    std::string sql = "UPDATE public.farm_plot_type SET ";
-    for (std::size_t i = 0; i < columns.size(); ++i) {
-      if (i != 0) {
-        sql += ", ";
-      }
-      sql += columns[i] + " = $" + std::to_string(i + 1);
-    }
-    sql += " WHERE " + whereSql(keys, values.size());
-    const std::vector<fasc::server::database::SqlParameter> keyParams = keyValues(key);
-    values.insert(values.end(), keyParams.begin(), keyParams.end());
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.executeSql(sql, values);
+      return db_.updateRows("public.farm_plot_type", columns, values, keys, keyValues(key));
     });
     return FarmPlotTypeMutationResult::success(
         fasc::server::controllers::dto::FarmPlotTypeMutationDto{affectedRows});
@@ -232,10 +189,8 @@ FarmPlotTypeMutationResult FarmPlotTypeController::erase(
     const fasc::server::controllers::dto::FarmPlotTypeKeyDto& key) const {
   static const std::vector<std::string> keys{"id"};
   try {
-    const std::vector<fasc::server::database::SqlParameter> values = keyValues(key);
-    const std::string sql = "DELETE FROM public.farm_plot_type WHERE " + whereSql(keys);
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.executeSql(sql, values);
+      return db_.deleteRows("public.farm_plot_type", keys, keyValues(key));
     });
     return FarmPlotTypeMutationResult::success(
         fasc::server::controllers::dto::FarmPlotTypeMutationDto{affectedRows});

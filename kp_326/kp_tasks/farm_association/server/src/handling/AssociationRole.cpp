@@ -1,10 +1,13 @@
 #include <handling/AssociationRole.hpp>
 
+#include <controllers/app/AssociationRole.hpp>
+
 #include <marshalling/AssociationRole.hpp>
 #include <marshalling/User.hpp>
 
 #include <nlohmann/json.hpp>
 
+#include <memory>
 #include <stdexcept>
 
 namespace fasc::server::handling {
@@ -95,6 +98,18 @@ fasc::server::core::HttpResponse AssociationRoleHandler::erase(
   } catch (const std::exception& exception) {
     return badRequest(exception);
   }
+}
+
+void registerAssociationRoleRoutes(fasc::server::core::Server& server,
+                           fasc::server::database::Database& database) {
+  auto associationroleController = std::make_shared<fasc::server::controllers::app::AssociationRoleController>(database);
+  auto associationroleHttpController = std::make_shared<fasc::server::controllers::http::AssociationRoleHttpController>(*associationroleController);
+  auto associationroleHandler = std::make_shared<AssociationRoleHandler>(*associationroleHttpController);
+  server.get("/api/association_role", [associationroleController, associationroleHttpController, associationroleHandler](const fasc::server::core::HttpRequest& request) { return associationroleHandler->list(request); });
+  server.post("/api/association_role", [associationroleController, associationroleHttpController, associationroleHandler](const fasc::server::core::HttpRequest& request) { return associationroleHandler->create(request); });
+  server.get("/api/association_role/item", [associationroleController, associationroleHttpController, associationroleHandler](const fasc::server::core::HttpRequest& request) { return associationroleHandler->load(request); });
+  server.put("/api/association_role/item", [associationroleController, associationroleHttpController, associationroleHandler](const fasc::server::core::HttpRequest& request) { return associationroleHandler->update(request); });
+  server.del("/api/association_role/item", [associationroleController, associationroleHttpController, associationroleHandler](const fasc::server::core::HttpRequest& request) { return associationroleHandler->erase(request); });
 }
 
 } // namespace fasc::server::handling

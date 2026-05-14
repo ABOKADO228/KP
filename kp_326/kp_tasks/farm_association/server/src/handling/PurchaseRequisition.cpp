@@ -1,10 +1,13 @@
 #include <handling/PurchaseRequisition.hpp>
 
+#include <controllers/app/PurchaseRequisition.hpp>
+
 #include <marshalling/PurchaseRequisition.hpp>
 #include <marshalling/User.hpp>
 
 #include <nlohmann/json.hpp>
 
+#include <memory>
 #include <stdexcept>
 
 namespace fasc::server::handling {
@@ -95,6 +98,18 @@ fasc::server::core::HttpResponse PurchaseRequisitionHandler::erase(
   } catch (const std::exception& exception) {
     return badRequest(exception);
   }
+}
+
+void registerPurchaseRequisitionRoutes(fasc::server::core::Server& server,
+                           fasc::server::database::Database& database) {
+  auto purchaserequisitionController = std::make_shared<fasc::server::controllers::app::PurchaseRequisitionController>(database);
+  auto purchaserequisitionHttpController = std::make_shared<fasc::server::controllers::http::PurchaseRequisitionHttpController>(*purchaserequisitionController);
+  auto purchaserequisitionHandler = std::make_shared<PurchaseRequisitionHandler>(*purchaserequisitionHttpController);
+  server.get("/api/purchase_requisition", [purchaserequisitionController, purchaserequisitionHttpController, purchaserequisitionHandler](const fasc::server::core::HttpRequest& request) { return purchaserequisitionHandler->list(request); });
+  server.post("/api/purchase_requisition", [purchaserequisitionController, purchaserequisitionHttpController, purchaserequisitionHandler](const fasc::server::core::HttpRequest& request) { return purchaserequisitionHandler->create(request); });
+  server.get("/api/purchase_requisition/item", [purchaserequisitionController, purchaserequisitionHttpController, purchaserequisitionHandler](const fasc::server::core::HttpRequest& request) { return purchaserequisitionHandler->load(request); });
+  server.put("/api/purchase_requisition/item", [purchaserequisitionController, purchaserequisitionHttpController, purchaserequisitionHandler](const fasc::server::core::HttpRequest& request) { return purchaserequisitionHandler->update(request); });
+  server.del("/api/purchase_requisition/item", [purchaserequisitionController, purchaserequisitionHttpController, purchaserequisitionHandler](const fasc::server::core::HttpRequest& request) { return purchaserequisitionHandler->erase(request); });
 }
 
 } // namespace fasc::server::handling

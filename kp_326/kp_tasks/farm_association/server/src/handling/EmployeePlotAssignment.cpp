@@ -1,10 +1,13 @@
 #include <handling/EmployeePlotAssignment.hpp>
 
+#include <controllers/app/EmployeePlotAssignment.hpp>
+
 #include <marshalling/EmployeePlotAssignment.hpp>
 #include <marshalling/User.hpp>
 
 #include <nlohmann/json.hpp>
 
+#include <memory>
 #include <stdexcept>
 
 namespace fasc::server::handling {
@@ -95,6 +98,18 @@ fasc::server::core::HttpResponse EmployeePlotAssignmentHandler::erase(
   } catch (const std::exception& exception) {
     return badRequest(exception);
   }
+}
+
+void registerEmployeePlotAssignmentRoutes(fasc::server::core::Server& server,
+                           fasc::server::database::Database& database) {
+  auto employeeplotassignmentController = std::make_shared<fasc::server::controllers::app::EmployeePlotAssignmentController>(database);
+  auto employeeplotassignmentHttpController = std::make_shared<fasc::server::controllers::http::EmployeePlotAssignmentHttpController>(*employeeplotassignmentController);
+  auto employeeplotassignmentHandler = std::make_shared<EmployeePlotAssignmentHandler>(*employeeplotassignmentHttpController);
+  server.get("/api/employee_plot_assignment", [employeeplotassignmentController, employeeplotassignmentHttpController, employeeplotassignmentHandler](const fasc::server::core::HttpRequest& request) { return employeeplotassignmentHandler->list(request); });
+  server.post("/api/employee_plot_assignment", [employeeplotassignmentController, employeeplotassignmentHttpController, employeeplotassignmentHandler](const fasc::server::core::HttpRequest& request) { return employeeplotassignmentHandler->create(request); });
+  server.get("/api/employee_plot_assignment/item", [employeeplotassignmentController, employeeplotassignmentHttpController, employeeplotassignmentHandler](const fasc::server::core::HttpRequest& request) { return employeeplotassignmentHandler->load(request); });
+  server.put("/api/employee_plot_assignment/item", [employeeplotassignmentController, employeeplotassignmentHttpController, employeeplotassignmentHandler](const fasc::server::core::HttpRequest& request) { return employeeplotassignmentHandler->update(request); });
+  server.del("/api/employee_plot_assignment/item", [employeeplotassignmentController, employeeplotassignmentHttpController, employeeplotassignmentHandler](const fasc::server::core::HttpRequest& request) { return employeeplotassignmentHandler->erase(request); });
 }
 
 } // namespace fasc::server::handling

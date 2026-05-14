@@ -26,27 +26,6 @@ std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& 
   return it->second;
 }
 
-std::string columnsSql(const std::vector<std::string>& columns) {
-  std::string sql;
-  for (std::size_t i = 0; i < columns.size(); ++i) {
-    if (i != 0) {
-      sql += ", ";
-    }
-    sql += columns[i];
-  }
-  return sql;
-}
-
-std::string whereSql(const std::vector<std::string>& keys, std::size_t offset = 0) {
-  std::string sql;
-  for (std::size_t i = 0; i < keys.size(); ++i) {
-    if (i != 0) {
-      sql += " AND ";
-    }
-    sql += keys[i] + " = $" + std::to_string(i + 1 + offset);
-  }
-  return sql;
-}
 
 fasc::server::persistence::FarmPlotConsumptionProductEntity rowToEntity(const fasc::server::database::SqlRow& row) {
   fasc::server::persistence::FarmPlotConsumptionProductEntity entity;
@@ -72,9 +51,8 @@ FarmPlotConsumptionProductController::FarmPlotConsumptionProductController(fasc:
 FarmPlotConsumptionProductRowsResult FarmPlotConsumptionProductController::list() const {
   static const std::vector<std::string> columns{"product_id", "farm_plot_id", "quantity", "consumption_now"};
   try {
-    const std::string sql = "SELECT " + columnsSql(columns) + " FROM public.farm_plot_consumption_product";
     const auto rows = db_.invokeTransactionally([&] {
-      return db_.querySql(sql, {});
+      return db_.selectRows("public.farm_plot_consumption_product", columns);
     });
 
     fasc::server::controllers::dto::FarmPlotConsumptionProductRowsDto dto;
@@ -93,17 +71,14 @@ FarmPlotConsumptionProductRowResult FarmPlotConsumptionProductController::load(c
   static const std::vector<std::string> columns{"product_id", "farm_plot_id", "quantity", "consumption_now"};
   static const std::vector<std::string> keys{"product_id", "farm_plot_id"};
   try {
-    const std::vector<fasc::server::database::SqlParameter> values = keyValues(key);
-    const std::string sql = "SELECT " + columnsSql(columns) + " FROM public.farm_plot_consumption_product WHERE " +
-                            whereSql(keys) + " LIMIT 1";
-    const auto rows = db_.invokeTransactionally([&] {
-      return db_.querySql(sql, values);
+    const auto row = db_.invokeTransactionally([&] {
+      return db_.selectOneRow("public.farm_plot_consumption_product", columns, keys, keyValues(key));
     });
-    if (rows.empty()) {
+    if (!row.has_value()) {
       return FarmPlotConsumptionProductRowResult::failure(FarmEntityError{FarmEntityErrorCode::NotFound, "Row not found"});
     }
     return FarmPlotConsumptionProductRowResult::success(
-        fasc::server::controllers::dto::FarmPlotConsumptionProductRowDto{rowToEntity(rows.front())});
+        fasc::server::controllers::dto::FarmPlotConsumptionProductRowDto{rowToEntity(*row)});
   } catch (const std::exception& exception) {
     return FarmPlotConsumptionProductRowResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
@@ -152,16 +127,8 @@ FarmPlotConsumptionProductMutationResult FarmPlotConsumptionProductController::c
   }
 
   try {
-    std::string sql = "INSERT INTO public.farm_plot_consumption_product (" + columnsSql(columns) + ") VALUES (";
-    for (std::size_t i = 0; i < values.size(); ++i) {
-      if (i != 0) {
-        sql += ", ";
-      }
-      sql += "$" + std::to_string(i + 1);
-    }
-    sql += ")";
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.executeSql(sql, values);
+      return db_.insertRow("public.farm_plot_consumption_product", columns, values);
     });
     return FarmPlotConsumptionProductMutationResult::success(
         fasc::server::controllers::dto::FarmPlotConsumptionProductMutationDto{affectedRows});
@@ -191,18 +158,8 @@ FarmPlotConsumptionProductMutationResult FarmPlotConsumptionProductController::u
   }
 
   try {
-    std::string sql = "UPDATE public.farm_plot_consumption_product SET ";
-    for (std::size_t i = 0; i < columns.size(); ++i) {
-      if (i != 0) {
-        sql += ", ";
-      }
-      sql += columns[i] + " = $" + std::to_string(i + 1);
-    }
-    sql += " WHERE " + whereSql(keys, values.size());
-    const std::vector<fasc::server::database::SqlParameter> keyParams = keyValues(key);
-    values.insert(values.end(), keyParams.begin(), keyParams.end());
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.executeSql(sql, values);
+      return db_.updateRows("public.farm_plot_consumption_product", columns, values, keys, keyValues(key));
     });
     return FarmPlotConsumptionProductMutationResult::success(
         fasc::server::controllers::dto::FarmPlotConsumptionProductMutationDto{affectedRows});
@@ -216,10 +173,8 @@ FarmPlotConsumptionProductMutationResult FarmPlotConsumptionProductController::e
     const fasc::server::controllers::dto::FarmPlotConsumptionProductKeyDto& key) const {
   static const std::vector<std::string> keys{"product_id", "farm_plot_id"};
   try {
-    const std::vector<fasc::server::database::SqlParameter> values = keyValues(key);
-    const std::string sql = "DELETE FROM public.farm_plot_consumption_product WHERE " + whereSql(keys);
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.executeSql(sql, values);
+      return db_.deleteRows("public.farm_plot_consumption_product", keys, keyValues(key));
     });
     return FarmPlotConsumptionProductMutationResult::success(
         fasc::server::controllers::dto::FarmPlotConsumptionProductMutationDto{affectedRows});

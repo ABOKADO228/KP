@@ -1,10 +1,13 @@
 #include <handling/FarmPlotAssignment.hpp>
 
+#include <controllers/app/FarmPlotAssignment.hpp>
+
 #include <marshalling/FarmPlotAssignment.hpp>
 #include <marshalling/User.hpp>
 
 #include <nlohmann/json.hpp>
 
+#include <memory>
 #include <stdexcept>
 
 namespace fasc::server::handling {
@@ -100,6 +103,18 @@ fasc::server::core::HttpResponse FarmPlotAssignmentHandler::erase(
   } catch (const std::exception& exception) {
     return badRequest(exception);
   }
+}
+
+void registerFarmPlotAssignmentRoutes(fasc::server::core::Server& server,
+                           fasc::server::database::Database& database) {
+  auto farmplotassignmentController = std::make_shared<fasc::server::controllers::app::FarmPlotAssignmentController>(database);
+  auto farmplotassignmentHttpController = std::make_shared<fasc::server::controllers::http::FarmPlotAssignmentHttpController>(*farmplotassignmentController);
+  auto farmplotassignmentHandler = std::make_shared<FarmPlotAssignmentHandler>(*farmplotassignmentHttpController);
+  server.get("/api/farm_plot_assignment", [farmplotassignmentController, farmplotassignmentHttpController, farmplotassignmentHandler](const fasc::server::core::HttpRequest& request) { return farmplotassignmentHandler->list(request); });
+  server.post("/api/farm_plot_assignment", [farmplotassignmentController, farmplotassignmentHttpController, farmplotassignmentHandler](const fasc::server::core::HttpRequest& request) { return farmplotassignmentHandler->create(request); });
+  server.get("/api/farm_plot_assignment/item", [farmplotassignmentController, farmplotassignmentHttpController, farmplotassignmentHandler](const fasc::server::core::HttpRequest& request) { return farmplotassignmentHandler->load(request); });
+  server.put("/api/farm_plot_assignment/item", [farmplotassignmentController, farmplotassignmentHttpController, farmplotassignmentHandler](const fasc::server::core::HttpRequest& request) { return farmplotassignmentHandler->update(request); });
+  server.del("/api/farm_plot_assignment/item", [farmplotassignmentController, farmplotassignmentHttpController, farmplotassignmentHandler](const fasc::server::core::HttpRequest& request) { return farmplotassignmentHandler->erase(request); });
 }
 
 } // namespace fasc::server::handling

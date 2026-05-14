@@ -1,10 +1,13 @@
 #include <handling/FarmOwner.hpp>
 
+#include <controllers/app/FarmOwner.hpp>
+
 #include <marshalling/FarmOwner.hpp>
 #include <marshalling/User.hpp>
 
 #include <nlohmann/json.hpp>
 
+#include <memory>
 #include <stdexcept>
 
 namespace fasc::server::handling {
@@ -95,6 +98,18 @@ fasc::server::core::HttpResponse FarmOwnerHandler::erase(
   } catch (const std::exception& exception) {
     return badRequest(exception);
   }
+}
+
+void registerFarmOwnerRoutes(fasc::server::core::Server& server,
+                           fasc::server::database::Database& database) {
+  auto farmownerController = std::make_shared<fasc::server::controllers::app::FarmOwnerController>(database);
+  auto farmownerHttpController = std::make_shared<fasc::server::controllers::http::FarmOwnerHttpController>(*farmownerController);
+  auto farmownerHandler = std::make_shared<FarmOwnerHandler>(*farmownerHttpController);
+  server.get("/api/farm_owner", [farmownerController, farmownerHttpController, farmownerHandler](const fasc::server::core::HttpRequest& request) { return farmownerHandler->list(request); });
+  server.post("/api/farm_owner", [farmownerController, farmownerHttpController, farmownerHandler](const fasc::server::core::HttpRequest& request) { return farmownerHandler->create(request); });
+  server.get("/api/farm_owner/item", [farmownerController, farmownerHttpController, farmownerHandler](const fasc::server::core::HttpRequest& request) { return farmownerHandler->load(request); });
+  server.put("/api/farm_owner/item", [farmownerController, farmownerHttpController, farmownerHandler](const fasc::server::core::HttpRequest& request) { return farmownerHandler->update(request); });
+  server.del("/api/farm_owner/item", [farmownerController, farmownerHttpController, farmownerHandler](const fasc::server::core::HttpRequest& request) { return farmownerHandler->erase(request); });
 }
 
 } // namespace fasc::server::handling

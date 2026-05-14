@@ -1,10 +1,13 @@
 #include <handling/AssociationMember.hpp>
 
+#include <controllers/app/AssociationMember.hpp>
+
 #include <marshalling/AssociationMember.hpp>
 #include <marshalling/User.hpp>
 
 #include <nlohmann/json.hpp>
 
+#include <memory>
 #include <stdexcept>
 
 namespace fasc::server::handling {
@@ -95,6 +98,18 @@ fasc::server::core::HttpResponse AssociationMemberHandler::erase(
   } catch (const std::exception& exception) {
     return badRequest(exception);
   }
+}
+
+void registerAssociationMemberRoutes(fasc::server::core::Server& server,
+                           fasc::server::database::Database& database) {
+  auto associationmemberController = std::make_shared<fasc::server::controllers::app::AssociationMemberController>(database);
+  auto associationmemberHttpController = std::make_shared<fasc::server::controllers::http::AssociationMemberHttpController>(*associationmemberController);
+  auto associationmemberHandler = std::make_shared<AssociationMemberHandler>(*associationmemberHttpController);
+  server.get("/api/association_member", [associationmemberController, associationmemberHttpController, associationmemberHandler](const fasc::server::core::HttpRequest& request) { return associationmemberHandler->list(request); });
+  server.post("/api/association_member", [associationmemberController, associationmemberHttpController, associationmemberHandler](const fasc::server::core::HttpRequest& request) { return associationmemberHandler->create(request); });
+  server.get("/api/association_member/item", [associationmemberController, associationmemberHttpController, associationmemberHandler](const fasc::server::core::HttpRequest& request) { return associationmemberHandler->load(request); });
+  server.put("/api/association_member/item", [associationmemberController, associationmemberHttpController, associationmemberHandler](const fasc::server::core::HttpRequest& request) { return associationmemberHandler->update(request); });
+  server.del("/api/association_member/item", [associationmemberController, associationmemberHttpController, associationmemberHandler](const fasc::server::core::HttpRequest& request) { return associationmemberHandler->erase(request); });
 }
 
 } // namespace fasc::server::handling
