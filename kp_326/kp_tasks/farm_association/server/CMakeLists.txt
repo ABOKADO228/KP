@@ -82,28 +82,18 @@ set_source_files_properties(
     "${FARM_SERVER_USER_SQL}"
     PROPERTIES GENERATED TRUE)
 
-file(GLOB FARM_SERVER_TABLE_SOURCES CONFIGURE_DEPENDS
-        src/controllers/app/tables/*.cpp
-        src/handling/tables/*.cpp
-        src/persistence/tables/*.cpp)
-
 set(FARM_SERVER_CORE_SOURCES
         src/controllers/app/Users.cpp
         src/controllers/http/Users.cpp
-        src/database/database.cpp
-        src/database/PgConnection.cpp
-        src/database/TableRegistry.cpp
+        src/database/Database.cpp
         src/handling/Health.cpp
         src/handling/Users.cpp
-        src/persistence/TableRecordPersistenceBase.cpp
         src/security/Encoding.cpp
         src/security/JwtService.cpp
         src/security/PasswordHasher.cpp
         src/server/core/AppRouter.cpp
-        src/server/core/HttpResult.cpp
         src/server/core/RequestDispatcher.cpp
         src/server/core/Server.cpp
-        ${FARM_SERVER_TABLE_SOURCES}
         "${FARM_SERVER_USER_ODB_CXX}")
 
 add_library(farm_association_server_core STATIC)
@@ -201,25 +191,31 @@ if(FARM_SERVER_WITH_ODB)
         "${FARM_SERVER_DEPS_DIR}/libodb-pgsql/bin"
         "${FARM_SERVER_DEPS_DIR}/postgresql/bin"
         "${FARM_SERVER_DEPS_DIR}/postgresql/lib")
+
+    if(WIN32)
+        file(GLOB FARM_SERVER_POSTGRESQL_RUNTIME_DLLS
+            CONFIGURE_DEPENDS
+            "${FARM_SERVER_DEPS_DIR}/postgresql/bin/*.dll")
+    endif()
 endif()
 
 add_executable(farm_association_server)
 
 target_sources(farm_association_server
     PRIVATE
-        src/main.cpp)
+        src/Main.cpp)
 
 target_link_libraries(farm_association_server
     PRIVATE
         farm_association_server_core)
 
 if(FARM_SERVER_WITH_ODB)
-    if(WIN32)
+    if(WIN32 AND FARM_SERVER_POSTGRESQL_RUNTIME_DLLS)
         add_custom_command(TARGET farm_association_server POST_BUILD
-            COMMAND "${CMAKE_COMMAND}" -E copy_directory
-                "${FARM_SERVER_DEPS_DIR}/postgresql/bin"
+            COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+                ${FARM_SERVER_POSTGRESQL_RUNTIME_DLLS}
                 "$<TARGET_FILE_DIR:farm_association_server>"
-            COMMENT "Copying PostgreSQL runtime DLLs"
+            COMMENT "Copying PostgreSQL runtime DLLs for farm_association_server"
             VERBATIM)
     endif()
 endif()

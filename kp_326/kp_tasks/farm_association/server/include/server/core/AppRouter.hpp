@@ -6,6 +6,8 @@
 #include <string>
 #include <unordered_map>
 
+namespace fasc::server::core {
+
 ///Маршрутизатор application layer для HTTP-запросов.
 ///@note Регистрирует обработчики по паре HTTP-метод и путь.
 class AppRouter {
@@ -24,7 +26,15 @@ public:
   ///@param path    путь маршрута, например @c /users.
   ///@param handler обработчик, который будет вызван для этого пути.
   void post(std::string path, RouteHandler handler);
+
+  ///Регистрирует обработчик PUT-маршрута.
+  ///@param path    путь маршрута.
+  ///@param handler обработчик, который будет вызван для этого пути.
   void put(std::string path, RouteHandler handler);
+
+  ///Регистрирует обработчик DELETE-маршрута.
+  ///@param path    путь маршрута.
+  ///@param handler обработчик, который будет вызван для этого пути.
   void del(std::string path, RouteHandler handler);
 
   ///Находит и вызывает обработчик для HTTP-запроса.
@@ -41,3 +51,5 @@ private:
   ///@returns строковый ключ для хранения обработчика.
   static std::string key(std::string method, std::string path);
 };
+
+} // namespace fasc::server::core

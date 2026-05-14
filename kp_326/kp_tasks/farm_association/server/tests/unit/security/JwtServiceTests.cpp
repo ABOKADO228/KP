@@ -8,6 +8,8 @@
 
 namespace {
 
+using fasc::server::controllers::dto::UserDto;
+
 TEST(JwtServiceTests, IssuesThreePartJwt) {
   const fasc::server::security::JwtService jwt{"test-secret"};
 

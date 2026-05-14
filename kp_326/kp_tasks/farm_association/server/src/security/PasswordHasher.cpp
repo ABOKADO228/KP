@@ -31,7 +31,7 @@ std::vector<std::string_view> split(std::string_view value, char delimiter) {
   }
 }
 
-int parse_iterations(std::string_view value) {
+int parseIterations(std::string_view value) {
   int iterations = 0;
   const auto result = std::from_chars(value.data(), value.data() + value.size(), iterations);
   if (result.ec != std::errc{} || result.ptr != value.data() + value.size() || iterations <= 0) {
@@ -42,7 +42,7 @@ int parse_iterations(std::string_view value) {
 }
 
 std::array<unsigned char, PasswordHasher::kHashSize>
-derive_hash(std::string_view password, const std::string& salt, int iterations) {
+deriveHash(std::string_view password, const std::string& salt, int iterations) {
   std::array<unsigned char, PasswordHasher::kHashSize> hash{};
   if (PKCS5_PBKDF2_HMAC(password.data(), static_cast<int>(password.size()),
                         reinterpret_cast<const unsigned char*>(salt.data()),
@@ -54,7 +54,7 @@ derive_hash(std::string_view password, const std::string& salt, int iterations) 
   return hash;
 }
 
-bool constant_time_equals(const std::string& left, const std::string& right) {
+bool constantTimeEquals(const std::string& left, const std::string& right) {
   if (left.size() != right.size()) {
     return false;
   }
@@ -75,10 +75,10 @@ std::string PasswordHasher::hash(std::string_view password) const {
     throw std::runtime_error{"Failed to generate password salt"};
   }
 
-  const std::string salt_encoded = base64_encode(salt.data(), salt.size());
-  const std::string salt_raw = base64_decode(salt_encoded);
-  const auto derived = derive_hash(password, salt_raw, kIterations);
-  const std::string hash_encoded = base64_encode(derived.data(), derived.size());
+  const std::string salt_encoded = base64Encode(salt.data(), salt.size());
+  const std::string salt_raw = base64Decode(salt_encoded);
+  const auto derived = deriveHash(password, salt_raw, kIterations);
+  const std::string hash_encoded = base64Encode(derived.data(), derived.size());
 
   return "pbkdf2_sha256$" + std::to_string(kIterations) + "$" + salt_encoded + "$" +
          hash_encoded;
@@ -91,11 +91,11 @@ bool PasswordHasher::verify(std::string_view password, std::string_view encoded_
   }
 
   try {
-    const int iterations = parse_iterations(parts[1]);
-    const std::string salt = base64_decode(parts[2]);
-    const auto derived = derive_hash(password, salt, iterations);
-    const std::string actual = base64_encode(derived.data(), derived.size());
-    return constant_time_equals(actual, std::string{parts[3]});
+    const int iterations = parseIterations(parts[1]);
+    const std::string salt = base64Decode(parts[2]);
+    const auto derived = deriveHash(password, salt, iterations);
+    const std::string actual = base64Encode(derived.data(), derived.size());
+    return constantTimeEquals(actual, std::string{parts[3]});
   } catch (const std::exception&) {
     return false;
   }

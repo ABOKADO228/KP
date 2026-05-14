@@ -6,6 +6,8 @@
 
 namespace fasc::server::tests::fixtures {
 
+using fasc::server::core::HttpRequest;
+
 ///Создает проектный HTTP-запрос для тестов.
 ///@param method HTTP-метод запроса.
 ///@param target путь запроса.

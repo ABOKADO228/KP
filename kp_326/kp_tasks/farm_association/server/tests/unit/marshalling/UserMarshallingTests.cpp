@@ -13,6 +13,8 @@ namespace {
 
 using fasc::server::tests::utils::expectJsonStringField;
 using fasc::server::tests::utils::expectJsonUnsignedLongField;
+using fasc::server::controllers::dto::CreateUserCommand;
+using fasc::server::views::UserView;
 
 TEST(UserMarshallingTests, ReadsCreateUserCommandFromJson) {
   const auto json = nlohmann::json{{"name", "Alex"}, {"password", "password123"}};

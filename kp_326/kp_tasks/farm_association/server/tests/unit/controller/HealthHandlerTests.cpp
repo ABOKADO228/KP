@@ -8,6 +8,8 @@ namespace {
 
 using fasc::server::tests::fixtures::makeHttpRequest;
 using fasc::server::tests::utils::expectJsonStringField;
+using fasc::server::core::HttpResponse;
+using fasc::server::handling::HealthHandler;
 
 TEST(HealthHandlerTests, ReturnsOkStatus) {
   HealthHandler handler;

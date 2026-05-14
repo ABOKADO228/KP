@@ -10,57 +10,75 @@
 #include <string>
 #include <utility>
 
+namespace fasc::server::controllers::app {
+
+using fasc::server::persistence::User;
+
 namespace {
 
-void validate_name(const std::string& name) {
+UserError validateName(const std::string& name) {
   if (name.empty()) {
-    throw std::invalid_argument{"User name is required"};
+    return UserError{UserErrorCode::InvalidInput, "User name is required"};
   }
+
+  return UserError{};
 }
 
-void validate_password(const std::string& password) {
+UserError validatePassword(const std::string& password) {
   if (password.size() < 8) {
-    throw std::invalid_argument{"Password must contain at least 8 characters"};
+    return UserError{UserErrorCode::InvalidInput,
+                     "Password must contain at least 8 characters"};
   }
+
+  return UserError{};
 }
 
 } // namespace
 
 UserController::UserController(fasc::server::database::Database& db,
-                               fasc::server::security::PasswordHasher& password_hasher,
+                               fasc::server::security::PasswordHasher& passwordHasher,
                                fasc::server::security::JwtService& jwt_service)
-    : db_(db), password_hasher_(password_hasher), jwt_service_(jwt_service) {}
+    : db_(db), passwordHasher_(passwordHasher), jwt_service_(jwt_service) {}
 
-UserDto UserController::create_user(CreateUserCommand command) {
-  return create_user_with_password(std::move(command.name), std::move(command.password));
+CreateUserResult UserController::createUser(CreateUserCommand command) {
+  return createUserWithPassword(std::move(command.name), std::move(command.password));
 }
 
-AuthResultDto UserController::register_user(RegisterUserCommand command) {
-  const UserDto user =
-      create_user_with_password(std::move(command.name), std::move(command.password));
+AuthResult UserController::registerUser(RegisterUserCommand command) {
+  const CreateUserResult user_result =
+      createUserWithPassword(std::move(command.name), std::move(command.password));
+  if (user_result.hasError()) {
+    return AuthResult::failure(user_result.error());
+  }
 
   AuthResultDto result;
-  result.user = user;
-  result.token = jwt_service_.issue(user);
-  return result;
+  result.user = user_result.success();
+  result.token = jwt_service_.issue(result.user);
+  return AuthResult::success(std::move(result));
 }
 
-AuthResultDto UserController::login_user(LoginUserCommand command) {
-  validate_name(command.name);
-  validate_password(command.password);
+AuthResult UserController::loginUser(LoginUserCommand command) {
+  if (const UserError error = validateName(command.name); !error.message.empty()) {
+    return AuthResult::failure(error);
+  }
 
-  return db_.invokeTransactionally([&] {
+  if (const UserError error = validatePassword(command.password); !error.message.empty()) {
+    return AuthResult::failure(error);
+  }
+
+  try {
+    AuthResultDto result = db_.invokeTransactionally([&] {
     using query = odb::query<User>;
 
     odb::result<User> users = db_.raw().query<User>(query::name == command.name);
     auto iterator = users.begin();
     if (iterator == users.end()) {
-      throw std::invalid_argument{"Invalid user name or password"};
+      return AuthResultDto{};
     }
 
     const User user = *iterator;
-    if (!password_hasher_.verify(command.password, user.password_hash())) {
-      throw std::invalid_argument{"Invalid user name or password"};
+    if (!passwordHasher_.verify(command.password, user.passwordHash())) {
+      return AuthResultDto{};
     }
 
     AuthResultDto result;
@@ -68,23 +86,53 @@ AuthResultDto UserController::login_user(LoginUserCommand command) {
     result.token = jwt_service_.issue(result.user);
     return result;
   });
+
+    if (result.token.empty()) {
+      return AuthResult::failure(
+          UserError{UserErrorCode::Unauthorized, "Invalid user name or password"});
+    }
+
+    return AuthResult::success(std::move(result));
+  } catch (const std::exception& exception) {
+    return AuthResult::failure(UserError{UserErrorCode::PersistenceFailure, exception.what()});
+  }
 }
 
-UserDto UserController::create_user_with_password(std::string name, std::string password) {
-  validate_name(name);
-  validate_password(password);
+CreateUserResult UserController::createUserWithPassword(std::string name,
+                                                           std::string password) {
+  if (const UserError error = validateName(name); !error.message.empty()) {
+    return CreateUserResult::failure(error);
+  }
 
-  return db_.invokeTransactionally([&] {
+  if (const UserError error = validatePassword(password); !error.message.empty()) {
+    return CreateUserResult::failure(error);
+  }
+
+  try {
+    UserDto user_dto = db_.invokeTransactionally([&] {
     using query = odb::query<User>;
 
     odb::result<User> existing = db_.raw().query<User>(query::name == name);
     if (existing.begin() != existing.end()) {
-      throw std::invalid_argument{"User name is already registered"};
+      return UserDto{};
     }
 
-    User user{std::move(name), password_hasher_.hash(password)};
+    User user{std::move(name), passwordHasher_.hash(password)};
     db_.persist(user);
 
     return UserDto{user.id(), user.name()};
   });
+
+    if (user_dto.name.empty()) {
+      return CreateUserResult::failure(
+          UserError{UserErrorCode::Conflict, "User name is already registered"});
+    }
+
+    return CreateUserResult::success(std::move(user_dto));
+  } catch (const std::exception& exception) {
+    return CreateUserResult::failure(
+        UserError{UserErrorCode::PersistenceFailure, exception.what()});
+  }
 }
+
+} // namespace fasc::server::controllers::app

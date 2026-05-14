@@ -4,9 +4,11 @@
 #include <string>
 #include <unordered_map>
 
+namespace fasc::server::core {
+
 namespace {
 
-std::string url_decode(std::string_view value) {
+std::string urlDecode(std::string_view value) {
   std::string decoded;
   decoded.reserve(value.size());
 
@@ -27,7 +29,7 @@ std::string url_decode(std::string_view value) {
   return decoded;
 }
 
-std::unordered_map<std::string, std::string> query_params_from(std::string_view target) {
+std::unordered_map<std::string, std::string> queryParamsFrom(std::string_view target) {
   std::unordered_map<std::string, std::string> params;
   const auto query_position = target.find('?');
   if (query_position == std::string_view::npos) {
@@ -40,9 +42,9 @@ std::unordered_map<std::string, std::string> query_params_from(std::string_view 
     const std::string_view pair = query.substr(0, amp);
     const auto eq = pair.find('=');
     if (eq != std::string_view::npos) {
-      params.emplace(url_decode(pair.substr(0, eq)), url_decode(pair.substr(eq + 1)));
+      params.emplace(urlDecode(pair.substr(0, eq)), urlDecode(pair.substr(eq + 1)));
     } else if (!pair.empty()) {
-      params.emplace(url_decode(pair), "");
+      params.emplace(urlDecode(pair), "");
     }
 
     if (amp == std::string_view::npos) {
@@ -54,7 +56,7 @@ std::unordered_map<std::string, std::string> query_params_from(std::string_view 
   return params;
 }
 
-std::string route_target_from(std::string target) {
+std::string routeTargetFrom(std::string target) {
   const auto query_position = target.find('?');
   if (query_position != std::string::npos) {
     target.resize(query_position);
@@ -71,8 +73,8 @@ BeastResponse RequestDispatcher::dispatch(const BeastRequest& request) const {
   HttpRequest app_request;
   app_request.method = std::string(request.method_string());
   const std::string raw_target{request.target()};
-  app_request.target = route_target_from(raw_target);
-  app_request.query_params = query_params_from(raw_target);
+  app_request.target = routeTargetFrom(raw_target);
+  app_request.query_params = queryParamsFrom(raw_target);
   app_request.body = request.body();
 
   for (const auto& field : request) {
@@ -92,3 +94,5 @@ BeastResponse RequestDispatcher::dispatch(const BeastRequest& request) const {
 
   return response;
 }
+
+} // namespace fasc::server::core

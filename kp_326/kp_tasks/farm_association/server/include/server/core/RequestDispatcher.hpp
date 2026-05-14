@@ -4,9 +4,14 @@
 
 #include <boost/beast/http.hpp>
 
+namespace fasc::server::core {
+
 namespace http = boost::beast::http;
 
+///Boost.Beast HTTP-запрос с текстовым телом.
 using BeastRequest = http::request<http::string_body>;
+
+///Boost.Beast HTTP-ответ с текстовым телом.
 using BeastResponse = http::response<http::string_body>;
 
 ///Преобразует запросы Boost.Beast в проектные @c HttpRequest и обратно в @c BeastResponse.
@@ -25,3 +30,5 @@ public:
 private:
   const AppRouter& router_;
 };
+
+} // namespace fasc::server::core

@@ -8,6 +8,8 @@
 
 namespace fasc::server::tests::fixtures {
 
+using fasc::server::core::BeastRequest;
+
 ///Создает Boost.Beast HTTP-запрос для integration-тестов dispatcher-а.
 ///@param method HTTP-метод Boost.Beast.
 ///@param target путь запроса.

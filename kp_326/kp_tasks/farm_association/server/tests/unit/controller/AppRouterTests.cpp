@@ -11,6 +11,9 @@ namespace {
 
 using fasc::server::tests::fixtures::makeHttpRequest;
 using fasc::server::tests::utils::expectJsonStringField;
+using fasc::server::core::AppRouter;
+using fasc::server::core::HttpRequest;
+using fasc::server::core::HttpResponse;
 
 TEST(AppRouterTests, RoutesRegisteredGetHandler) {
   AppRouter router;

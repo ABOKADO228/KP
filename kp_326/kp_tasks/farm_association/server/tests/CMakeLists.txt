@@ -37,11 +37,11 @@ target_link_libraries(farm_association_integration_tests
         farm_association_server_core
         GTest::gtest_main)
 
-if(WIN32 AND FARM_SERVER_WITH_ODB)
+if(WIN32 AND FARM_SERVER_WITH_ODB AND FARM_SERVER_POSTGRESQL_RUNTIME_DLLS)
     foreach(test_target IN ITEMS farm_association_unit_tests farm_association_integration_tests)
         add_custom_command(TARGET ${test_target} POST_BUILD
-            COMMAND "${CMAKE_COMMAND}" -E copy_directory
-                "${FARM_SERVER_DEPS_DIR}/postgresql/bin"
+            COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+                ${FARM_SERVER_POSTGRESQL_RUNTIME_DLLS}
                 "$<TARGET_FILE_DIR:${test_target}>"
             COMMENT "Copying PostgreSQL runtime DLLs for ${test_target}"
             VERBATIM)

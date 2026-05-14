@@ -23,6 +23,8 @@
 #include <utility>
 #include <vector>
 
+namespace fasc::server::core {
+
 namespace {
 
 namespace asio = boost::asio;
@@ -32,25 +34,25 @@ using tcp = asio::ip::tcp;
 
 std::mutex log_mutex;
 
-void log_info(const std::string& message) {
+void logInfo(const std::string& message) {
   std::lock_guard lock{log_mutex};
   std::clog << "[server] " << message << '\n';
 }
 
-std::string error_body(std::string message) {
+std::string errorBody(std::string message) {
   nlohmann::json body;
   body["error"] = std::move(message);
   return body.dump();
 }
 
-BeastResponse make_error_response(http::status status, std::string message, unsigned version,
+BeastResponse makeErrorResponse(http::status status, std::string message, unsigned version,
                                   bool keep_alive) {
   BeastResponse response{status, version};
   response.set(http::field::server, "farm-association-server");
   response.set(http::field::content_type, "application/json");
   response.set("X-Content-Type-Options", "nosniff");
   response.keep_alive(keep_alive);
-  response.body() = error_body(std::move(message));
+  response.body() = errorBody(std::move(message));
   response.prepare_payload();
   return response;
 }
@@ -62,22 +64,22 @@ public:
       : stream_(std::move(socket)), dispatcher_(dispatcher), settings_(settings) {}
 
   void run() {
-    read_next_request();
+    readNextRequest();
   }
 
 private:
   using RequestParser = http::request_parser<http::string_body>;
 
-  void read_next_request() {
+  void readNextRequest() {
     parser_ = std::make_unique<RequestParser>();
     parser_->body_limit(settings_.request_body_limit);
 
     stream_.expires_after(settings_.request_timeout);
     http::async_read(stream_, buffer_, *parser_,
-                     beast::bind_front_handler(&HttpSession::on_read, shared_from_this()));
+                     beast::bind_front_handler(&HttpSession::onRead, shared_from_this()));
   }
 
-  void on_read(beast::error_code error, std::size_t bytes_transferred) {
+  void onRead(beast::error_code error, std::size_t bytes_transferred) {
     boost::ignore_unused(bytes_transferred);
 
     if (error == http::error::end_of_stream) {
@@ -86,32 +88,32 @@ private:
     }
 
     if (error) {
-      write_protocol_error(error);
+      writeProtocolError(error);
       return;
     }
 
     response_ = std::make_shared<BeastResponse>(dispatcher_.dispatch(parser_->get()));
     parser_.reset();
-    write_response(response_->keep_alive());
+    writeResponse(response_->keep_alive());
   }
 
-  void write_protocol_error(const beast::error_code& error) {
+  void writeProtocolError(const beast::error_code& error) {
     const auto status = error == http::error::body_limit ? http::status::payload_too_large
                                                          : http::status::bad_request;
     response_ = std::make_shared<BeastResponse>(
-        make_error_response(status, error.message(), 11, false));
+        makeErrorResponse(status, error.message(), 11, false));
     parser_.reset();
-    write_response(false);
+    writeResponse(false);
   }
 
-  void write_response(bool keep_alive) {
+  void writeResponse(bool keep_alive) {
     stream_.expires_after(settings_.request_timeout);
     http::async_write(stream_, *response_,
-                      beast::bind_front_handler(&HttpSession::on_write, shared_from_this(),
+                      beast::bind_front_handler(&HttpSession::onWrite, shared_from_this(),
                                                 keep_alive));
   }
 
-  void on_write(bool keep_alive, beast::error_code error, std::size_t bytes_transferred) {
+  void onWrite(bool keep_alive, beast::error_code error, std::size_t bytes_transferred) {
     boost::ignore_unused(bytes_transferred);
     response_.reset();
 
@@ -124,7 +126,7 @@ private:
       return;
     }
 
-    read_next_request();
+    readNextRequest();
   }
 
   void shutdown() {
@@ -148,46 +150,46 @@ public:
     beast::error_code error;
 
     acceptor_.open(endpoint.protocol(), error);
-    throw_if_error(error, "open");
+    throwIfError(error, "open");
 
     acceptor_.set_option(asio::socket_base::reuse_address(true), error);
-    throw_if_error(error, "set_option");
+    throwIfError(error, "set_option");
 
     acceptor_.bind(endpoint, error);
-    throw_if_error(error, "bind");
+    throwIfError(error, "bind");
 
     const int backlog = settings_.listen_backlog > 0 ? settings_.listen_backlog
                                                      : asio::socket_base::max_listen_connections;
     acceptor_.listen(backlog, error);
-    throw_if_error(error, "listen");
+    throwIfError(error, "listen");
   }
 
   void run() {
-    accept_next();
+    acceptNext();
   }
 
 private:
-  static void throw_if_error(const beast::error_code& error, const char* operation) {
+  static void throwIfError(const beast::error_code& error, const char* operation) {
     if (error) {
       throw beast::system_error{error, operation};
     }
   }
 
-  void accept_next() {
-    acceptor_.async_accept(beast::bind_front_handler(&Listener::on_accept, shared_from_this()));
+  void acceptNext() {
+    acceptor_.async_accept(beast::bind_front_handler(&Listener::onAccept, shared_from_this()));
   }
 
-  void on_accept(beast::error_code error, tcp::socket socket) {
+  void onAccept(beast::error_code error, tcp::socket socket) {
     if (!error) {
       std::make_shared<HttpSession>(std::move(socket), dispatcher_, settings_)->run();
     }
 
     if (error && error != asio::error::operation_aborted) {
-      log_info(std::string{"accept failed: "} + error.message());
+      logInfo(std::string{"accept failed: "} + error.message());
     }
 
     if (acceptor_.is_open()) {
-      accept_next();
+      acceptNext();
     }
   }
 
@@ -197,26 +199,26 @@ private:
   const ServerSettings& settings_;
 };
 
-std::size_t default_thread_count() {
+std::size_t defaultThreadCount() {
   return std::max<std::size_t>(1, std::thread::hardware_concurrency());
 }
 
-std::size_t normalize_thread_count(std::size_t thread_count) {
+std::size_t normalizeThreadCount(std::size_t thread_count) {
   if (thread_count == 0) {
-    return default_thread_count();
+    return defaultThreadCount();
   }
 
   return std::max<std::size_t>(1, thread_count);
 }
 
-ServerSettings settings_for_port(unsigned short port, std::size_t thread_count) {
+ServerSettings settingsForPort(unsigned short port, std::size_t thread_count) {
   ServerSettings settings;
   settings.port = port;
   settings.thread_count = thread_count;
   return settings;
 }
 
-tcp::endpoint make_endpoint(const ServerSettings& settings) {
+tcp::endpoint makeEndpoint(const ServerSettings& settings) {
   beast::error_code error;
 
   const auto ipv4_address = asio::ip::make_address_v4(settings.address, error);
@@ -251,31 +253,31 @@ void Server::del(std::string path, AppRouter::RouteHandler handler) {
 }
 
 int Server::run(unsigned short port) {
-  return run(settings_for_port(port, 0));
+  return run(settingsForPort(port, 0));
 }
 
 int Server::run(unsigned short port, std::size_t thread_count) {
-  return run(settings_for_port(port, thread_count));
+  return run(settingsForPort(port, thread_count));
 }
 
 int Server::run(const ServerSettings& settings) {
-  const std::size_t worker_count = normalize_thread_count(settings.thread_count);
+  const std::size_t worker_count = normalizeThreadCount(settings.thread_count);
 
   asio::io_context io{static_cast<int>(worker_count)};
   RequestDispatcher dispatcher{router_};
-  const tcp::endpoint endpoint = make_endpoint(settings);
+  const tcp::endpoint endpoint = makeEndpoint(settings);
 
   std::make_shared<Listener>(io, endpoint, dispatcher, settings)->run();
 
   asio::signal_set signals{io, SIGINT, SIGTERM};
   signals.async_wait([&io](const beast::error_code& error, int signal_number) {
     if (!error) {
-      log_info("shutdown signal received: " + std::to_string(signal_number));
+      logInfo("shutdown signal received: " + std::to_string(signal_number));
       io.stop();
     }
   });
 
-  log_info("listening on " + endpoint.address().to_string() + ":" +
+  logInfo("listening on " + endpoint.address().to_string() + ":" +
            std::to_string(endpoint.port()) + ", workers=" + std::to_string(worker_count) +
            ", body_limit=" + std::to_string(settings.request_body_limit));
 
@@ -309,6 +311,8 @@ int Server::run(const ServerSettings& settings) {
     std::rethrow_exception(worker_exception);
   }
 
-  log_info("stopped");
+  logInfo("stopped");
   return 0;
 }
+
+} // namespace fasc::server::core

@@ -13,9 +13,12 @@
 #include <nlohmann/json.hpp>
 
 namespace fasc::server::security {
+
+using fasc::server::controllers::dto::UserDto;
+
 namespace {
 
-std::string hmac_sha256(std::string_view secret, std::string_view data) {
+std::string hmacSha256(std::string_view secret, std::string_view data) {
   unsigned int digest_size = 0;
   unsigned char digest[EVP_MAX_MD_SIZE]{};
 
@@ -25,7 +28,7 @@ std::string hmac_sha256(std::string_view secret, std::string_view data) {
     throw std::runtime_error{"Failed to sign JWT"};
   }
 
-  return base64_url_encode(digest, digest_size);
+  return base64UrlEncode(digest, digest_size);
 }
 
 } // namespace
@@ -57,11 +60,11 @@ std::string JwtService::issue(const UserDto& user) const {
       {"exp", expires_at},
   };
 
-  const std::string encoded_header = base64_url_encode(header.dump());
-  const std::string encoded_payload = base64_url_encode(payload.dump());
+  const std::string encoded_header = base64UrlEncode(header.dump());
+  const std::string encoded_payload = base64UrlEncode(payload.dump());
   const std::string signing_input = encoded_header + "." + encoded_payload;
 
-  return signing_input + "." + hmac_sha256(secret_, signing_input);
+  return signing_input + "." + hmacSha256(secret_, signing_input);
 }
 
 } // namespace fasc::server::security

@@ -13,6 +13,11 @@ namespace http = boost::beast::http;
 
 using fasc::server::tests::fixtures::makeBeastRequest;
 using fasc::server::tests::utils::expectJsonStringField;
+using fasc::server::core::AppRouter;
+using fasc::server::core::BeastResponse;
+using fasc::server::core::HttpRequest;
+using fasc::server::core::RequestDispatcher;
+using fasc::server::handling::HealthHandler;
 
 TEST(HealthEndpointTests, GetHealthReturnsOkThroughHttpPipeline) {
   HealthHandler health_handler;

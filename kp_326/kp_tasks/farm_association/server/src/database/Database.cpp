@@ -1,4 +1,4 @@
-#include <database/database.hpp>
+#include <database/Database.hpp>
 
 #include <memory>
 #include <odb/database.hxx>
@@ -10,7 +10,7 @@
 
 namespace {
 
-std::string env_or(const char* name, const char* fallback) {
+std::string envOr(const char* name, const char* fallback) {
   if (const char* value = std::getenv(name)) {
     return value;
   }
@@ -18,7 +18,7 @@ std::string env_or(const char* name, const char* fallback) {
   return fallback;
 }
 
-unsigned int env_port_or(const char* name, unsigned int fallback) {
+unsigned int envPortOr(const char* name, unsigned int fallback) {
   if (const char* value = std::getenv(name)) {
     return static_cast<unsigned int>(std::stoul(value));
   }
@@ -51,9 +51,9 @@ Database::Database(std::unique_ptr<odb::database> database) : underlying(std::mo
 
 Database Database::createFromEnv() {
   return Database{std::make_unique<odb::pgsql::database>(
-      env_or("FARM_DB_USER", "postgres"), env_or("FARM_DB_PASSWORD", "password"),
-      env_or("FARM_DB_NAME", "farm_association"), env_or("FARM_DB_HOST", "localhost"),
-      env_port_or("FARM_DB_PORT", 5432))};
+      envOr("FARM_DB_USER", "postgres"), envOr("FARM_DB_PASSWORD", "password"),
+      envOr("FARM_DB_NAME", "farm_association"), envOr("FARM_DB_HOST", "localhost"),
+      envPortOr("FARM_DB_PORT", 5432))};
 }
 
 Transaction Database::makeTransaction() {

@@ -20,14 +20,14 @@ struct BioDeleter {
 
 using BioPtr = std::unique_ptr<BIO, BioDeleter>;
 
-std::string strip_base64_padding(std::string encoded) {
+std::string stripBase64Padding(std::string encoded) {
   while (!encoded.empty() && encoded.back() == '=') {
     encoded.pop_back();
   }
   return encoded;
 }
 
-std::string restore_base64_padding(std::string encoded) {
+std::string restoreBase64Padding(std::string encoded) {
   while (encoded.size() % 4 != 0) {
     encoded.push_back('=');
   }
@@ -36,7 +36,7 @@ std::string restore_base64_padding(std::string encoded) {
 
 } // namespace
 
-std::string base64_encode(const unsigned char* data, std::size_t size) {
+std::string base64Encode(const unsigned char* data, std::size_t size) {
   BIO* base64 = BIO_new(BIO_f_base64());
   BIO* memory = BIO_new(BIO_s_mem());
   if (base64 == nullptr || memory == nullptr) {
@@ -57,7 +57,7 @@ std::string base64_encode(const unsigned char* data, std::size_t size) {
   return std::string{buffer->data, buffer->length};
 }
 
-std::string base64_decode(std::string_view encoded) {
+std::string base64Decode(std::string_view encoded) {
   std::string input{encoded};
   BIO* base64 = BIO_new(BIO_f_base64());
   BIO* memory = BIO_new_mem_buf(input.data(), static_cast<int>(input.size()));
@@ -80,8 +80,8 @@ std::string base64_decode(std::string_view encoded) {
   return std::string{decoded.data(), static_cast<std::size_t>(decoded_size)};
 }
 
-std::string base64_url_encode(const unsigned char* data, std::size_t size) {
-  std::string encoded = strip_base64_padding(base64_encode(data, size));
+std::string base64UrlEncode(const unsigned char* data, std::size_t size) {
+  std::string encoded = stripBase64Padding(base64Encode(data, size));
   for (char& symbol : encoded) {
     if (symbol == '+') {
       symbol = '-';
@@ -92,8 +92,8 @@ std::string base64_url_encode(const unsigned char* data, std::size_t size) {
   return encoded;
 }
 
-std::string base64_url_encode(std::string_view data) {
-  return base64_url_encode(reinterpret_cast<const unsigned char*>(data.data()), data.size());
+std::string base64UrlEncode(std::string_view data) {
+  return base64UrlEncode(reinterpret_cast<const unsigned char*>(data.data()), data.size());
 }
 
 } // namespace fasc::server::security

@@ -1,9 +1,26 @@
 #pragma once
 
+#include <controllers/app/UserError.hpp>
 #include <controllers/dto/User.hpp>
-#include <database/database.hpp>
+#include <database/Database.hpp>
+#include <extended/fpp/Result.hpp>
 #include <security/JwtService.hpp>
 #include <security/PasswordHasher.hpp>
+
+namespace fasc::server::controllers::app {
+
+using fasc::server::controllers::dto::AuthResultDto;
+using fasc::server::controllers::dto::CreateUserCommand;
+using fasc::server::controllers::dto::LoginUserCommand;
+using fasc::server::controllers::dto::RegisterUserCommand;
+using fasc::server::controllers::dto::UserDto;
+using fasc::extended::fpp::Result;
+
+///Результат создания пользователя.
+using CreateUserResult = Result<UserDto, UserError>;
+
+///Результат регистрации или авторизации пользователя.
+using AuthResult = Result<AuthResultDto, UserError>;
 
 /// Application controller для пользовательских сценариев.
 ///@note Работает с @c Database и не знает о HTTP/JSON деталях.
@@ -11,27 +28,42 @@ class UserController {
 public:
   /// Создает controller поверх database layer.
   ///@param db база данных, через которую выполняются persistence-операции.
+  ///@param passwordHasher сервис хеширования и проверки паролей.
+  ///@param jwt_service сервис выпуска JWT.
   UserController(fasc::server::database::Database& db,
-                 fasc::server::security::PasswordHasher& password_hasher,
+                 fasc::server::security::PasswordHasher& passwordHasher,
                  fasc::server::security::JwtService& jwt_service);
 
   /// Создает пользователя.
   ///@param command команда с данными нового пользователя.
-  ///@returns DTO созданного пользователя.
-  ///@throws Исключения @c Database или ODB, если persistence-операция не выполнена.
-  UserDto create_user(CreateUserCommand command);
-  AuthResultDto register_user(RegisterUserCommand command);
-  AuthResultDto login_user(LoginUserCommand command);
+  ///@returns результат с DTO созданного пользователя или предметной ошибкой.
+  CreateUserResult createUser(CreateUserCommand command);
+
+  ///Регистрирует пользователя и выпускает JWT.
+  ///@param command команда регистрации.
+  ///@returns результат с DTO пользователя и токеном или предметной ошибкой.
+  AuthResult registerUser(RegisterUserCommand command);
+
+  ///Авторизует пользователя и выпускает JWT.
+  ///@param command команда авторизации.
+  ///@returns результат с DTO пользователя и токеном или предметной ошибкой.
+  AuthResult loginUser(LoginUserCommand command);
 
 private:
-  UserDto create_user_with_password(std::string name, std::string password);
+  ///Создает пользователя после общей проверки имени и пароля.
+  ///@param name имя пользователя.
+  ///@param password пароль в открытом виде.
+  ///@returns результат с DTO созданного пользователя или предметной ошибкой.
+  CreateUserResult createUserWithPassword(std::string name, std::string password);
 
-  /// База данных для работы в
+  /// База данных для persistence-операций.
   fasc::server::database::Database& db_;
 
-  /// Контроллер хеширования
-  fasc::server::security::PasswordHasher& password_hasher_;
+  /// Сервис хеширования паролей.
+  fasc::server::security::PasswordHasher& passwordHasher_;
 
-  /// jwt сервис
+  /// JWT сервис авторизации.
   fasc::server::security::JwtService& jwt_service_;
 };
+
+} // namespace fasc::server::controllers::app

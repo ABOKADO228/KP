@@ -1,5 +1,5 @@
 #include <controllers/app/Users.hpp>
-#include <database/database.hpp>
+#include <database/Database.hpp>
 #include <security/JwtService.hpp>
 #include <security/PasswordHasher.hpp>
 
@@ -10,22 +10,33 @@
 
 namespace {
 
+using fasc::server::controllers::app::UserController;
+using fasc::server::controllers::dto::CreateUserCommand;
+
 TEST(UserControllerTests, RejectsEmptyUserNameBeforePersistence) {
   fasc::server::database::Database database{nullptr};
-  fasc::server::security::PasswordHasher password_hasher;
+  fasc::server::security::PasswordHasher passwordHasher;
   fasc::server::security::JwtService jwt_service{"test-secret"};
-  UserController controller{database, password_hasher, jwt_service};
+  UserController controller{database, passwordHasher, jwt_service};
 
-  EXPECT_THROW(controller.create_user(CreateUserCommand{"", "password123"}), std::invalid_argument);
+  const auto result = controller.createUser(CreateUserCommand{"", "password123"});
+
+  ASSERT_TRUE(result.hasError());
+  EXPECT_EQ(result.error().code, fasc::server::controllers::app::UserErrorCode::InvalidInput);
+  EXPECT_EQ(result.error().message, "User name is required");
 }
 
 TEST(UserControllerTests, RejectsShortPasswordBeforePersistence) {
   fasc::server::database::Database database{nullptr};
-  fasc::server::security::PasswordHasher password_hasher;
+  fasc::server::security::PasswordHasher passwordHasher;
   fasc::server::security::JwtService jwt_service{"test-secret"};
-  UserController controller{database, password_hasher, jwt_service};
+  UserController controller{database, passwordHasher, jwt_service};
 
-  EXPECT_THROW(controller.create_user(CreateUserCommand{"Alex", "short"}), std::invalid_argument);
+  const auto result = controller.createUser(CreateUserCommand{"Alex", "short"});
+
+  ASSERT_TRUE(result.hasError());
+  EXPECT_EQ(result.error().code, fasc::server::controllers::app::UserErrorCode::InvalidInput);
+  EXPECT_EQ(result.error().message, "Password must contain at least 8 characters");
 }
 
 } // namespace
