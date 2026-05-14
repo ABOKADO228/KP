@@ -46,7 +46,7 @@ fasc::server::controllers::dto::PurchaseRequisitionKeyDto keyFrom(
     const fasc::server::core::HttpRequest& request) {
   fasc::server::controllers::dto::PurchaseRequisitionKeyDto key;
   if (const auto it = request.query_params.find("id"); it != request.query_params.end()) {
-    key.id = std::stoi(it->second);
+    key.id = std::stoull(it->second);
   } else {
     throw std::invalid_argument{"Missing key field: id"};
   }

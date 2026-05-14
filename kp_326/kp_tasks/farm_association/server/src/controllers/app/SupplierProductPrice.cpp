@@ -1,5 +1,7 @@
 #include <controllers/app/SupplierProductPrice.hpp>
 
+#include <database/SqlValue.hpp>
+
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -29,16 +31,16 @@ std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& 
 
 fasc::server::persistence::SupplierProductPriceEntity rowToEntity(const fasc::server::database::SqlRow& row) {
   fasc::server::persistence::SupplierProductPriceEntity entity;
-  entity.id = std::stoi(requireColumn(row, "id"));
-  entity.supplierId = std::stoi(requireColumn(row, "supplier_id"));
-  entity.productId = std::stoi(requireColumn(row, "product_id"));
-  if (const auto value = optionalColumn(row, "purchase_price")) {
-    entity.purchasePrice = std::stod(*value);
+  entity.id = fasc::server::database::requireColumn<std::uint64_t>(row, "id");
+  entity.supplierId = fasc::server::database::requireColumn<std::uint64_t>(row, "supplier_id");
+  entity.productId = fasc::server::database::requireColumn<std::uint64_t>(row, "product_id");
+  if (const auto value = fasc::server::database::optionalColumn<double>(row, "purchase_price")) {
+    entity.purchasePrice = *value;
   } else {
     entity.purchasePrice.reset();
   }
-  entity.validFrom = requireColumn(row, "valid_from");
-  if (const auto value = optionalColumn(row, "valid_until")) {
+  entity.validFrom = fasc::server::database::requireColumn<fasc::server::domain::Date>(row, "valid_from");
+  if (const auto value = fasc::server::database::optionalColumn<fasc::server::domain::Date>(row, "valid_until")) {
     entity.validUntil = *value;
   } else {
     entity.validUntil.reset();
@@ -49,7 +51,7 @@ fasc::server::persistence::SupplierProductPriceEntity rowToEntity(const fasc::se
 std::vector<fasc::server::database::SqlParameter> keyValues(
     const fasc::server::controllers::dto::SupplierProductPriceKeyDto& key) {
   std::vector<fasc::server::database::SqlParameter> values;
-  values.push_back(fasc::server::database::SqlParameter{std::to_string(key.id), false});
+  values.push_back(fasc::server::database::makeSqlParameter(key.id));
   return values;
 }
 
@@ -104,7 +106,7 @@ SupplierProductPriceMutationResult SupplierProductPriceController::create(
   }
   if (dto.supplierId.has_value()) {
     columns.push_back("supplier_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.supplierId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.supplierId));
   }
   if (!dto.productId.has_value()) {
     return SupplierProductPriceMutationResult::failure(
@@ -112,11 +114,11 @@ SupplierProductPriceMutationResult SupplierProductPriceController::create(
   }
   if (dto.productId.has_value()) {
     columns.push_back("product_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.productId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.productId));
   }
   if (dto.purchasePrice.has_value()) {
     columns.push_back("purchase_price");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.purchasePrice), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.purchasePrice));
   }
   if (!dto.validFrom.has_value()) {
     return SupplierProductPriceMutationResult::failure(
@@ -124,11 +126,11 @@ SupplierProductPriceMutationResult SupplierProductPriceController::create(
   }
   if (dto.validFrom.has_value()) {
     columns.push_back("valid_from");
-    values.push_back(fasc::server::database::SqlParameter{*dto.validFrom, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.validFrom));
   }
   if (dto.validUntil.has_value()) {
     columns.push_back("valid_until");
-    values.push_back(fasc::server::database::SqlParameter{*dto.validUntil, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.validUntil));
   }
   if (columns.empty()) {
     return SupplierProductPriceMutationResult::failure(
@@ -155,23 +157,23 @@ SupplierProductPriceMutationResult SupplierProductPriceController::update(
   std::vector<fasc::server::database::SqlParameter> values;
   if (dto.supplierId.has_value()) {
     columns.push_back("supplier_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.supplierId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.supplierId));
   }
   if (dto.productId.has_value()) {
     columns.push_back("product_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.productId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.productId));
   }
   if (dto.purchasePrice.has_value()) {
     columns.push_back("purchase_price");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.purchasePrice), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.purchasePrice));
   }
   if (dto.validFrom.has_value()) {
     columns.push_back("valid_from");
-    values.push_back(fasc::server::database::SqlParameter{*dto.validFrom, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.validFrom));
   }
   if (dto.validUntil.has_value()) {
     columns.push_back("valid_until");
-    values.push_back(fasc::server::database::SqlParameter{*dto.validUntil, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.validUntil));
   }
   if (columns.empty()) {
     return SupplierProductPriceMutationResult::failure(

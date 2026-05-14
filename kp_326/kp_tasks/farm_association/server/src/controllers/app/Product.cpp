@@ -1,5 +1,7 @@
 #include <controllers/app/Product.hpp>
 
+#include <database/SqlValue.hpp>
+
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -29,15 +31,15 @@ std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& 
 
 fasc::server::persistence::ProductEntity rowToEntity(const fasc::server::database::SqlRow& row) {
   fasc::server::persistence::ProductEntity entity;
-  entity.id = std::stoi(requireColumn(row, "id"));
-  entity.typeId = std::stoi(requireColumn(row, "type_id"));
+  entity.id = fasc::server::database::requireColumn<std::uint64_t>(row, "id");
+  entity.typeId = fasc::server::database::requireColumn<std::uint64_t>(row, "type_id");
   if (const auto value = optionalColumn(row, "name")) {
     entity.name = *value;
   } else {
     entity.name.reset();
   }
-  if (const auto value = optionalColumn(row, "unit_id")) {
-    entity.unitId = std::stoi(*value);
+  if (const auto value = fasc::server::database::optionalColumn<std::uint64_t>(row, "unit_id")) {
+    entity.unitId = *value;
   } else {
     entity.unitId.reset();
   }
@@ -47,7 +49,7 @@ fasc::server::persistence::ProductEntity rowToEntity(const fasc::server::databas
 std::vector<fasc::server::database::SqlParameter> keyValues(
     const fasc::server::controllers::dto::ProductKeyDto& key) {
   std::vector<fasc::server::database::SqlParameter> values;
-  values.push_back(fasc::server::database::SqlParameter{std::to_string(key.id), false});
+  values.push_back(fasc::server::database::makeSqlParameter(key.id));
   return values;
 }
 
@@ -102,15 +104,15 @@ ProductMutationResult ProductController::create(
   }
   if (dto.typeId.has_value()) {
     columns.push_back("type_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.typeId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.typeId));
   }
   if (dto.name.has_value()) {
     columns.push_back("name");
-    values.push_back(fasc::server::database::SqlParameter{*dto.name, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.name));
   }
   if (dto.unitId.has_value()) {
     columns.push_back("unit_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.unitId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.unitId));
   }
   if (columns.empty()) {
     return ProductMutationResult::failure(
@@ -137,15 +139,15 @@ ProductMutationResult ProductController::update(
   std::vector<fasc::server::database::SqlParameter> values;
   if (dto.typeId.has_value()) {
     columns.push_back("type_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.typeId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.typeId));
   }
   if (dto.name.has_value()) {
     columns.push_back("name");
-    values.push_back(fasc::server::database::SqlParameter{*dto.name, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.name));
   }
   if (dto.unitId.has_value()) {
     columns.push_back("unit_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.unitId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.unitId));
   }
   if (columns.empty()) {
     return ProductMutationResult::failure(

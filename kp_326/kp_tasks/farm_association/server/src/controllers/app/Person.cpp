@@ -1,5 +1,7 @@
 #include <controllers/app/Person.hpp>
 
+#include <database/SqlValue.hpp>
+
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -29,7 +31,7 @@ std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& 
 
 fasc::server::persistence::PersonEntity rowToEntity(const fasc::server::database::SqlRow& row) {
   fasc::server::persistence::PersonEntity entity;
-  entity.id = std::stoi(requireColumn(row, "id"));
+  entity.id = fasc::server::database::requireColumn<std::uint64_t>(row, "id");
   if (const auto value = optionalColumn(row, "first_name")) {
     entity.firstName = *value;
   } else {
@@ -45,7 +47,7 @@ fasc::server::persistence::PersonEntity rowToEntity(const fasc::server::database
   } else {
     entity.middleName.reset();
   }
-  if (const auto value = optionalColumn(row, "birth_date")) {
+  if (const auto value = fasc::server::database::optionalColumn<fasc::server::domain::Date>(row, "birth_date")) {
     entity.birthDate = *value;
   } else {
     entity.birthDate.reset();
@@ -71,7 +73,7 @@ fasc::server::persistence::PersonEntity rowToEntity(const fasc::server::database
 std::vector<fasc::server::database::SqlParameter> keyValues(
     const fasc::server::controllers::dto::PersonKeyDto& key) {
   std::vector<fasc::server::database::SqlParameter> values;
-  values.push_back(fasc::server::database::SqlParameter{std::to_string(key.id), false});
+  values.push_back(fasc::server::database::makeSqlParameter(key.id));
   return values;
 }
 
@@ -122,31 +124,31 @@ PersonMutationResult PersonController::create(
   std::vector<fasc::server::database::SqlParameter> values;
   if (dto.firstName.has_value()) {
     columns.push_back("first_name");
-    values.push_back(fasc::server::database::SqlParameter{*dto.firstName, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.firstName));
   }
   if (dto.lastName.has_value()) {
     columns.push_back("last_name");
-    values.push_back(fasc::server::database::SqlParameter{*dto.lastName, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.lastName));
   }
   if (dto.middleName.has_value()) {
     columns.push_back("middle_name");
-    values.push_back(fasc::server::database::SqlParameter{*dto.middleName, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.middleName));
   }
   if (dto.birthDate.has_value()) {
     columns.push_back("birth_date");
-    values.push_back(fasc::server::database::SqlParameter{*dto.birthDate, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.birthDate));
   }
   if (dto.phone.has_value()) {
     columns.push_back("phone");
-    values.push_back(fasc::server::database::SqlParameter{*dto.phone, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.phone));
   }
   if (dto.email.has_value()) {
     columns.push_back("email");
-    values.push_back(fasc::server::database::SqlParameter{*dto.email, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.email));
   }
   if (dto.address.has_value()) {
     columns.push_back("address");
-    values.push_back(fasc::server::database::SqlParameter{*dto.address, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.address));
   }
   if (columns.empty()) {
     return PersonMutationResult::failure(
@@ -173,31 +175,31 @@ PersonMutationResult PersonController::update(
   std::vector<fasc::server::database::SqlParameter> values;
   if (dto.firstName.has_value()) {
     columns.push_back("first_name");
-    values.push_back(fasc::server::database::SqlParameter{*dto.firstName, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.firstName));
   }
   if (dto.lastName.has_value()) {
     columns.push_back("last_name");
-    values.push_back(fasc::server::database::SqlParameter{*dto.lastName, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.lastName));
   }
   if (dto.middleName.has_value()) {
     columns.push_back("middle_name");
-    values.push_back(fasc::server::database::SqlParameter{*dto.middleName, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.middleName));
   }
   if (dto.birthDate.has_value()) {
     columns.push_back("birth_date");
-    values.push_back(fasc::server::database::SqlParameter{*dto.birthDate, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.birthDate));
   }
   if (dto.phone.has_value()) {
     columns.push_back("phone");
-    values.push_back(fasc::server::database::SqlParameter{*dto.phone, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.phone));
   }
   if (dto.email.has_value()) {
     columns.push_back("email");
-    values.push_back(fasc::server::database::SqlParameter{*dto.email, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.email));
   }
   if (dto.address.has_value()) {
     columns.push_back("address");
-    values.push_back(fasc::server::database::SqlParameter{*dto.address, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.address));
   }
   if (columns.empty()) {
     return PersonMutationResult::failure(

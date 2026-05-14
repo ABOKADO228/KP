@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <odb/core.hxx>
 #include <odb/nullable.hxx>
 
@@ -10,22 +14,22 @@ namespace fasc::server::persistence {
 /// Сущность таблицы employee_plot_assignment.
 struct EmployeePlotAssignmentEntity {
   /// Значение колонки id.
-  int id{};
+  std::uint64_t id{};
 
   /// Значение колонки farm_employee_id.
-  int farmEmployeeId{};
+  std::uint64_t farmEmployeeId{};
 
   /// Значение колонки farm_plot_id.
-  int farmPlotId{};
+  std::uint64_t farmPlotId{};
 
   /// Значение колонки assignment_type.
-  odb::nullable<std::string> assignmentType;
+  odb::nullable<fasc::server::domain::EmployeePlotAssignmentType> assignmentType;
 
   /// Значение колонки assigned_at.
-  std::string assignedAt;
+  fasc::server::domain::Date assignedAt;
 
   /// Значение колонки unassigned_at.
-  odb::nullable<std::string> unassignedAt;
+  odb::nullable<fasc::server::domain::Date> unassignedAt;
 
   /// Значение колонки notes.
   odb::nullable<std::string> notes;

@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <persistence/AssociationRole.hpp>
 
 #include <optional>
@@ -11,17 +15,17 @@ namespace fasc::server::controllers::dto {
 /// Ключ строки таблицы association_role.
 struct AssociationRoleKeyDto {
   /// Значение колонки id.
-  int id{};
+  std::uint64_t id{};
 
 };
 
 /// DTO создания строки таблицы association_role.
 struct AssociationRoleCreateDto {
   /// Значение колонки id.
-  std::optional<int> id;
+  std::optional<std::uint64_t> id;
 
   /// Значение колонки code.
-  std::optional<std::string> code;
+  std::optional<fasc::server::domain::AssociationRoleCode> code;
 
   /// Значение колонки name.
   std::optional<std::string> name;
@@ -34,7 +38,7 @@ struct AssociationRoleCreateDto {
 /// DTO обновления строки таблицы association_role.
 struct AssociationRoleUpdateDto {
   /// Значение колонки code.
-  std::optional<std::string> code;
+  std::optional<fasc::server::domain::AssociationRoleCode> code;
 
   /// Значение колонки name.
   std::optional<std::string> name;

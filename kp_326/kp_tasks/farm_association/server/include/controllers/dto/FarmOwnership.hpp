@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <persistence/FarmOwnership.hpp>
 
 #include <optional>
@@ -11,45 +15,45 @@ namespace fasc::server::controllers::dto {
 /// Ключ строки таблицы farm_ownership.
 struct FarmOwnershipKeyDto {
   /// Значение колонки id.
-  int id{};
+  std::uint64_t id{};
 
 };
 
 /// DTO создания строки таблицы farm_ownership.
 struct FarmOwnershipCreateDto {
   /// Значение колонки farm_id.
-  std::optional<int> farmId;
+  std::optional<std::uint64_t> farmId;
 
   /// Значение колонки farm_owner_id.
-  std::optional<int> farmOwnerId;
+  std::optional<std::uint64_t> farmOwnerId;
 
   /// Значение колонки ownership_percentage.
   std::optional<double> ownershipPercentage;
 
   /// Значение колонки started_at.
-  std::optional<std::string> startedAt;
+  std::optional<fasc::server::domain::Date> startedAt;
 
   /// Значение колонки ended_at.
-  std::optional<std::string> endedAt;
+  std::optional<fasc::server::domain::Date> endedAt;
 
 };
 
 /// DTO обновления строки таблицы farm_ownership.
 struct FarmOwnershipUpdateDto {
   /// Значение колонки farm_id.
-  std::optional<int> farmId;
+  std::optional<std::uint64_t> farmId;
 
   /// Значение колонки farm_owner_id.
-  std::optional<int> farmOwnerId;
+  std::optional<std::uint64_t> farmOwnerId;
 
   /// Значение колонки ownership_percentage.
   std::optional<double> ownershipPercentage;
 
   /// Значение колонки started_at.
-  std::optional<std::string> startedAt;
+  std::optional<fasc::server::domain::Date> startedAt;
 
   /// Значение колонки ended_at.
-  std::optional<std::string> endedAt;
+  std::optional<fasc::server::domain::Date> endedAt;
 
 };
 

@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <odb/core.hxx>
 #include <odb/nullable.hxx>
 
@@ -10,10 +14,10 @@ namespace fasc::server::persistence {
 /// Сущность таблицы employment_status.
 struct EmploymentStatusEntity {
   /// Значение колонки id.
-  int id{};
+  std::uint64_t id{};
 
   /// Значение колонки name.
-  odb::nullable<std::string> name;
+  odb::nullable<fasc::server::domain::EmploymentStatusCode> name;
 
 };
 

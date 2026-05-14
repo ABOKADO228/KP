@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <persistence/Unit.hpp>
 
 #include <optional>
@@ -11,17 +15,17 @@ namespace fasc::server::controllers::dto {
 /// Ключ строки таблицы unit.
 struct UnitKeyDto {
   /// Значение колонки id.
-  int id{};
+  std::uint64_t id{};
 
 };
 
 /// DTO создания строки таблицы unit.
 struct UnitCreateDto {
   /// Значение колонки id.
-  std::optional<int> id;
+  std::optional<std::uint64_t> id;
 
   /// Значение колонки code.
-  std::optional<std::string> code;
+  std::optional<fasc::server::domain::UnitCode> code;
 
   /// Значение колонки name.
   std::optional<std::string> name;
@@ -31,7 +35,7 @@ struct UnitCreateDto {
 /// DTO обновления строки таблицы unit.
 struct UnitUpdateDto {
   /// Значение колонки code.
-  std::optional<std::string> code;
+  std::optional<fasc::server::domain::UnitCode> code;
 
   /// Значение колонки name.
   std::optional<std::string> name;

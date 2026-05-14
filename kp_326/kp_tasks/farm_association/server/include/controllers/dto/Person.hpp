@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <persistence/Person.hpp>
 
 #include <optional>
@@ -11,7 +15,7 @@ namespace fasc::server::controllers::dto {
 /// Ключ строки таблицы person.
 struct PersonKeyDto {
   /// Значение колонки id.
-  int id{};
+  std::uint64_t id{};
 
 };
 
@@ -27,7 +31,7 @@ struct PersonCreateDto {
   std::optional<std::string> middleName;
 
   /// Значение колонки birth_date.
-  std::optional<std::string> birthDate;
+  std::optional<fasc::server::domain::Date> birthDate;
 
   /// Значение колонки phone.
   std::optional<std::string> phone;
@@ -52,7 +56,7 @@ struct PersonUpdateDto {
   std::optional<std::string> middleName;
 
   /// Значение колонки birth_date.
-  std::optional<std::string> birthDate;
+  std::optional<fasc::server::domain::Date> birthDate;
 
   /// Значение колонки phone.
   std::optional<std::string> phone;

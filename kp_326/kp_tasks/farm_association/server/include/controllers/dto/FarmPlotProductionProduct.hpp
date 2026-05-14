@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <persistence/FarmPlotProductionProduct.hpp>
 
 #include <optional>
@@ -11,20 +15,20 @@ namespace fasc::server::controllers::dto {
 /// Ключ строки таблицы farm_plot_production_product.
 struct FarmPlotProductionProductKeyDto {
   /// Значение колонки product_id.
-  int productId{};
+  std::uint64_t productId{};
 
   /// Значение колонки farm_plot_id.
-  int farmPlotId{};
+  std::uint64_t farmPlotId{};
 
 };
 
 /// DTO создания строки таблицы farm_plot_production_product.
 struct FarmPlotProductionProductCreateDto {
   /// Значение колонки product_id.
-  std::optional<int> productId;
+  std::optional<std::uint64_t> productId;
 
   /// Значение колонки farm_plot_id.
-  std::optional<int> farmPlotId;
+  std::optional<std::uint64_t> farmPlotId;
 
   /// Значение колонки quantity.
   std::optional<int> quantity;

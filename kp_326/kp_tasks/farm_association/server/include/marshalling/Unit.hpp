@@ -1,5 +1,9 @@
 #pragma once
 
+#include <marshalling/Nullable.hpp>
+
+#include <domain/Types.hpp>
+
 #include <controllers/dto/Unit.hpp>
 #include <views/Unit.hpp>
 #include <optional>
@@ -25,10 +29,10 @@ namespace fasc::server::controllers::dto {
 /// Читает DTO создания таблицы unit.
 inline void from_json(const nlohmann::json& json, UnitCreateDto& value) {
   if (json.contains("id") && !json.at("id").is_null()) {
-    value.id = json.at("id").get<int>();
+    value.id = json.at("id").get<std::uint64_t>();
   }
   if (json.contains("code") && !json.at("code").is_null()) {
-    value.code = json.at("code").get<std::string>();
+    value.code = json.at("code").get<fasc::server::domain::UnitCode>();
   }
   if (json.contains("name") && !json.at("name").is_null()) {
     value.name = json.at("name").get<std::string>();
@@ -38,7 +42,7 @@ inline void from_json(const nlohmann::json& json, UnitCreateDto& value) {
 /// Читает DTO обновления таблицы unit.
 inline void from_json(const nlohmann::json& json, UnitUpdateDto& value) {
   if (json.contains("code") && !json.at("code").is_null()) {
-    value.code = json.at("code").get<std::string>();
+    value.code = json.at("code").get<fasc::server::domain::UnitCode>();
   }
   if (json.contains("name") && !json.at("name").is_null()) {
     value.name = json.at("name").get<std::string>();
@@ -50,14 +54,6 @@ inline void from_json(const nlohmann::json& json, UnitUpdateDto& value) {
 namespace fasc::server::views {
 
 namespace detail {
-
-template <typename T>
-inline std::optional<T> toOptional(const odb::nullable<T>& value) {
-  if (value.null()) {
-    return std::nullopt;
-  }
-  return value.get();
-}
 
 inline nlohmann::json UnitRowPayload(const UnitRowView& view) {
   nlohmann::json json = nlohmann::json::object();

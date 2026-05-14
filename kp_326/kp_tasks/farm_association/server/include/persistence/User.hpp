@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 #include <odb/core.hxx>
 
 #include <string>
@@ -24,7 +26,7 @@ public:
 
   ///Возвращает идентификатор пользователя.
   ///@returns primary key пользователя.
-  unsigned long id() const {
+  std::uint64_t id() const {
     return id_;
   }
 
@@ -44,7 +46,7 @@ private:
   friend class odb::access;
 
   ///Primary key пользователя.
-  unsigned long id_{};
+  std::uint64_t id_{};
 
   ///Уникальное имя пользователя.
   std::string name_;

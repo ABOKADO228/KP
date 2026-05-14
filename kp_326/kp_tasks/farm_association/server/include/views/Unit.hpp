@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <optional>
 #include <string>
 #include <vector>
@@ -7,8 +11,8 @@
 namespace fasc::server::views {
 
 struct UnitRowView {
-  int id{};
-  std::optional<std::string> code{};
+  std::uint64_t id{};
+  std::optional<fasc::server::domain::UnitCode> code{};
   std::optional<std::string> name{};
 };
 

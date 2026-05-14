@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 #include <string>
 
 namespace fasc::server::controllers::dto {
@@ -37,7 +39,7 @@ struct LoginUserCommand {
 ///@note Для HTTP-ответов преобразуется в @c UserView перед сериализацией.
 struct UserDto {
   ///Идентификатор пользователя.
-  unsigned long id{};
+  std::uint64_t id{};
 
   ///Публичное имя пользователя.
   std::string name;

@@ -1,5 +1,7 @@
 #include <controllers/http/FarmPlotConsumptionProduct.hpp>
 
+#include <exception>
+
 #include <marshalling/FarmPlotConsumptionProduct.hpp>
 
 #include <nlohmann/json.hpp>
@@ -54,7 +56,7 @@ FarmPlotConsumptionProductMutationViewResult FarmPlotConsumptionProductHttpContr
     }
     return FarmPlotConsumptionProductMutationViewResult::success(
         fasc::server::views::FarmPlotConsumptionProductMutationView{result.success().affectedRows});
-  } catch (const nlohmann::json::exception& exception) {
+  } catch (const std::exception& exception) {
     return FarmPlotConsumptionProductMutationViewResult::failure(
         fasc::server::views::ErrorView{fasc::server::views::ErrorViewCode::BadRequest, exception.what()});
   }
@@ -71,7 +73,7 @@ FarmPlotConsumptionProductMutationViewResult FarmPlotConsumptionProductHttpContr
     }
     return FarmPlotConsumptionProductMutationViewResult::success(
         fasc::server::views::FarmPlotConsumptionProductMutationView{result.success().affectedRows});
-  } catch (const nlohmann::json::exception& exception) {
+  } catch (const std::exception& exception) {
     return FarmPlotConsumptionProductMutationViewResult::failure(
         fasc::server::views::ErrorView{fasc::server::views::ErrorViewCode::BadRequest, exception.what()});
   }

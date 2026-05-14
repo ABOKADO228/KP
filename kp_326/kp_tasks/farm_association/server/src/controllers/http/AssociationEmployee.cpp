@@ -1,5 +1,7 @@
 #include <controllers/http/AssociationEmployee.hpp>
 
+#include <exception>
+
 #include <marshalling/AssociationEmployee.hpp>
 
 #include <nlohmann/json.hpp>
@@ -54,7 +56,7 @@ AssociationEmployeeMutationViewResult AssociationEmployeeHttpController::create(
     }
     return AssociationEmployeeMutationViewResult::success(
         fasc::server::views::AssociationEmployeeMutationView{result.success().affectedRows});
-  } catch (const nlohmann::json::exception& exception) {
+  } catch (const std::exception& exception) {
     return AssociationEmployeeMutationViewResult::failure(
         fasc::server::views::ErrorView{fasc::server::views::ErrorViewCode::BadRequest, exception.what()});
   }
@@ -71,7 +73,7 @@ AssociationEmployeeMutationViewResult AssociationEmployeeHttpController::update(
     }
     return AssociationEmployeeMutationViewResult::success(
         fasc::server::views::AssociationEmployeeMutationView{result.success().affectedRows});
-  } catch (const nlohmann::json::exception& exception) {
+  } catch (const std::exception& exception) {
     return AssociationEmployeeMutationViewResult::failure(
         fasc::server::views::ErrorView{fasc::server::views::ErrorViewCode::BadRequest, exception.what()});
   }

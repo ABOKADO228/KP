@@ -1,5 +1,7 @@
 #include <controllers/app/AssociationMember.hpp>
 
+#include <database/SqlValue.hpp>
+
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -29,16 +31,16 @@ std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& 
 
 fasc::server::persistence::AssociationMemberEntity rowToEntity(const fasc::server::database::SqlRow& row) {
   fasc::server::persistence::AssociationMemberEntity entity;
-  entity.id = std::stoi(requireColumn(row, "id"));
-  entity.associationId = std::stoi(requireColumn(row, "association_id"));
-  entity.personId = std::stoi(requireColumn(row, "person_id"));
+  entity.id = fasc::server::database::requireColumn<std::uint64_t>(row, "id");
+  entity.associationId = fasc::server::database::requireColumn<std::uint64_t>(row, "association_id");
+  entity.personId = fasc::server::database::requireColumn<std::uint64_t>(row, "person_id");
   if (const auto value = optionalColumn(row, "membership_number")) {
     entity.membershipNumber = *value;
   } else {
     entity.membershipNumber.reset();
   }
-  entity.joinedDate = requireColumn(row, "joined_date");
-  if (const auto value = optionalColumn(row, "status")) {
+  entity.joinedDate = fasc::server::database::requireColumn<fasc::server::domain::Date>(row, "joined_date");
+  if (const auto value = fasc::server::database::optionalColumn<fasc::server::domain::AssociationMemberStatus>(row, "status")) {
     entity.status = *value;
   } else {
     entity.status.reset();
@@ -54,7 +56,7 @@ fasc::server::persistence::AssociationMemberEntity rowToEntity(const fasc::serve
 std::vector<fasc::server::database::SqlParameter> keyValues(
     const fasc::server::controllers::dto::AssociationMemberKeyDto& key) {
   std::vector<fasc::server::database::SqlParameter> values;
-  values.push_back(fasc::server::database::SqlParameter{std::to_string(key.id), false});
+  values.push_back(fasc::server::database::makeSqlParameter(key.id));
   return values;
 }
 
@@ -109,7 +111,7 @@ AssociationMemberMutationResult AssociationMemberController::create(
   }
   if (dto.associationId.has_value()) {
     columns.push_back("association_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.associationId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.associationId));
   }
   if (!dto.personId.has_value()) {
     return AssociationMemberMutationResult::failure(
@@ -117,11 +119,11 @@ AssociationMemberMutationResult AssociationMemberController::create(
   }
   if (dto.personId.has_value()) {
     columns.push_back("person_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.personId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.personId));
   }
   if (dto.membershipNumber.has_value()) {
     columns.push_back("membership_number");
-    values.push_back(fasc::server::database::SqlParameter{*dto.membershipNumber, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.membershipNumber));
   }
   if (!dto.joinedDate.has_value()) {
     return AssociationMemberMutationResult::failure(
@@ -129,15 +131,15 @@ AssociationMemberMutationResult AssociationMemberController::create(
   }
   if (dto.joinedDate.has_value()) {
     columns.push_back("joined_date");
-    values.push_back(fasc::server::database::SqlParameter{*dto.joinedDate, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.joinedDate));
   }
   if (dto.status.has_value()) {
     columns.push_back("status");
-    values.push_back(fasc::server::database::SqlParameter{*dto.status, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.status));
   }
   if (dto.notes.has_value()) {
     columns.push_back("notes");
-    values.push_back(fasc::server::database::SqlParameter{*dto.notes, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.notes));
   }
   if (columns.empty()) {
     return AssociationMemberMutationResult::failure(
@@ -164,27 +166,27 @@ AssociationMemberMutationResult AssociationMemberController::update(
   std::vector<fasc::server::database::SqlParameter> values;
   if (dto.associationId.has_value()) {
     columns.push_back("association_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.associationId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.associationId));
   }
   if (dto.personId.has_value()) {
     columns.push_back("person_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.personId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.personId));
   }
   if (dto.membershipNumber.has_value()) {
     columns.push_back("membership_number");
-    values.push_back(fasc::server::database::SqlParameter{*dto.membershipNumber, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.membershipNumber));
   }
   if (dto.joinedDate.has_value()) {
     columns.push_back("joined_date");
-    values.push_back(fasc::server::database::SqlParameter{*dto.joinedDate, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.joinedDate));
   }
   if (dto.status.has_value()) {
     columns.push_back("status");
-    values.push_back(fasc::server::database::SqlParameter{*dto.status, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.status));
   }
   if (dto.notes.has_value()) {
     columns.push_back("notes");
-    values.push_back(fasc::server::database::SqlParameter{*dto.notes, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.notes));
   }
   if (columns.empty()) {
     return AssociationMemberMutationResult::failure(

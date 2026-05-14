@@ -1,5 +1,7 @@
 #include <controllers/http/AssociationRole.hpp>
 
+#include <exception>
+
 #include <marshalling/AssociationRole.hpp>
 
 #include <nlohmann/json.hpp>
@@ -54,7 +56,7 @@ AssociationRoleMutationViewResult AssociationRoleHttpController::create(std::str
     }
     return AssociationRoleMutationViewResult::success(
         fasc::server::views::AssociationRoleMutationView{result.success().affectedRows});
-  } catch (const nlohmann::json::exception& exception) {
+  } catch (const std::exception& exception) {
     return AssociationRoleMutationViewResult::failure(
         fasc::server::views::ErrorView{fasc::server::views::ErrorViewCode::BadRequest, exception.what()});
   }
@@ -71,7 +73,7 @@ AssociationRoleMutationViewResult AssociationRoleHttpController::update(
     }
     return AssociationRoleMutationViewResult::success(
         fasc::server::views::AssociationRoleMutationView{result.success().affectedRows});
-  } catch (const nlohmann::json::exception& exception) {
+  } catch (const std::exception& exception) {
     return AssociationRoleMutationViewResult::failure(
         fasc::server::views::ErrorView{fasc::server::views::ErrorViewCode::BadRequest, exception.what()});
   }

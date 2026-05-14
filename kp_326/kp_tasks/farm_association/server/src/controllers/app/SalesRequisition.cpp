@@ -1,5 +1,7 @@
 #include <controllers/app/SalesRequisition.hpp>
 
+#include <database/SqlValue.hpp>
+
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -29,26 +31,26 @@ std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& 
 
 fasc::server::persistence::SalesRequisitionEntity rowToEntity(const fasc::server::database::SqlRow& row) {
   fasc::server::persistence::SalesRequisitionEntity entity;
-  entity.id = std::stoi(requireColumn(row, "id"));
-  if (const auto value = optionalColumn(row, "farm_id")) {
-    entity.farmId = std::stoi(*value);
+  entity.id = fasc::server::database::requireColumn<std::uint64_t>(row, "id");
+  if (const auto value = fasc::server::database::optionalColumn<std::uint64_t>(row, "farm_id")) {
+    entity.farmId = *value;
   } else {
     entity.farmId.reset();
   }
-  entity.productId = std::stoi(requireColumn(row, "product_id"));
-  entity.quantity = std::stoi(requireColumn(row, "quantity"));
-  if (const auto value = optionalColumn(row, "price_per_unit")) {
-    entity.pricePerUnit = std::stod(*value);
+  entity.productId = fasc::server::database::requireColumn<std::uint64_t>(row, "product_id");
+  entity.quantity = fasc::server::database::requireColumn<int>(row, "quantity");
+  if (const auto value = fasc::server::database::optionalColumn<double>(row, "price_per_unit")) {
+    entity.pricePerUnit = *value;
   } else {
     entity.pricePerUnit.reset();
   }
-  entity.offerDate = requireColumn(row, "offer_date");
-  if (const auto value = optionalColumn(row, "valid_until")) {
+  entity.offerDate = fasc::server::database::requireColumn<fasc::server::domain::Date>(row, "offer_date");
+  if (const auto value = fasc::server::database::optionalColumn<fasc::server::domain::Date>(row, "valid_until")) {
     entity.validUntil = *value;
   } else {
     entity.validUntil.reset();
   }
-  if (const auto value = optionalColumn(row, "status")) {
+  if (const auto value = fasc::server::database::optionalColumn<fasc::server::domain::SalesRequisitionStatus>(row, "status")) {
     entity.status = *value;
   } else {
     entity.status.reset();
@@ -64,7 +66,7 @@ fasc::server::persistence::SalesRequisitionEntity rowToEntity(const fasc::server
 std::vector<fasc::server::database::SqlParameter> keyValues(
     const fasc::server::controllers::dto::SalesRequisitionKeyDto& key) {
   std::vector<fasc::server::database::SqlParameter> values;
-  values.push_back(fasc::server::database::SqlParameter{std::to_string(key.id), false});
+  values.push_back(fasc::server::database::makeSqlParameter(key.id));
   return values;
 }
 
@@ -115,7 +117,7 @@ SalesRequisitionMutationResult SalesRequisitionController::create(
   std::vector<fasc::server::database::SqlParameter> values;
   if (dto.farmId.has_value()) {
     columns.push_back("farm_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.farmId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.farmId));
   }
   if (!dto.productId.has_value()) {
     return SalesRequisitionMutationResult::failure(
@@ -123,7 +125,7 @@ SalesRequisitionMutationResult SalesRequisitionController::create(
   }
   if (dto.productId.has_value()) {
     columns.push_back("product_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.productId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.productId));
   }
   if (!dto.quantity.has_value()) {
     return SalesRequisitionMutationResult::failure(
@@ -131,11 +133,11 @@ SalesRequisitionMutationResult SalesRequisitionController::create(
   }
   if (dto.quantity.has_value()) {
     columns.push_back("quantity");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.quantity), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.quantity));
   }
   if (dto.pricePerUnit.has_value()) {
     columns.push_back("price_per_unit");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.pricePerUnit), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.pricePerUnit));
   }
   if (!dto.offerDate.has_value()) {
     return SalesRequisitionMutationResult::failure(
@@ -143,19 +145,19 @@ SalesRequisitionMutationResult SalesRequisitionController::create(
   }
   if (dto.offerDate.has_value()) {
     columns.push_back("offer_date");
-    values.push_back(fasc::server::database::SqlParameter{*dto.offerDate, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.offerDate));
   }
   if (dto.validUntil.has_value()) {
     columns.push_back("valid_until");
-    values.push_back(fasc::server::database::SqlParameter{*dto.validUntil, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.validUntil));
   }
   if (dto.status.has_value()) {
     columns.push_back("status");
-    values.push_back(fasc::server::database::SqlParameter{*dto.status, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.status));
   }
   if (dto.notes.has_value()) {
     columns.push_back("notes");
-    values.push_back(fasc::server::database::SqlParameter{*dto.notes, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.notes));
   }
   if (columns.empty()) {
     return SalesRequisitionMutationResult::failure(
@@ -182,35 +184,35 @@ SalesRequisitionMutationResult SalesRequisitionController::update(
   std::vector<fasc::server::database::SqlParameter> values;
   if (dto.farmId.has_value()) {
     columns.push_back("farm_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.farmId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.farmId));
   }
   if (dto.productId.has_value()) {
     columns.push_back("product_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.productId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.productId));
   }
   if (dto.quantity.has_value()) {
     columns.push_back("quantity");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.quantity), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.quantity));
   }
   if (dto.pricePerUnit.has_value()) {
     columns.push_back("price_per_unit");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.pricePerUnit), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.pricePerUnit));
   }
   if (dto.offerDate.has_value()) {
     columns.push_back("offer_date");
-    values.push_back(fasc::server::database::SqlParameter{*dto.offerDate, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.offerDate));
   }
   if (dto.validUntil.has_value()) {
     columns.push_back("valid_until");
-    values.push_back(fasc::server::database::SqlParameter{*dto.validUntil, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.validUntil));
   }
   if (dto.status.has_value()) {
     columns.push_back("status");
-    values.push_back(fasc::server::database::SqlParameter{*dto.status, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.status));
   }
   if (dto.notes.has_value()) {
     columns.push_back("notes");
-    values.push_back(fasc::server::database::SqlParameter{*dto.notes, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.notes));
   }
   if (columns.empty()) {
     return SalesRequisitionMutationResult::failure(

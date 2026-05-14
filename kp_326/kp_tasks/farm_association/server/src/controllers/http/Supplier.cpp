@@ -1,5 +1,7 @@
 #include <controllers/http/Supplier.hpp>
 
+#include <exception>
+
 #include <marshalling/Supplier.hpp>
 
 #include <nlohmann/json.hpp>
@@ -54,7 +56,7 @@ SupplierMutationViewResult SupplierHttpController::create(std::string_view body)
     }
     return SupplierMutationViewResult::success(
         fasc::server::views::SupplierMutationView{result.success().affectedRows});
-  } catch (const nlohmann::json::exception& exception) {
+  } catch (const std::exception& exception) {
     return SupplierMutationViewResult::failure(
         fasc::server::views::ErrorView{fasc::server::views::ErrorViewCode::BadRequest, exception.what()});
   }
@@ -71,7 +73,7 @@ SupplierMutationViewResult SupplierHttpController::update(
     }
     return SupplierMutationViewResult::success(
         fasc::server::views::SupplierMutationView{result.success().affectedRows});
-  } catch (const nlohmann::json::exception& exception) {
+  } catch (const std::exception& exception) {
     return SupplierMutationViewResult::failure(
         fasc::server::views::ErrorView{fasc::server::views::ErrorViewCode::BadRequest, exception.what()});
   }

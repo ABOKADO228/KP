@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <optional>
 #include <string>
 #include <vector>
@@ -7,11 +11,11 @@
 namespace fasc::server::views {
 
 struct FarmPlotTypeRowView {
-  int id{};
+  std::uint64_t id{};
   std::optional<std::string> name{};
   std::optional<std::string> description{};
   int farmPlotLevel{};
-  std::optional<int> parentId{};
+  std::optional<std::uint64_t> parentId{};
 };
 
 struct FarmPlotTypeRowsView {

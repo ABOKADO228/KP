@@ -46,12 +46,12 @@ fasc::server::controllers::dto::AssociationFarmsKeyDto keyFrom(
     const fasc::server::core::HttpRequest& request) {
   fasc::server::controllers::dto::AssociationFarmsKeyDto key;
   if (const auto it = request.query_params.find("farm_id"); it != request.query_params.end()) {
-    key.farmId = std::stoi(it->second);
+    key.farmId = std::stoull(it->second);
   } else {
     throw std::invalid_argument{"Missing key field: farm_id"};
   }
   if (const auto it = request.query_params.find("association_id"); it != request.query_params.end()) {
-    key.associationId = std::stoi(it->second);
+    key.associationId = std::stoull(it->second);
   } else {
     throw std::invalid_argument{"Missing key field: association_id"};
   }

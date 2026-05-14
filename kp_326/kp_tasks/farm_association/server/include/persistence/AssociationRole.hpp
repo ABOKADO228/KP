@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <odb/core.hxx>
 #include <odb/nullable.hxx>
 
@@ -10,10 +14,10 @@ namespace fasc::server::persistence {
 /// Сущность таблицы association_role.
 struct AssociationRoleEntity {
   /// Значение колонки id.
-  int id{};
+  std::uint64_t id{};
 
   /// Значение колонки code.
-  odb::nullable<std::string> code;
+  odb::nullable<fasc::server::domain::AssociationRoleCode> code;
 
   /// Значение колонки name.
   odb::nullable<std::string> name;

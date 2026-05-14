@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <optional>
 #include <string>
 #include <vector>
@@ -7,7 +11,7 @@
 namespace fasc::server::views {
 
 struct FarmRoleRowView {
-  int id{};
+  std::uint64_t id{};
   std::optional<std::string> name{};
   std::optional<std::string> description{};
 };

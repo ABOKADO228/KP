@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <odb/core.hxx>
 #include <odb/nullable.hxx>
 
@@ -10,22 +14,22 @@ namespace fasc::server::persistence {
 /// Сущность таблицы farm_ownership.
 struct FarmOwnershipEntity {
   /// Значение колонки id.
-  int id{};
+  std::uint64_t id{};
 
   /// Значение колонки farm_id.
-  int farmId{};
+  std::uint64_t farmId{};
 
   /// Значение колонки farm_owner_id.
-  int farmOwnerId{};
+  std::uint64_t farmOwnerId{};
 
   /// Значение колонки ownership_percentage.
   odb::nullable<double> ownershipPercentage;
 
   /// Значение колонки started_at.
-  std::string startedAt;
+  fasc::server::domain::Date startedAt;
 
   /// Значение колонки ended_at.
-  odb::nullable<std::string> endedAt;
+  odb::nullable<fasc::server::domain::Date> endedAt;
 
 };
 

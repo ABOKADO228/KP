@@ -1,5 +1,7 @@
 #include <controllers/app/FarmOwnership.hpp>
 
+#include <database/SqlValue.hpp>
+
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -29,16 +31,16 @@ std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& 
 
 fasc::server::persistence::FarmOwnershipEntity rowToEntity(const fasc::server::database::SqlRow& row) {
   fasc::server::persistence::FarmOwnershipEntity entity;
-  entity.id = std::stoi(requireColumn(row, "id"));
-  entity.farmId = std::stoi(requireColumn(row, "farm_id"));
-  entity.farmOwnerId = std::stoi(requireColumn(row, "farm_owner_id"));
-  if (const auto value = optionalColumn(row, "ownership_percentage")) {
-    entity.ownershipPercentage = std::stod(*value);
+  entity.id = fasc::server::database::requireColumn<std::uint64_t>(row, "id");
+  entity.farmId = fasc::server::database::requireColumn<std::uint64_t>(row, "farm_id");
+  entity.farmOwnerId = fasc::server::database::requireColumn<std::uint64_t>(row, "farm_owner_id");
+  if (const auto value = fasc::server::database::optionalColumn<double>(row, "ownership_percentage")) {
+    entity.ownershipPercentage = *value;
   } else {
     entity.ownershipPercentage.reset();
   }
-  entity.startedAt = requireColumn(row, "started_at");
-  if (const auto value = optionalColumn(row, "ended_at")) {
+  entity.startedAt = fasc::server::database::requireColumn<fasc::server::domain::Date>(row, "started_at");
+  if (const auto value = fasc::server::database::optionalColumn<fasc::server::domain::Date>(row, "ended_at")) {
     entity.endedAt = *value;
   } else {
     entity.endedAt.reset();
@@ -49,7 +51,7 @@ fasc::server::persistence::FarmOwnershipEntity rowToEntity(const fasc::server::d
 std::vector<fasc::server::database::SqlParameter> keyValues(
     const fasc::server::controllers::dto::FarmOwnershipKeyDto& key) {
   std::vector<fasc::server::database::SqlParameter> values;
-  values.push_back(fasc::server::database::SqlParameter{std::to_string(key.id), false});
+  values.push_back(fasc::server::database::makeSqlParameter(key.id));
   return values;
 }
 
@@ -104,7 +106,7 @@ FarmOwnershipMutationResult FarmOwnershipController::create(
   }
   if (dto.farmId.has_value()) {
     columns.push_back("farm_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.farmId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.farmId));
   }
   if (!dto.farmOwnerId.has_value()) {
     return FarmOwnershipMutationResult::failure(
@@ -112,11 +114,11 @@ FarmOwnershipMutationResult FarmOwnershipController::create(
   }
   if (dto.farmOwnerId.has_value()) {
     columns.push_back("farm_owner_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.farmOwnerId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.farmOwnerId));
   }
   if (dto.ownershipPercentage.has_value()) {
     columns.push_back("ownership_percentage");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.ownershipPercentage), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.ownershipPercentage));
   }
   if (!dto.startedAt.has_value()) {
     return FarmOwnershipMutationResult::failure(
@@ -124,11 +126,11 @@ FarmOwnershipMutationResult FarmOwnershipController::create(
   }
   if (dto.startedAt.has_value()) {
     columns.push_back("started_at");
-    values.push_back(fasc::server::database::SqlParameter{*dto.startedAt, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.startedAt));
   }
   if (dto.endedAt.has_value()) {
     columns.push_back("ended_at");
-    values.push_back(fasc::server::database::SqlParameter{*dto.endedAt, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.endedAt));
   }
   if (columns.empty()) {
     return FarmOwnershipMutationResult::failure(
@@ -155,23 +157,23 @@ FarmOwnershipMutationResult FarmOwnershipController::update(
   std::vector<fasc::server::database::SqlParameter> values;
   if (dto.farmId.has_value()) {
     columns.push_back("farm_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.farmId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.farmId));
   }
   if (dto.farmOwnerId.has_value()) {
     columns.push_back("farm_owner_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.farmOwnerId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.farmOwnerId));
   }
   if (dto.ownershipPercentage.has_value()) {
     columns.push_back("ownership_percentage");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.ownershipPercentage), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.ownershipPercentage));
   }
   if (dto.startedAt.has_value()) {
     columns.push_back("started_at");
-    values.push_back(fasc::server::database::SqlParameter{*dto.startedAt, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.startedAt));
   }
   if (dto.endedAt.has_value()) {
     columns.push_back("ended_at");
-    values.push_back(fasc::server::database::SqlParameter{*dto.endedAt, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.endedAt));
   }
   if (columns.empty()) {
     return FarmOwnershipMutationResult::failure(

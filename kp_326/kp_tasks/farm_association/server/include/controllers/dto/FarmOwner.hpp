@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <persistence/FarmOwner.hpp>
 
 #include <optional>
@@ -11,17 +15,17 @@ namespace fasc::server::controllers::dto {
 /// Ключ строки таблицы farm_owner.
 struct FarmOwnerKeyDto {
   /// Значение колонки id.
-  int id{};
+  std::uint64_t id{};
 
 };
 
 /// DTO создания строки таблицы farm_owner.
 struct FarmOwnerCreateDto {
   /// Значение колонки person_id.
-  std::optional<int> personId;
+  std::optional<std::uint64_t> personId;
 
   /// Значение колонки status.
-  std::optional<std::string> status;
+  std::optional<fasc::server::domain::FarmOwnerStatus> status;
 
   /// Значение колонки rating.
   std::optional<double> rating;
@@ -31,10 +35,10 @@ struct FarmOwnerCreateDto {
 /// DTO обновления строки таблицы farm_owner.
 struct FarmOwnerUpdateDto {
   /// Значение колонки person_id.
-  std::optional<int> personId;
+  std::optional<std::uint64_t> personId;
 
   /// Значение колонки status.
-  std::optional<std::string> status;
+  std::optional<fasc::server::domain::FarmOwnerStatus> status;
 
   /// Значение колонки rating.
   std::optional<double> rating;

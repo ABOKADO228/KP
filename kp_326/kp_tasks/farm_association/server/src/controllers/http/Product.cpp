@@ -1,5 +1,7 @@
 #include <controllers/http/Product.hpp>
 
+#include <exception>
+
 #include <marshalling/Product.hpp>
 
 #include <nlohmann/json.hpp>
@@ -54,7 +56,7 @@ ProductMutationViewResult ProductHttpController::create(std::string_view body) c
     }
     return ProductMutationViewResult::success(
         fasc::server::views::ProductMutationView{result.success().affectedRows});
-  } catch (const nlohmann::json::exception& exception) {
+  } catch (const std::exception& exception) {
     return ProductMutationViewResult::failure(
         fasc::server::views::ErrorView{fasc::server::views::ErrorViewCode::BadRequest, exception.what()});
   }
@@ -71,7 +73,7 @@ ProductMutationViewResult ProductHttpController::update(
     }
     return ProductMutationViewResult::success(
         fasc::server::views::ProductMutationView{result.success().affectedRows});
-  } catch (const nlohmann::json::exception& exception) {
+  } catch (const std::exception& exception) {
     return ProductMutationViewResult::failure(
         fasc::server::views::ErrorView{fasc::server::views::ErrorViewCode::BadRequest, exception.what()});
   }

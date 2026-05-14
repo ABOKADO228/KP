@@ -1,5 +1,9 @@
 #pragma once
 
+#include <marshalling/Nullable.hpp>
+
+#include <domain/Types.hpp>
+
 #include <controllers/dto/AssociationFarms.hpp>
 #include <views/AssociationFarms.hpp>
 #include <optional>
@@ -27,16 +31,16 @@ namespace fasc::server::controllers::dto {
 /// Читает DTO создания таблицы association_farms.
 inline void from_json(const nlohmann::json& json, AssociationFarmsCreateDto& value) {
   if (json.contains("farm_id") && !json.at("farm_id").is_null()) {
-    value.farmId = json.at("farm_id").get<int>();
+    value.farmId = json.at("farm_id").get<std::uint64_t>();
   }
   if (json.contains("association_id") && !json.at("association_id").is_null()) {
-    value.associationId = json.at("association_id").get<int>();
+    value.associationId = json.at("association_id").get<std::uint64_t>();
   }
   if (json.contains("join_date") && !json.at("join_date").is_null()) {
-    value.joinDate = json.at("join_date").get<std::string>();
+    value.joinDate = json.at("join_date").get<fasc::server::domain::Date>();
   }
   if (json.contains("status") && !json.at("status").is_null()) {
-    value.status = json.at("status").get<std::string>();
+    value.status = json.at("status").get<fasc::server::domain::AssociationFarmsStatus>();
   }
   if (json.contains("notes") && !json.at("notes").is_null()) {
     value.notes = json.at("notes").get<std::string>();
@@ -46,10 +50,10 @@ inline void from_json(const nlohmann::json& json, AssociationFarmsCreateDto& val
 /// Читает DTO обновления таблицы association_farms.
 inline void from_json(const nlohmann::json& json, AssociationFarmsUpdateDto& value) {
   if (json.contains("join_date") && !json.at("join_date").is_null()) {
-    value.joinDate = json.at("join_date").get<std::string>();
+    value.joinDate = json.at("join_date").get<fasc::server::domain::Date>();
   }
   if (json.contains("status") && !json.at("status").is_null()) {
-    value.status = json.at("status").get<std::string>();
+    value.status = json.at("status").get<fasc::server::domain::AssociationFarmsStatus>();
   }
   if (json.contains("notes") && !json.at("notes").is_null()) {
     value.notes = json.at("notes").get<std::string>();
@@ -61,14 +65,6 @@ inline void from_json(const nlohmann::json& json, AssociationFarmsUpdateDto& val
 namespace fasc::server::views {
 
 namespace detail {
-
-template <typename T>
-inline std::optional<T> toOptional(const odb::nullable<T>& value) {
-  if (value.null()) {
-    return std::nullopt;
-  }
-  return value.get();
-}
 
 inline nlohmann::json AssociationFarmsRowPayload(const AssociationFarmsRowView& view) {
   nlohmann::json json = nlohmann::json::object();

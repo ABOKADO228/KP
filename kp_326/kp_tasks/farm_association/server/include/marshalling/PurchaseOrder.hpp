@@ -1,5 +1,9 @@
 #pragma once
 
+#include <marshalling/Nullable.hpp>
+
+#include <domain/Types.hpp>
+
 #include <controllers/dto/PurchaseOrder.hpp>
 #include <views/PurchaseOrder.hpp>
 #include <optional>
@@ -32,62 +36,62 @@ namespace fasc::server::controllers::dto {
 /// Читает DTO создания таблицы purchase_order.
 inline void from_json(const nlohmann::json& json, PurchaseOrderCreateDto& value) {
   if (json.contains("association_id") && !json.at("association_id").is_null()) {
-    value.associationId = json.at("association_id").get<int>();
+    value.associationId = json.at("association_id").get<std::uint64_t>();
   }
   if (json.contains("supplier_id") && !json.at("supplier_id").is_null()) {
-    value.supplierId = json.at("supplier_id").get<int>();
+    value.supplierId = json.at("supplier_id").get<std::uint64_t>();
   }
   if (json.contains("delivery_address") && !json.at("delivery_address").is_null()) {
     value.deliveryAddress = json.at("delivery_address").get<std::string>();
   }
   if (json.contains("order_date") && !json.at("order_date").is_null()) {
-    value.orderDate = json.at("order_date").get<std::string>();
+    value.orderDate = json.at("order_date").get<fasc::server::domain::Date>();
   }
   if (json.contains("expected_delivery_date") && !json.at("expected_delivery_date").is_null()) {
-    value.expectedDeliveryDate = json.at("expected_delivery_date").get<std::string>();
+    value.expectedDeliveryDate = json.at("expected_delivery_date").get<fasc::server::domain::Date>();
   }
   if (json.contains("status") && !json.at("status").is_null()) {
-    value.status = json.at("status").get<std::string>();
+    value.status = json.at("status").get<fasc::server::domain::PurchaseOrderStatus>();
   }
   if (json.contains("total_amount") && !json.at("total_amount").is_null()) {
     value.totalAmount = json.at("total_amount").get<double>();
   }
   if (json.contains("received_at") && !json.at("received_at").is_null()) {
-    value.receivedAt = json.at("received_at").get<std::string>();
+    value.receivedAt = json.at("received_at").get<fasc::server::domain::Date>();
   }
   if (json.contains("created_by") && !json.at("created_by").is_null()) {
-    value.createdBy = json.at("created_by").get<int>();
+    value.createdBy = json.at("created_by").get<std::uint64_t>();
   }
 }
 
 /// Читает DTO обновления таблицы purchase_order.
 inline void from_json(const nlohmann::json& json, PurchaseOrderUpdateDto& value) {
   if (json.contains("association_id") && !json.at("association_id").is_null()) {
-    value.associationId = json.at("association_id").get<int>();
+    value.associationId = json.at("association_id").get<std::uint64_t>();
   }
   if (json.contains("supplier_id") && !json.at("supplier_id").is_null()) {
-    value.supplierId = json.at("supplier_id").get<int>();
+    value.supplierId = json.at("supplier_id").get<std::uint64_t>();
   }
   if (json.contains("delivery_address") && !json.at("delivery_address").is_null()) {
     value.deliveryAddress = json.at("delivery_address").get<std::string>();
   }
   if (json.contains("order_date") && !json.at("order_date").is_null()) {
-    value.orderDate = json.at("order_date").get<std::string>();
+    value.orderDate = json.at("order_date").get<fasc::server::domain::Date>();
   }
   if (json.contains("expected_delivery_date") && !json.at("expected_delivery_date").is_null()) {
-    value.expectedDeliveryDate = json.at("expected_delivery_date").get<std::string>();
+    value.expectedDeliveryDate = json.at("expected_delivery_date").get<fasc::server::domain::Date>();
   }
   if (json.contains("status") && !json.at("status").is_null()) {
-    value.status = json.at("status").get<std::string>();
+    value.status = json.at("status").get<fasc::server::domain::PurchaseOrderStatus>();
   }
   if (json.contains("total_amount") && !json.at("total_amount").is_null()) {
     value.totalAmount = json.at("total_amount").get<double>();
   }
   if (json.contains("received_at") && !json.at("received_at").is_null()) {
-    value.receivedAt = json.at("received_at").get<std::string>();
+    value.receivedAt = json.at("received_at").get<fasc::server::domain::Date>();
   }
   if (json.contains("created_by") && !json.at("created_by").is_null()) {
-    value.createdBy = json.at("created_by").get<int>();
+    value.createdBy = json.at("created_by").get<std::uint64_t>();
   }
 }
 
@@ -96,14 +100,6 @@ inline void from_json(const nlohmann::json& json, PurchaseOrderUpdateDto& value)
 namespace fasc::server::views {
 
 namespace detail {
-
-template <typename T>
-inline std::optional<T> toOptional(const odb::nullable<T>& value) {
-  if (value.null()) {
-    return std::nullopt;
-  }
-  return value.get();
-}
 
 inline nlohmann::json PurchaseOrderRowPayload(const PurchaseOrderRowView& view) {
   nlohmann::json json = nlohmann::json::object();

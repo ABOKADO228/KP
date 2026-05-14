@@ -1,5 +1,7 @@
 #include <controllers/app/AssociationEmployee.hpp>
 
+#include <database/SqlValue.hpp>
+
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -29,19 +31,19 @@ std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& 
 
 fasc::server::persistence::AssociationEmployeeEntity rowToEntity(const fasc::server::database::SqlRow& row) {
   fasc::server::persistence::AssociationEmployeeEntity entity;
-  entity.id = std::stoi(requireColumn(row, "id"));
-  entity.personId = std::stoi(requireColumn(row, "person_id"));
-  entity.associationId = std::stoi(requireColumn(row, "association_id"));
-  entity.roleId = std::stoi(requireColumn(row, "role_id"));
-  entity.employmentStatusId = std::stoi(requireColumn(row, "employment_status_id"));
-  entity.hireDate = requireColumn(row, "hire_date");
-  if (const auto value = optionalColumn(row, "dismissal_date")) {
+  entity.id = fasc::server::database::requireColumn<std::uint64_t>(row, "id");
+  entity.personId = fasc::server::database::requireColumn<std::uint64_t>(row, "person_id");
+  entity.associationId = fasc::server::database::requireColumn<std::uint64_t>(row, "association_id");
+  entity.roleId = fasc::server::database::requireColumn<std::uint64_t>(row, "role_id");
+  entity.employmentStatusId = fasc::server::database::requireColumn<std::uint64_t>(row, "employment_status_id");
+  entity.hireDate = fasc::server::database::requireColumn<fasc::server::domain::Date>(row, "hire_date");
+  if (const auto value = fasc::server::database::optionalColumn<fasc::server::domain::Date>(row, "dismissal_date")) {
     entity.dismissalDate = *value;
   } else {
     entity.dismissalDate.reset();
   }
-  if (const auto value = optionalColumn(row, "salary")) {
-    entity.salary = std::stod(*value);
+  if (const auto value = fasc::server::database::optionalColumn<double>(row, "salary")) {
+    entity.salary = *value;
   } else {
     entity.salary.reset();
   }
@@ -56,7 +58,7 @@ fasc::server::persistence::AssociationEmployeeEntity rowToEntity(const fasc::ser
 std::vector<fasc::server::database::SqlParameter> keyValues(
     const fasc::server::controllers::dto::AssociationEmployeeKeyDto& key) {
   std::vector<fasc::server::database::SqlParameter> values;
-  values.push_back(fasc::server::database::SqlParameter{std::to_string(key.id), false});
+  values.push_back(fasc::server::database::makeSqlParameter(key.id));
   return values;
 }
 
@@ -111,7 +113,7 @@ AssociationEmployeeMutationResult AssociationEmployeeController::create(
   }
   if (dto.personId.has_value()) {
     columns.push_back("person_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.personId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.personId));
   }
   if (!dto.associationId.has_value()) {
     return AssociationEmployeeMutationResult::failure(
@@ -119,7 +121,7 @@ AssociationEmployeeMutationResult AssociationEmployeeController::create(
   }
   if (dto.associationId.has_value()) {
     columns.push_back("association_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.associationId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.associationId));
   }
   if (!dto.roleId.has_value()) {
     return AssociationEmployeeMutationResult::failure(
@@ -127,7 +129,7 @@ AssociationEmployeeMutationResult AssociationEmployeeController::create(
   }
   if (dto.roleId.has_value()) {
     columns.push_back("role_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.roleId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.roleId));
   }
   if (!dto.employmentStatusId.has_value()) {
     return AssociationEmployeeMutationResult::failure(
@@ -135,7 +137,7 @@ AssociationEmployeeMutationResult AssociationEmployeeController::create(
   }
   if (dto.employmentStatusId.has_value()) {
     columns.push_back("employment_status_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.employmentStatusId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.employmentStatusId));
   }
   if (!dto.hireDate.has_value()) {
     return AssociationEmployeeMutationResult::failure(
@@ -143,19 +145,19 @@ AssociationEmployeeMutationResult AssociationEmployeeController::create(
   }
   if (dto.hireDate.has_value()) {
     columns.push_back("hire_date");
-    values.push_back(fasc::server::database::SqlParameter{*dto.hireDate, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.hireDate));
   }
   if (dto.dismissalDate.has_value()) {
     columns.push_back("dismissal_date");
-    values.push_back(fasc::server::database::SqlParameter{*dto.dismissalDate, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.dismissalDate));
   }
   if (dto.salary.has_value()) {
     columns.push_back("salary");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.salary), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.salary));
   }
   if (dto.contractNumber.has_value()) {
     columns.push_back("contract_number");
-    values.push_back(fasc::server::database::SqlParameter{*dto.contractNumber, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.contractNumber));
   }
   if (columns.empty()) {
     return AssociationEmployeeMutationResult::failure(
@@ -182,35 +184,35 @@ AssociationEmployeeMutationResult AssociationEmployeeController::update(
   std::vector<fasc::server::database::SqlParameter> values;
   if (dto.personId.has_value()) {
     columns.push_back("person_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.personId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.personId));
   }
   if (dto.associationId.has_value()) {
     columns.push_back("association_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.associationId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.associationId));
   }
   if (dto.roleId.has_value()) {
     columns.push_back("role_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.roleId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.roleId));
   }
   if (dto.employmentStatusId.has_value()) {
     columns.push_back("employment_status_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.employmentStatusId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.employmentStatusId));
   }
   if (dto.hireDate.has_value()) {
     columns.push_back("hire_date");
-    values.push_back(fasc::server::database::SqlParameter{*dto.hireDate, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.hireDate));
   }
   if (dto.dismissalDate.has_value()) {
     columns.push_back("dismissal_date");
-    values.push_back(fasc::server::database::SqlParameter{*dto.dismissalDate, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.dismissalDate));
   }
   if (dto.salary.has_value()) {
     columns.push_back("salary");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.salary), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.salary));
   }
   if (dto.contractNumber.has_value()) {
     columns.push_back("contract_number");
-    values.push_back(fasc::server::database::SqlParameter{*dto.contractNumber, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.contractNumber));
   }
   if (columns.empty()) {
     return AssociationEmployeeMutationResult::failure(

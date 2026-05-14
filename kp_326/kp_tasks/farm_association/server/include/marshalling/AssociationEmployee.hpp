@@ -1,5 +1,9 @@
 #pragma once
 
+#include <marshalling/Nullable.hpp>
+
+#include <domain/Types.hpp>
+
 #include <controllers/dto/AssociationEmployee.hpp>
 #include <views/AssociationEmployee.hpp>
 #include <optional>
@@ -31,22 +35,22 @@ namespace fasc::server::controllers::dto {
 /// Читает DTO создания таблицы association_employee.
 inline void from_json(const nlohmann::json& json, AssociationEmployeeCreateDto& value) {
   if (json.contains("person_id") && !json.at("person_id").is_null()) {
-    value.personId = json.at("person_id").get<int>();
+    value.personId = json.at("person_id").get<std::uint64_t>();
   }
   if (json.contains("association_id") && !json.at("association_id").is_null()) {
-    value.associationId = json.at("association_id").get<int>();
+    value.associationId = json.at("association_id").get<std::uint64_t>();
   }
   if (json.contains("role_id") && !json.at("role_id").is_null()) {
-    value.roleId = json.at("role_id").get<int>();
+    value.roleId = json.at("role_id").get<std::uint64_t>();
   }
   if (json.contains("employment_status_id") && !json.at("employment_status_id").is_null()) {
-    value.employmentStatusId = json.at("employment_status_id").get<int>();
+    value.employmentStatusId = json.at("employment_status_id").get<std::uint64_t>();
   }
   if (json.contains("hire_date") && !json.at("hire_date").is_null()) {
-    value.hireDate = json.at("hire_date").get<std::string>();
+    value.hireDate = json.at("hire_date").get<fasc::server::domain::Date>();
   }
   if (json.contains("dismissal_date") && !json.at("dismissal_date").is_null()) {
-    value.dismissalDate = json.at("dismissal_date").get<std::string>();
+    value.dismissalDate = json.at("dismissal_date").get<fasc::server::domain::Date>();
   }
   if (json.contains("salary") && !json.at("salary").is_null()) {
     value.salary = json.at("salary").get<double>();
@@ -59,22 +63,22 @@ inline void from_json(const nlohmann::json& json, AssociationEmployeeCreateDto& 
 /// Читает DTO обновления таблицы association_employee.
 inline void from_json(const nlohmann::json& json, AssociationEmployeeUpdateDto& value) {
   if (json.contains("person_id") && !json.at("person_id").is_null()) {
-    value.personId = json.at("person_id").get<int>();
+    value.personId = json.at("person_id").get<std::uint64_t>();
   }
   if (json.contains("association_id") && !json.at("association_id").is_null()) {
-    value.associationId = json.at("association_id").get<int>();
+    value.associationId = json.at("association_id").get<std::uint64_t>();
   }
   if (json.contains("role_id") && !json.at("role_id").is_null()) {
-    value.roleId = json.at("role_id").get<int>();
+    value.roleId = json.at("role_id").get<std::uint64_t>();
   }
   if (json.contains("employment_status_id") && !json.at("employment_status_id").is_null()) {
-    value.employmentStatusId = json.at("employment_status_id").get<int>();
+    value.employmentStatusId = json.at("employment_status_id").get<std::uint64_t>();
   }
   if (json.contains("hire_date") && !json.at("hire_date").is_null()) {
-    value.hireDate = json.at("hire_date").get<std::string>();
+    value.hireDate = json.at("hire_date").get<fasc::server::domain::Date>();
   }
   if (json.contains("dismissal_date") && !json.at("dismissal_date").is_null()) {
-    value.dismissalDate = json.at("dismissal_date").get<std::string>();
+    value.dismissalDate = json.at("dismissal_date").get<fasc::server::domain::Date>();
   }
   if (json.contains("salary") && !json.at("salary").is_null()) {
     value.salary = json.at("salary").get<double>();
@@ -89,14 +93,6 @@ inline void from_json(const nlohmann::json& json, AssociationEmployeeUpdateDto& 
 namespace fasc::server::views {
 
 namespace detail {
-
-template <typename T>
-inline std::optional<T> toOptional(const odb::nullable<T>& value) {
-  if (value.null()) {
-    return std::nullopt;
-  }
-  return value.get();
-}
 
 inline nlohmann::json AssociationEmployeeRowPayload(const AssociationEmployeeRowView& view) {
   nlohmann::json json = nlohmann::json::object();

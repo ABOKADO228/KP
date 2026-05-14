@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <persistence/PurchaseOrderItem.hpp>
 
 #include <optional>
@@ -11,17 +15,17 @@ namespace fasc::server::controllers::dto {
 /// Ключ строки таблицы purchase_order_item.
 struct PurchaseOrderItemKeyDto {
   /// Значение колонки id.
-  int id{};
+  std::uint64_t id{};
 
 };
 
 /// DTO создания строки таблицы purchase_order_item.
 struct PurchaseOrderItemCreateDto {
   /// Значение колонки purchase_order_id.
-  std::optional<int> purchaseOrderId;
+  std::optional<std::uint64_t> purchaseOrderId;
 
   /// Значение колонки product_id.
-  std::optional<int> productId;
+  std::optional<std::uint64_t> productId;
 
   /// Значение колонки quantity.
   std::optional<double> quantity;
@@ -33,17 +37,17 @@ struct PurchaseOrderItemCreateDto {
   std::optional<double> vatRate;
 
   /// Значение колонки currency.
-  std::optional<std::string> currency;
+  std::optional<fasc::server::domain::CurrencyCode> currency;
 
 };
 
 /// DTO обновления строки таблицы purchase_order_item.
 struct PurchaseOrderItemUpdateDto {
   /// Значение колонки purchase_order_id.
-  std::optional<int> purchaseOrderId;
+  std::optional<std::uint64_t> purchaseOrderId;
 
   /// Значение колонки product_id.
-  std::optional<int> productId;
+  std::optional<std::uint64_t> productId;
 
   /// Значение колонки quantity.
   std::optional<double> quantity;
@@ -55,7 +59,7 @@ struct PurchaseOrderItemUpdateDto {
   std::optional<double> vatRate;
 
   /// Значение колонки currency.
-  std::optional<std::string> currency;
+  std::optional<fasc::server::domain::CurrencyCode> currency;
 
 };
 

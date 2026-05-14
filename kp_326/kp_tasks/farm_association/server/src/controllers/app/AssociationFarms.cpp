@@ -1,5 +1,7 @@
 #include <controllers/app/AssociationFarms.hpp>
 
+#include <database/SqlValue.hpp>
+
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -29,10 +31,10 @@ std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& 
 
 fasc::server::persistence::AssociationFarmsEntity rowToEntity(const fasc::server::database::SqlRow& row) {
   fasc::server::persistence::AssociationFarmsEntity entity;
-  entity.farmId = std::stoi(requireColumn(row, "farm_id"));
-  entity.associationId = std::stoi(requireColumn(row, "association_id"));
-  entity.joinDate = requireColumn(row, "join_date");
-  if (const auto value = optionalColumn(row, "status")) {
+  entity.farmId = fasc::server::database::requireColumn<std::uint64_t>(row, "farm_id");
+  entity.associationId = fasc::server::database::requireColumn<std::uint64_t>(row, "association_id");
+  entity.joinDate = fasc::server::database::requireColumn<fasc::server::domain::Date>(row, "join_date");
+  if (const auto value = fasc::server::database::optionalColumn<fasc::server::domain::AssociationFarmsStatus>(row, "status")) {
     entity.status = *value;
   } else {
     entity.status.reset();
@@ -48,8 +50,8 @@ fasc::server::persistence::AssociationFarmsEntity rowToEntity(const fasc::server
 std::vector<fasc::server::database::SqlParameter> keyValues(
     const fasc::server::controllers::dto::AssociationFarmsKeyDto& key) {
   std::vector<fasc::server::database::SqlParameter> values;
-  values.push_back(fasc::server::database::SqlParameter{std::to_string(key.farmId), false});
-  values.push_back(fasc::server::database::SqlParameter{std::to_string(key.associationId), false});
+  values.push_back(fasc::server::database::makeSqlParameter(key.farmId));
+  values.push_back(fasc::server::database::makeSqlParameter(key.associationId));
   return values;
 }
 
@@ -104,7 +106,7 @@ AssociationFarmsMutationResult AssociationFarmsController::create(
   }
   if (dto.farmId.has_value()) {
     columns.push_back("farm_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.farmId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.farmId));
   }
   if (!dto.associationId.has_value()) {
     return AssociationFarmsMutationResult::failure(
@@ -112,7 +114,7 @@ AssociationFarmsMutationResult AssociationFarmsController::create(
   }
   if (dto.associationId.has_value()) {
     columns.push_back("association_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.associationId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.associationId));
   }
   if (!dto.joinDate.has_value()) {
     return AssociationFarmsMutationResult::failure(
@@ -120,15 +122,15 @@ AssociationFarmsMutationResult AssociationFarmsController::create(
   }
   if (dto.joinDate.has_value()) {
     columns.push_back("join_date");
-    values.push_back(fasc::server::database::SqlParameter{*dto.joinDate, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.joinDate));
   }
   if (dto.status.has_value()) {
     columns.push_back("status");
-    values.push_back(fasc::server::database::SqlParameter{*dto.status, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.status));
   }
   if (dto.notes.has_value()) {
     columns.push_back("notes");
-    values.push_back(fasc::server::database::SqlParameter{*dto.notes, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.notes));
   }
   if (columns.empty()) {
     return AssociationFarmsMutationResult::failure(
@@ -155,15 +157,15 @@ AssociationFarmsMutationResult AssociationFarmsController::update(
   std::vector<fasc::server::database::SqlParameter> values;
   if (dto.joinDate.has_value()) {
     columns.push_back("join_date");
-    values.push_back(fasc::server::database::SqlParameter{*dto.joinDate, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.joinDate));
   }
   if (dto.status.has_value()) {
     columns.push_back("status");
-    values.push_back(fasc::server::database::SqlParameter{*dto.status, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.status));
   }
   if (dto.notes.has_value()) {
     columns.push_back("notes");
-    values.push_back(fasc::server::database::SqlParameter{*dto.notes, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.notes));
   }
   if (columns.empty()) {
     return AssociationFarmsMutationResult::failure(

@@ -1,5 +1,9 @@
 #pragma once
 
+#include <marshalling/Nullable.hpp>
+
+#include <domain/Types.hpp>
+
 #include <controllers/dto/FarmPlotType.hpp>
 #include <views/FarmPlotType.hpp>
 #include <optional>
@@ -27,7 +31,7 @@ namespace fasc::server::controllers::dto {
 /// Читает DTO создания таблицы farm_plot_type.
 inline void from_json(const nlohmann::json& json, FarmPlotTypeCreateDto& value) {
   if (json.contains("id") && !json.at("id").is_null()) {
-    value.id = json.at("id").get<int>();
+    value.id = json.at("id").get<std::uint64_t>();
   }
   if (json.contains("name") && !json.at("name").is_null()) {
     value.name = json.at("name").get<std::string>();
@@ -39,7 +43,7 @@ inline void from_json(const nlohmann::json& json, FarmPlotTypeCreateDto& value) 
     value.farmPlotLevel = json.at("farm_plot_level").get<int>();
   }
   if (json.contains("parent_id") && !json.at("parent_id").is_null()) {
-    value.parentId = json.at("parent_id").get<int>();
+    value.parentId = json.at("parent_id").get<std::uint64_t>();
   }
 }
 
@@ -55,7 +59,7 @@ inline void from_json(const nlohmann::json& json, FarmPlotTypeUpdateDto& value) 
     value.farmPlotLevel = json.at("farm_plot_level").get<int>();
   }
   if (json.contains("parent_id") && !json.at("parent_id").is_null()) {
-    value.parentId = json.at("parent_id").get<int>();
+    value.parentId = json.at("parent_id").get<std::uint64_t>();
   }
 }
 
@@ -64,14 +68,6 @@ inline void from_json(const nlohmann::json& json, FarmPlotTypeUpdateDto& value) 
 namespace fasc::server::views {
 
 namespace detail {
-
-template <typename T>
-inline std::optional<T> toOptional(const odb::nullable<T>& value) {
-  if (value.null()) {
-    return std::nullopt;
-  }
-  return value.get();
-}
 
 inline nlohmann::json FarmPlotTypeRowPayload(const FarmPlotTypeRowView& view) {
   nlohmann::json json = nlohmann::json::object();

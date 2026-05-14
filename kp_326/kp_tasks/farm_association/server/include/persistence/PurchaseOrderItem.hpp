@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <odb/core.hxx>
 #include <odb/nullable.hxx>
 
@@ -10,13 +14,13 @@ namespace fasc::server::persistence {
 /// Сущность таблицы purchase_order_item.
 struct PurchaseOrderItemEntity {
   /// Значение колонки id.
-  int id{};
+  std::uint64_t id{};
 
   /// Значение колонки purchase_order_id.
-  int purchaseOrderId{};
+  std::uint64_t purchaseOrderId{};
 
   /// Значение колонки product_id.
-  int productId{};
+  std::uint64_t productId{};
 
   /// Значение колонки quantity.
   odb::nullable<double> quantity;
@@ -28,7 +32,7 @@ struct PurchaseOrderItemEntity {
   odb::nullable<double> vatRate;
 
   /// Значение колонки currency.
-  odb::nullable<std::string> currency;
+  odb::nullable<fasc::server::domain::CurrencyCode> currency;
 
 };
 

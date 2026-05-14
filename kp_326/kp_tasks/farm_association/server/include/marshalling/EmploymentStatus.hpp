@@ -1,5 +1,9 @@
 #pragma once
 
+#include <marshalling/Nullable.hpp>
+
+#include <domain/Types.hpp>
+
 #include <controllers/dto/EmploymentStatus.hpp>
 #include <views/EmploymentStatus.hpp>
 #include <optional>
@@ -24,17 +28,17 @@ namespace fasc::server::controllers::dto {
 /// Читает DTO создания таблицы employment_status.
 inline void from_json(const nlohmann::json& json, EmploymentStatusCreateDto& value) {
   if (json.contains("id") && !json.at("id").is_null()) {
-    value.id = json.at("id").get<int>();
+    value.id = json.at("id").get<std::uint64_t>();
   }
   if (json.contains("name") && !json.at("name").is_null()) {
-    value.name = json.at("name").get<std::string>();
+    value.name = json.at("name").get<fasc::server::domain::EmploymentStatusCode>();
   }
 }
 
 /// Читает DTO обновления таблицы employment_status.
 inline void from_json(const nlohmann::json& json, EmploymentStatusUpdateDto& value) {
   if (json.contains("name") && !json.at("name").is_null()) {
-    value.name = json.at("name").get<std::string>();
+    value.name = json.at("name").get<fasc::server::domain::EmploymentStatusCode>();
   }
 }
 
@@ -43,14 +47,6 @@ inline void from_json(const nlohmann::json& json, EmploymentStatusUpdateDto& val
 namespace fasc::server::views {
 
 namespace detail {
-
-template <typename T>
-inline std::optional<T> toOptional(const odb::nullable<T>& value) {
-  if (value.null()) {
-    return std::nullopt;
-  }
-  return value.get();
-}
 
 inline nlohmann::json EmploymentStatusRowPayload(const EmploymentStatusRowView& view) {
   nlohmann::json json = nlohmann::json::object();

@@ -1,5 +1,7 @@
 #include <controllers/http/Users.hpp>
 
+#include <exception>
+
 #include <marshalling/User.hpp>
 
 #include <nlohmann/json.hpp>
@@ -34,7 +36,7 @@ UserViewResult UserHttpController::createUser(std::string_view body) {
 
     const UserDto& user = result.success();
     return UserViewResult::success(UserView{user.id, user.name});
-  } catch (const nlohmann::json::exception& exception) {
+  } catch (const std::exception& exception) {
     return UserViewResult::failure(ErrorView{ErrorViewCode::BadRequest, exception.what()});
   }
 }
@@ -53,7 +55,7 @@ AuthViewResult UserHttpController::registerUser(std::string_view body) {
     const auto& auth = result.success();
     return AuthViewResult::success(
         AuthView{auth.token, auth.token_type, UserView{auth.user.id, auth.user.name}});
-  } catch (const nlohmann::json::exception& exception) {
+  } catch (const std::exception& exception) {
     return AuthViewResult::failure(ErrorView{ErrorViewCode::BadRequest, exception.what()});
   }
 }
@@ -72,7 +74,7 @@ AuthViewResult UserHttpController::loginUser(std::string_view body) {
     const auto& auth = result.success();
     return AuthViewResult::success(
         AuthView{auth.token, auth.token_type, UserView{auth.user.id, auth.user.name}});
-  } catch (const nlohmann::json::exception& exception) {
+  } catch (const std::exception& exception) {
     return AuthViewResult::failure(ErrorView{ErrorViewCode::BadRequest, exception.what()});
   }
 }

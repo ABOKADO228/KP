@@ -1,5 +1,7 @@
 #include <controllers/app/Unit.hpp>
 
+#include <database/SqlValue.hpp>
+
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -29,8 +31,8 @@ std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& 
 
 fasc::server::persistence::UnitEntity rowToEntity(const fasc::server::database::SqlRow& row) {
   fasc::server::persistence::UnitEntity entity;
-  entity.id = std::stoi(requireColumn(row, "id"));
-  if (const auto value = optionalColumn(row, "code")) {
+  entity.id = fasc::server::database::requireColumn<std::uint64_t>(row, "id");
+  if (const auto value = fasc::server::database::optionalColumn<fasc::server::domain::UnitCode>(row, "code")) {
     entity.code = *value;
   } else {
     entity.code.reset();
@@ -46,7 +48,7 @@ fasc::server::persistence::UnitEntity rowToEntity(const fasc::server::database::
 std::vector<fasc::server::database::SqlParameter> keyValues(
     const fasc::server::controllers::dto::UnitKeyDto& key) {
   std::vector<fasc::server::database::SqlParameter> values;
-  values.push_back(fasc::server::database::SqlParameter{std::to_string(key.id), false});
+  values.push_back(fasc::server::database::makeSqlParameter(key.id));
   return values;
 }
 
@@ -101,15 +103,15 @@ UnitMutationResult UnitController::create(
   }
   if (dto.id.has_value()) {
     columns.push_back("id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.id), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.id));
   }
   if (dto.code.has_value()) {
     columns.push_back("code");
-    values.push_back(fasc::server::database::SqlParameter{*dto.code, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.code));
   }
   if (dto.name.has_value()) {
     columns.push_back("name");
-    values.push_back(fasc::server::database::SqlParameter{*dto.name, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.name));
   }
   if (columns.empty()) {
     return UnitMutationResult::failure(
@@ -136,11 +138,11 @@ UnitMutationResult UnitController::update(
   std::vector<fasc::server::database::SqlParameter> values;
   if (dto.code.has_value()) {
     columns.push_back("code");
-    values.push_back(fasc::server::database::SqlParameter{*dto.code, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.code));
   }
   if (dto.name.has_value()) {
     columns.push_back("name");
-    values.push_back(fasc::server::database::SqlParameter{*dto.name, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.name));
   }
   if (columns.empty()) {
     return UnitMutationResult::failure(

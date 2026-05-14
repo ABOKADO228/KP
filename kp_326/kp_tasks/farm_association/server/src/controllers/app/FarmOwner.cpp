@@ -1,5 +1,7 @@
 #include <controllers/app/FarmOwner.hpp>
 
+#include <database/SqlValue.hpp>
+
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -29,15 +31,15 @@ std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& 
 
 fasc::server::persistence::FarmOwnerEntity rowToEntity(const fasc::server::database::SqlRow& row) {
   fasc::server::persistence::FarmOwnerEntity entity;
-  entity.id = std::stoi(requireColumn(row, "id"));
-  entity.personId = std::stoi(requireColumn(row, "person_id"));
-  if (const auto value = optionalColumn(row, "status")) {
+  entity.id = fasc::server::database::requireColumn<std::uint64_t>(row, "id");
+  entity.personId = fasc::server::database::requireColumn<std::uint64_t>(row, "person_id");
+  if (const auto value = fasc::server::database::optionalColumn<fasc::server::domain::FarmOwnerStatus>(row, "status")) {
     entity.status = *value;
   } else {
     entity.status.reset();
   }
-  if (const auto value = optionalColumn(row, "rating")) {
-    entity.rating = std::stod(*value);
+  if (const auto value = fasc::server::database::optionalColumn<double>(row, "rating")) {
+    entity.rating = *value;
   } else {
     entity.rating.reset();
   }
@@ -47,7 +49,7 @@ fasc::server::persistence::FarmOwnerEntity rowToEntity(const fasc::server::datab
 std::vector<fasc::server::database::SqlParameter> keyValues(
     const fasc::server::controllers::dto::FarmOwnerKeyDto& key) {
   std::vector<fasc::server::database::SqlParameter> values;
-  values.push_back(fasc::server::database::SqlParameter{std::to_string(key.id), false});
+  values.push_back(fasc::server::database::makeSqlParameter(key.id));
   return values;
 }
 
@@ -102,15 +104,15 @@ FarmOwnerMutationResult FarmOwnerController::create(
   }
   if (dto.personId.has_value()) {
     columns.push_back("person_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.personId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.personId));
   }
   if (dto.status.has_value()) {
     columns.push_back("status");
-    values.push_back(fasc::server::database::SqlParameter{*dto.status, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.status));
   }
   if (dto.rating.has_value()) {
     columns.push_back("rating");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.rating), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.rating));
   }
   if (columns.empty()) {
     return FarmOwnerMutationResult::failure(
@@ -137,15 +139,15 @@ FarmOwnerMutationResult FarmOwnerController::update(
   std::vector<fasc::server::database::SqlParameter> values;
   if (dto.personId.has_value()) {
     columns.push_back("person_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.personId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.personId));
   }
   if (dto.status.has_value()) {
     columns.push_back("status");
-    values.push_back(fasc::server::database::SqlParameter{*dto.status, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.status));
   }
   if (dto.rating.has_value()) {
     columns.push_back("rating");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.rating), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.rating));
   }
   if (columns.empty()) {
     return FarmOwnerMutationResult::failure(

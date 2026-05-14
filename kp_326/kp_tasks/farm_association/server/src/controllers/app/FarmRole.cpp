@@ -1,5 +1,7 @@
 #include <controllers/app/FarmRole.hpp>
 
+#include <database/SqlValue.hpp>
+
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -29,7 +31,7 @@ std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& 
 
 fasc::server::persistence::FarmRoleEntity rowToEntity(const fasc::server::database::SqlRow& row) {
   fasc::server::persistence::FarmRoleEntity entity;
-  entity.id = std::stoi(requireColumn(row, "id"));
+  entity.id = fasc::server::database::requireColumn<std::uint64_t>(row, "id");
   if (const auto value = optionalColumn(row, "name")) {
     entity.name = *value;
   } else {
@@ -46,7 +48,7 @@ fasc::server::persistence::FarmRoleEntity rowToEntity(const fasc::server::databa
 std::vector<fasc::server::database::SqlParameter> keyValues(
     const fasc::server::controllers::dto::FarmRoleKeyDto& key) {
   std::vector<fasc::server::database::SqlParameter> values;
-  values.push_back(fasc::server::database::SqlParameter{std::to_string(key.id), false});
+  values.push_back(fasc::server::database::makeSqlParameter(key.id));
   return values;
 }
 
@@ -101,15 +103,15 @@ FarmRoleMutationResult FarmRoleController::create(
   }
   if (dto.id.has_value()) {
     columns.push_back("id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.id), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.id));
   }
   if (dto.name.has_value()) {
     columns.push_back("name");
-    values.push_back(fasc::server::database::SqlParameter{*dto.name, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.name));
   }
   if (dto.description.has_value()) {
     columns.push_back("description");
-    values.push_back(fasc::server::database::SqlParameter{*dto.description, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.description));
   }
   if (columns.empty()) {
     return FarmRoleMutationResult::failure(
@@ -136,11 +138,11 @@ FarmRoleMutationResult FarmRoleController::update(
   std::vector<fasc::server::database::SqlParameter> values;
   if (dto.name.has_value()) {
     columns.push_back("name");
-    values.push_back(fasc::server::database::SqlParameter{*dto.name, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.name));
   }
   if (dto.description.has_value()) {
     columns.push_back("description");
-    values.push_back(fasc::server::database::SqlParameter{*dto.description, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.description));
   }
   if (columns.empty()) {
     return FarmRoleMutationResult::failure(

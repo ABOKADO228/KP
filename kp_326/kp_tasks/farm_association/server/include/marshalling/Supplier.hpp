@@ -1,5 +1,9 @@
 #pragma once
 
+#include <marshalling/Nullable.hpp>
+
+#include <domain/Types.hpp>
+
 #include <controllers/dto/Supplier.hpp>
 #include <views/Supplier.hpp>
 #include <optional>
@@ -32,7 +36,7 @@ inline void from_json(const nlohmann::json& json, SupplierCreateDto& value) {
     value.legalAddress = json.at("legal_address").get<std::string>();
   }
   if (json.contains("status") && !json.at("status").is_null()) {
-    value.status = json.at("status").get<std::string>();
+    value.status = json.at("status").get<fasc::server::domain::SupplierStatus>();
   }
 }
 
@@ -45,7 +49,7 @@ inline void from_json(const nlohmann::json& json, SupplierUpdateDto& value) {
     value.legalAddress = json.at("legal_address").get<std::string>();
   }
   if (json.contains("status") && !json.at("status").is_null()) {
-    value.status = json.at("status").get<std::string>();
+    value.status = json.at("status").get<fasc::server::domain::SupplierStatus>();
   }
 }
 
@@ -54,14 +58,6 @@ inline void from_json(const nlohmann::json& json, SupplierUpdateDto& value) {
 namespace fasc::server::views {
 
 namespace detail {
-
-template <typename T>
-inline std::optional<T> toOptional(const odb::nullable<T>& value) {
-  if (value.null()) {
-    return std::nullopt;
-  }
-  return value.get();
-}
 
 inline nlohmann::json SupplierRowPayload(const SupplierRowView& view) {
   nlohmann::json json = nlohmann::json::object();

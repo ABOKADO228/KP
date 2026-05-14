@@ -1,5 +1,7 @@
 #include <controllers/http/FarmOwner.hpp>
 
+#include <exception>
+
 #include <marshalling/FarmOwner.hpp>
 
 #include <nlohmann/json.hpp>
@@ -54,7 +56,7 @@ FarmOwnerMutationViewResult FarmOwnerHttpController::create(std::string_view bod
     }
     return FarmOwnerMutationViewResult::success(
         fasc::server::views::FarmOwnerMutationView{result.success().affectedRows});
-  } catch (const nlohmann::json::exception& exception) {
+  } catch (const std::exception& exception) {
     return FarmOwnerMutationViewResult::failure(
         fasc::server::views::ErrorView{fasc::server::views::ErrorViewCode::BadRequest, exception.what()});
   }
@@ -71,7 +73,7 @@ FarmOwnerMutationViewResult FarmOwnerHttpController::update(
     }
     return FarmOwnerMutationViewResult::success(
         fasc::server::views::FarmOwnerMutationView{result.success().affectedRows});
-  } catch (const nlohmann::json::exception& exception) {
+  } catch (const std::exception& exception) {
     return FarmOwnerMutationViewResult::failure(
         fasc::server::views::ErrorView{fasc::server::views::ErrorViewCode::BadRequest, exception.what()});
   }

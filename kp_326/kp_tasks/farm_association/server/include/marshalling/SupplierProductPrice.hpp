@@ -1,5 +1,9 @@
 #pragma once
 
+#include <marshalling/Nullable.hpp>
+
+#include <domain/Types.hpp>
+
 #include <controllers/dto/SupplierProductPrice.hpp>
 #include <views/SupplierProductPrice.hpp>
 #include <optional>
@@ -28,38 +32,38 @@ namespace fasc::server::controllers::dto {
 /// Читает DTO создания таблицы supplier_product_price.
 inline void from_json(const nlohmann::json& json, SupplierProductPriceCreateDto& value) {
   if (json.contains("supplier_id") && !json.at("supplier_id").is_null()) {
-    value.supplierId = json.at("supplier_id").get<int>();
+    value.supplierId = json.at("supplier_id").get<std::uint64_t>();
   }
   if (json.contains("product_id") && !json.at("product_id").is_null()) {
-    value.productId = json.at("product_id").get<int>();
+    value.productId = json.at("product_id").get<std::uint64_t>();
   }
   if (json.contains("purchase_price") && !json.at("purchase_price").is_null()) {
     value.purchasePrice = json.at("purchase_price").get<double>();
   }
   if (json.contains("valid_from") && !json.at("valid_from").is_null()) {
-    value.validFrom = json.at("valid_from").get<std::string>();
+    value.validFrom = json.at("valid_from").get<fasc::server::domain::Date>();
   }
   if (json.contains("valid_until") && !json.at("valid_until").is_null()) {
-    value.validUntil = json.at("valid_until").get<std::string>();
+    value.validUntil = json.at("valid_until").get<fasc::server::domain::Date>();
   }
 }
 
 /// Читает DTO обновления таблицы supplier_product_price.
 inline void from_json(const nlohmann::json& json, SupplierProductPriceUpdateDto& value) {
   if (json.contains("supplier_id") && !json.at("supplier_id").is_null()) {
-    value.supplierId = json.at("supplier_id").get<int>();
+    value.supplierId = json.at("supplier_id").get<std::uint64_t>();
   }
   if (json.contains("product_id") && !json.at("product_id").is_null()) {
-    value.productId = json.at("product_id").get<int>();
+    value.productId = json.at("product_id").get<std::uint64_t>();
   }
   if (json.contains("purchase_price") && !json.at("purchase_price").is_null()) {
     value.purchasePrice = json.at("purchase_price").get<double>();
   }
   if (json.contains("valid_from") && !json.at("valid_from").is_null()) {
-    value.validFrom = json.at("valid_from").get<std::string>();
+    value.validFrom = json.at("valid_from").get<fasc::server::domain::Date>();
   }
   if (json.contains("valid_until") && !json.at("valid_until").is_null()) {
-    value.validUntil = json.at("valid_until").get<std::string>();
+    value.validUntil = json.at("valid_until").get<fasc::server::domain::Date>();
   }
 }
 
@@ -68,14 +72,6 @@ inline void from_json(const nlohmann::json& json, SupplierProductPriceUpdateDto&
 namespace fasc::server::views {
 
 namespace detail {
-
-template <typename T>
-inline std::optional<T> toOptional(const odb::nullable<T>& value) {
-  if (value.null()) {
-    return std::nullopt;
-  }
-  return value.get();
-}
 
 inline nlohmann::json SupplierProductPriceRowPayload(const SupplierProductPriceRowView& view) {
   nlohmann::json json = nlohmann::json::object();

@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <optional>
 #include <string>
 #include <vector>
@@ -7,9 +11,9 @@
 namespace fasc::server::views {
 
 struct FarmOwnerRowView {
-  int id{};
-  int personId{};
-  std::optional<std::string> status{};
+  std::uint64_t id{};
+  std::uint64_t personId{};
+  std::optional<fasc::server::domain::FarmOwnerStatus> status{};
   std::optional<double> rating{};
 };
 

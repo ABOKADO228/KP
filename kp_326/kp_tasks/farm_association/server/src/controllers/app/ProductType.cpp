@@ -1,5 +1,7 @@
 #include <controllers/app/ProductType.hpp>
 
+#include <database/SqlValue.hpp>
+
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -29,9 +31,9 @@ std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& 
 
 fasc::server::persistence::ProductTypeEntity rowToEntity(const fasc::server::database::SqlRow& row) {
   fasc::server::persistence::ProductTypeEntity entity;
-  entity.id = std::stoi(requireColumn(row, "id"));
-  if (const auto value = optionalColumn(row, "parent_id")) {
-    entity.parentId = std::stoi(*value);
+  entity.id = fasc::server::database::requireColumn<std::uint64_t>(row, "id");
+  if (const auto value = fasc::server::database::optionalColumn<std::uint64_t>(row, "parent_id")) {
+    entity.parentId = *value;
   } else {
     entity.parentId.reset();
   }
@@ -40,7 +42,7 @@ fasc::server::persistence::ProductTypeEntity rowToEntity(const fasc::server::dat
   } else {
     entity.sku.reset();
   }
-  entity.productLevel = std::stoi(requireColumn(row, "product_level"));
+  entity.productLevel = fasc::server::database::requireColumn<int>(row, "product_level");
   if (const auto value = optionalColumn(row, "name")) {
     entity.name = *value;
   } else {
@@ -57,7 +59,7 @@ fasc::server::persistence::ProductTypeEntity rowToEntity(const fasc::server::dat
 std::vector<fasc::server::database::SqlParameter> keyValues(
     const fasc::server::controllers::dto::ProductTypeKeyDto& key) {
   std::vector<fasc::server::database::SqlParameter> values;
-  values.push_back(fasc::server::database::SqlParameter{std::to_string(key.id), false});
+  values.push_back(fasc::server::database::makeSqlParameter(key.id));
   return values;
 }
 
@@ -112,15 +114,15 @@ ProductTypeMutationResult ProductTypeController::create(
   }
   if (dto.id.has_value()) {
     columns.push_back("id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.id), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.id));
   }
   if (dto.parentId.has_value()) {
     columns.push_back("parent_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.parentId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.parentId));
   }
   if (dto.sku.has_value()) {
     columns.push_back("sku");
-    values.push_back(fasc::server::database::SqlParameter{*dto.sku, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.sku));
   }
   if (!dto.productLevel.has_value()) {
     return ProductTypeMutationResult::failure(
@@ -128,15 +130,15 @@ ProductTypeMutationResult ProductTypeController::create(
   }
   if (dto.productLevel.has_value()) {
     columns.push_back("product_level");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.productLevel), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.productLevel));
   }
   if (dto.name.has_value()) {
     columns.push_back("name");
-    values.push_back(fasc::server::database::SqlParameter{*dto.name, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.name));
   }
   if (dto.description.has_value()) {
     columns.push_back("description");
-    values.push_back(fasc::server::database::SqlParameter{*dto.description, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.description));
   }
   if (columns.empty()) {
     return ProductTypeMutationResult::failure(
@@ -163,23 +165,23 @@ ProductTypeMutationResult ProductTypeController::update(
   std::vector<fasc::server::database::SqlParameter> values;
   if (dto.parentId.has_value()) {
     columns.push_back("parent_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.parentId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.parentId));
   }
   if (dto.sku.has_value()) {
     columns.push_back("sku");
-    values.push_back(fasc::server::database::SqlParameter{*dto.sku, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.sku));
   }
   if (dto.productLevel.has_value()) {
     columns.push_back("product_level");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.productLevel), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.productLevel));
   }
   if (dto.name.has_value()) {
     columns.push_back("name");
-    values.push_back(fasc::server::database::SqlParameter{*dto.name, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.name));
   }
   if (dto.description.has_value()) {
     columns.push_back("description");
-    values.push_back(fasc::server::database::SqlParameter{*dto.description, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.description));
   }
   if (columns.empty()) {
     return ProductTypeMutationResult::failure(

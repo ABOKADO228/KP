@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <odb/core.hxx>
 #include <odb/nullable.hxx>
 
@@ -10,25 +14,25 @@ namespace fasc::server::persistence {
 /// Сущность таблицы association_employee.
 struct AssociationEmployeeEntity {
   /// Значение колонки id.
-  int id{};
+  std::uint64_t id{};
 
   /// Значение колонки person_id.
-  int personId{};
+  std::uint64_t personId{};
 
   /// Значение колонки association_id.
-  int associationId{};
+  std::uint64_t associationId{};
 
   /// Значение колонки role_id.
-  int roleId{};
+  std::uint64_t roleId{};
 
   /// Значение колонки employment_status_id.
-  int employmentStatusId{};
+  std::uint64_t employmentStatusId{};
 
   /// Значение колонки hire_date.
-  std::string hireDate;
+  fasc::server::domain::Date hireDate;
 
   /// Значение колонки dismissal_date.
-  odb::nullable<std::string> dismissalDate;
+  odb::nullable<fasc::server::domain::Date> dismissalDate;
 
   /// Значение колонки salary.
   odb::nullable<double> salary;

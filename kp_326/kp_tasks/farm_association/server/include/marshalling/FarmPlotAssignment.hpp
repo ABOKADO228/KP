@@ -1,5 +1,9 @@
 #pragma once
 
+#include <marshalling/Nullable.hpp>
+
+#include <domain/Types.hpp>
+
 #include <controllers/dto/FarmPlotAssignment.hpp>
 #include <views/FarmPlotAssignment.hpp>
 #include <optional>
@@ -26,13 +30,13 @@ namespace fasc::server::controllers::dto {
 /// Читает DTO создания таблицы farm_plot_assignment.
 inline void from_json(const nlohmann::json& json, FarmPlotAssignmentCreateDto& value) {
   if (json.contains("farm_id") && !json.at("farm_id").is_null()) {
-    value.farmId = json.at("farm_id").get<int>();
+    value.farmId = json.at("farm_id").get<std::uint64_t>();
   }
   if (json.contains("farm_plot_id") && !json.at("farm_plot_id").is_null()) {
-    value.farmPlotId = json.at("farm_plot_id").get<int>();
+    value.farmPlotId = json.at("farm_plot_id").get<std::uint64_t>();
   }
   if (json.contains("status") && !json.at("status").is_null()) {
-    value.status = json.at("status").get<std::string>();
+    value.status = json.at("status").get<fasc::server::domain::FarmPlotAssignmentStatus>();
   }
   if (json.contains("notes") && !json.at("notes").is_null()) {
     value.notes = json.at("notes").get<std::string>();
@@ -42,7 +46,7 @@ inline void from_json(const nlohmann::json& json, FarmPlotAssignmentCreateDto& v
 /// Читает DTO обновления таблицы farm_plot_assignment.
 inline void from_json(const nlohmann::json& json, FarmPlotAssignmentUpdateDto& value) {
   if (json.contains("status") && !json.at("status").is_null()) {
-    value.status = json.at("status").get<std::string>();
+    value.status = json.at("status").get<fasc::server::domain::FarmPlotAssignmentStatus>();
   }
   if (json.contains("notes") && !json.at("notes").is_null()) {
     value.notes = json.at("notes").get<std::string>();
@@ -54,14 +58,6 @@ inline void from_json(const nlohmann::json& json, FarmPlotAssignmentUpdateDto& v
 namespace fasc::server::views {
 
 namespace detail {
-
-template <typename T>
-inline std::optional<T> toOptional(const odb::nullable<T>& value) {
-  if (value.null()) {
-    return std::nullopt;
-  }
-  return value.get();
-}
 
 inline nlohmann::json FarmPlotAssignmentRowPayload(const FarmPlotAssignmentRowView& view) {
   nlohmann::json json = nlohmann::json::object();

@@ -9,6 +9,7 @@ target_sources(farm_association_unit_tests
         unit/controller/FarmEntityHandlerTests.cpp
         unit/controller/HealthHandlerTests.cpp
         unit/controller/UserControllerTests.cpp
+        unit/marshalling/DomainTypesTests.cpp
         unit/marshalling/UserMarshallingTests.cpp
         unit/security/JwtServiceTests.cpp
         unit/security/PasswordHasherTests.cpp)

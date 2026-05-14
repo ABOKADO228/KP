@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <persistence/Product.hpp>
 
 #include <optional>
@@ -11,33 +15,33 @@ namespace fasc::server::controllers::dto {
 /// Ключ строки таблицы product.
 struct ProductKeyDto {
   /// Значение колонки id.
-  int id{};
+  std::uint64_t id{};
 
 };
 
 /// DTO создания строки таблицы product.
 struct ProductCreateDto {
   /// Значение колонки type_id.
-  std::optional<int> typeId;
+  std::optional<std::uint64_t> typeId;
 
   /// Значение колонки name.
   std::optional<std::string> name;
 
   /// Значение колонки unit_id.
-  std::optional<int> unitId;
+  std::optional<std::uint64_t> unitId;
 
 };
 
 /// DTO обновления строки таблицы product.
 struct ProductUpdateDto {
   /// Значение колонки type_id.
-  std::optional<int> typeId;
+  std::optional<std::uint64_t> typeId;
 
   /// Значение колонки name.
   std::optional<std::string> name;
 
   /// Значение колонки unit_id.
-  std::optional<int> unitId;
+  std::optional<std::uint64_t> unitId;
 
 };
 

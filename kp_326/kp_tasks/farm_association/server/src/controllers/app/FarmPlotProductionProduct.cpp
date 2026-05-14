@@ -1,5 +1,7 @@
 #include <controllers/app/FarmPlotProductionProduct.hpp>
 
+#include <database/SqlValue.hpp>
+
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -29,18 +31,18 @@ std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& 
 
 fasc::server::persistence::FarmPlotProductionProductEntity rowToEntity(const fasc::server::database::SqlRow& row) {
   fasc::server::persistence::FarmPlotProductionProductEntity entity;
-  entity.productId = std::stoi(requireColumn(row, "product_id"));
-  entity.farmPlotId = std::stoi(requireColumn(row, "farm_plot_id"));
-  entity.quantity = std::stoi(requireColumn(row, "quantity"));
-  entity.productionNow = std::stoi(requireColumn(row, "production_now"));
+  entity.productId = fasc::server::database::requireColumn<std::uint64_t>(row, "product_id");
+  entity.farmPlotId = fasc::server::database::requireColumn<std::uint64_t>(row, "farm_plot_id");
+  entity.quantity = fasc::server::database::requireColumn<int>(row, "quantity");
+  entity.productionNow = fasc::server::database::requireColumn<int>(row, "production_now");
   return entity;
 }
 
 std::vector<fasc::server::database::SqlParameter> keyValues(
     const fasc::server::controllers::dto::FarmPlotProductionProductKeyDto& key) {
   std::vector<fasc::server::database::SqlParameter> values;
-  values.push_back(fasc::server::database::SqlParameter{std::to_string(key.productId), false});
-  values.push_back(fasc::server::database::SqlParameter{std::to_string(key.farmPlotId), false});
+  values.push_back(fasc::server::database::makeSqlParameter(key.productId));
+  values.push_back(fasc::server::database::makeSqlParameter(key.farmPlotId));
   return values;
 }
 
@@ -95,7 +97,7 @@ FarmPlotProductionProductMutationResult FarmPlotProductionProductController::cre
   }
   if (dto.productId.has_value()) {
     columns.push_back("product_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.productId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.productId));
   }
   if (!dto.farmPlotId.has_value()) {
     return FarmPlotProductionProductMutationResult::failure(
@@ -103,7 +105,7 @@ FarmPlotProductionProductMutationResult FarmPlotProductionProductController::cre
   }
   if (dto.farmPlotId.has_value()) {
     columns.push_back("farm_plot_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.farmPlotId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.farmPlotId));
   }
   if (!dto.quantity.has_value()) {
     return FarmPlotProductionProductMutationResult::failure(
@@ -111,7 +113,7 @@ FarmPlotProductionProductMutationResult FarmPlotProductionProductController::cre
   }
   if (dto.quantity.has_value()) {
     columns.push_back("quantity");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.quantity), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.quantity));
   }
   if (!dto.productionNow.has_value()) {
     return FarmPlotProductionProductMutationResult::failure(
@@ -119,7 +121,7 @@ FarmPlotProductionProductMutationResult FarmPlotProductionProductController::cre
   }
   if (dto.productionNow.has_value()) {
     columns.push_back("production_now");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.productionNow), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.productionNow));
   }
   if (columns.empty()) {
     return FarmPlotProductionProductMutationResult::failure(
@@ -146,11 +148,11 @@ FarmPlotProductionProductMutationResult FarmPlotProductionProductController::upd
   std::vector<fasc::server::database::SqlParameter> values;
   if (dto.quantity.has_value()) {
     columns.push_back("quantity");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.quantity), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.quantity));
   }
   if (dto.productionNow.has_value()) {
     columns.push_back("production_now");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.productionNow), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.productionNow));
   }
   if (columns.empty()) {
     return FarmPlotProductionProductMutationResult::failure(

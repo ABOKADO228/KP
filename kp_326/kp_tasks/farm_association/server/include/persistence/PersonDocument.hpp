@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <odb/core.hxx>
 #include <odb/nullable.hxx>
 
@@ -10,13 +14,13 @@ namespace fasc::server::persistence {
 /// Сущность таблицы person_document.
 struct PersonDocumentEntity {
   /// Значение колонки id.
-  int id{};
+  std::uint64_t id{};
 
   /// Значение колонки person_id.
-  int personId{};
+  std::uint64_t personId{};
 
   /// Значение колонки document_type_id.
-  int documentTypeId{};
+  std::uint64_t documentTypeId{};
 
   /// Значение колонки document_number.
   odb::nullable<std::string> documentNumber;
@@ -25,13 +29,13 @@ struct PersonDocumentEntity {
   odb::nullable<std::string> issuedBy;
 
   /// Значение колонки issued_date.
-  odb::nullable<std::string> issuedDate;
+  odb::nullable<fasc::server::domain::Date> issuedDate;
 
   /// Значение колонки expiration_date.
-  odb::nullable<std::string> expirationDate;
+  odb::nullable<fasc::server::domain::Date> expirationDate;
 
   /// Значение колонки is_primary.
-  odb::nullable<int> isPrimary;
+  odb::nullable<bool> isPrimary;
 
 };
 

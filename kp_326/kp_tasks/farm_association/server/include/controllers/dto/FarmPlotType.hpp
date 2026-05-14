@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <persistence/FarmPlotType.hpp>
 
 #include <optional>
@@ -11,14 +15,14 @@ namespace fasc::server::controllers::dto {
 /// Ключ строки таблицы farm_plot_type.
 struct FarmPlotTypeKeyDto {
   /// Значение колонки id.
-  int id{};
+  std::uint64_t id{};
 
 };
 
 /// DTO создания строки таблицы farm_plot_type.
 struct FarmPlotTypeCreateDto {
   /// Значение колонки id.
-  std::optional<int> id;
+  std::optional<std::uint64_t> id;
 
   /// Значение колонки name.
   std::optional<std::string> name;
@@ -30,7 +34,7 @@ struct FarmPlotTypeCreateDto {
   std::optional<int> farmPlotLevel;
 
   /// Значение колонки parent_id.
-  std::optional<int> parentId;
+  std::optional<std::uint64_t> parentId;
 
 };
 
@@ -46,7 +50,7 @@ struct FarmPlotTypeUpdateDto {
   std::optional<int> farmPlotLevel;
 
   /// Значение колонки parent_id.
-  std::optional<int> parentId;
+  std::optional<std::uint64_t> parentId;
 
 };
 

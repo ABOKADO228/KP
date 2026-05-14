@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <persistence/FarmPlot.hpp>
 
 #include <optional>
@@ -11,14 +15,14 @@ namespace fasc::server::controllers::dto {
 /// Ключ строки таблицы farm_plot.
 struct FarmPlotKeyDto {
   /// Значение колонки id.
-  int id{};
+  std::uint64_t id{};
 
 };
 
 /// DTO создания строки таблицы farm_plot.
 struct FarmPlotCreateDto {
   /// Значение колонки farm_plot_type_id.
-  std::optional<int> farmPlotTypeId;
+  std::optional<std::uint64_t> farmPlotTypeId;
 
   /// Значение колонки name.
   std::optional<std::string> name;
@@ -33,14 +37,14 @@ struct FarmPlotCreateDto {
   std::optional<std::string> cadastralNumber;
 
   /// Значение колонки status.
-  std::optional<std::string> status;
+  std::optional<fasc::server::domain::FarmPlotStatus> status;
 
 };
 
 /// DTO обновления строки таблицы farm_plot.
 struct FarmPlotUpdateDto {
   /// Значение колонки farm_plot_type_id.
-  std::optional<int> farmPlotTypeId;
+  std::optional<std::uint64_t> farmPlotTypeId;
 
   /// Значение колонки name.
   std::optional<std::string> name;
@@ -55,7 +59,7 @@ struct FarmPlotUpdateDto {
   std::optional<std::string> cadastralNumber;
 
   /// Значение колонки status.
-  std::optional<std::string> status;
+  std::optional<fasc::server::domain::FarmPlotStatus> status;
 
 };
 

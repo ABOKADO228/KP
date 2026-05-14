@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <persistence/IdentityDocumentType.hpp>
 
 #include <optional>
@@ -11,17 +15,17 @@ namespace fasc::server::controllers::dto {
 /// Ключ строки таблицы identity_document_type.
 struct IdentityDocumentTypeKeyDto {
   /// Значение колонки id.
-  int id{};
+  std::uint64_t id{};
 
 };
 
 /// DTO создания строки таблицы identity_document_type.
 struct IdentityDocumentTypeCreateDto {
   /// Значение колонки id.
-  std::optional<int> id;
+  std::optional<std::uint64_t> id;
 
   /// Значение колонки code.
-  std::optional<std::string> code;
+  std::optional<fasc::server::domain::IdentityDocumentTypeCode> code;
 
   /// Значение колонки name.
   std::optional<std::string> name;
@@ -34,7 +38,7 @@ struct IdentityDocumentTypeCreateDto {
 /// DTO обновления строки таблицы identity_document_type.
 struct IdentityDocumentTypeUpdateDto {
   /// Значение колонки code.
-  std::optional<std::string> code;
+  std::optional<fasc::server::domain::IdentityDocumentTypeCode> code;
 
   /// Значение колонки name.
   std::optional<std::string> name;

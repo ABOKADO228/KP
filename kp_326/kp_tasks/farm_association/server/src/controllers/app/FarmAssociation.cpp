@@ -1,5 +1,7 @@
 #include <controllers/app/FarmAssociation.hpp>
 
+#include <database/SqlValue.hpp>
+
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -29,7 +31,7 @@ std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& 
 
 fasc::server::persistence::FarmAssociationEntity rowToEntity(const fasc::server::database::SqlRow& row) {
   fasc::server::persistence::FarmAssociationEntity entity;
-  entity.id = std::stoi(requireColumn(row, "id"));
+  entity.id = fasc::server::database::requireColumn<std::uint64_t>(row, "id");
   if (const auto value = optionalColumn(row, "inn")) {
     entity.inn = *value;
   } else {
@@ -50,7 +52,7 @@ fasc::server::persistence::FarmAssociationEntity rowToEntity(const fasc::server:
   } else {
     entity.legalAddress.reset();
   }
-  if (const auto value = optionalColumn(row, "status")) {
+  if (const auto value = fasc::server::database::optionalColumn<fasc::server::domain::FarmAssociationStatus>(row, "status")) {
     entity.status = *value;
   } else {
     entity.status.reset();
@@ -61,7 +63,7 @@ fasc::server::persistence::FarmAssociationEntity rowToEntity(const fasc::server:
 std::vector<fasc::server::database::SqlParameter> keyValues(
     const fasc::server::controllers::dto::FarmAssociationKeyDto& key) {
   std::vector<fasc::server::database::SqlParameter> values;
-  values.push_back(fasc::server::database::SqlParameter{std::to_string(key.id), false});
+  values.push_back(fasc::server::database::makeSqlParameter(key.id));
   return values;
 }
 
@@ -112,23 +114,23 @@ FarmAssociationMutationResult FarmAssociationController::create(
   std::vector<fasc::server::database::SqlParameter> values;
   if (dto.inn.has_value()) {
     columns.push_back("inn");
-    values.push_back(fasc::server::database::SqlParameter{*dto.inn, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.inn));
   }
   if (dto.ogrn.has_value()) {
     columns.push_back("ogrn");
-    values.push_back(fasc::server::database::SqlParameter{*dto.ogrn, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.ogrn));
   }
   if (dto.name.has_value()) {
     columns.push_back("name");
-    values.push_back(fasc::server::database::SqlParameter{*dto.name, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.name));
   }
   if (dto.legalAddress.has_value()) {
     columns.push_back("legal_address");
-    values.push_back(fasc::server::database::SqlParameter{*dto.legalAddress, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.legalAddress));
   }
   if (dto.status.has_value()) {
     columns.push_back("status");
-    values.push_back(fasc::server::database::SqlParameter{*dto.status, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.status));
   }
   if (columns.empty()) {
     return FarmAssociationMutationResult::failure(
@@ -155,23 +157,23 @@ FarmAssociationMutationResult FarmAssociationController::update(
   std::vector<fasc::server::database::SqlParameter> values;
   if (dto.inn.has_value()) {
     columns.push_back("inn");
-    values.push_back(fasc::server::database::SqlParameter{*dto.inn, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.inn));
   }
   if (dto.ogrn.has_value()) {
     columns.push_back("ogrn");
-    values.push_back(fasc::server::database::SqlParameter{*dto.ogrn, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.ogrn));
   }
   if (dto.name.has_value()) {
     columns.push_back("name");
-    values.push_back(fasc::server::database::SqlParameter{*dto.name, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.name));
   }
   if (dto.legalAddress.has_value()) {
     columns.push_back("legal_address");
-    values.push_back(fasc::server::database::SqlParameter{*dto.legalAddress, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.legalAddress));
   }
   if (dto.status.has_value()) {
     columns.push_back("status");
-    values.push_back(fasc::server::database::SqlParameter{*dto.status, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.status));
   }
   if (columns.empty()) {
     return FarmAssociationMutationResult::failure(

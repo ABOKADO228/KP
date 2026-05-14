@@ -1,5 +1,7 @@
 #include <controllers/app/Supplier.hpp>
 
+#include <database/SqlValue.hpp>
+
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -29,7 +31,7 @@ std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& 
 
 fasc::server::persistence::SupplierEntity rowToEntity(const fasc::server::database::SqlRow& row) {
   fasc::server::persistence::SupplierEntity entity;
-  entity.id = std::stoi(requireColumn(row, "id"));
+  entity.id = fasc::server::database::requireColumn<std::uint64_t>(row, "id");
   if (const auto value = optionalColumn(row, "name")) {
     entity.name = *value;
   } else {
@@ -40,7 +42,7 @@ fasc::server::persistence::SupplierEntity rowToEntity(const fasc::server::databa
   } else {
     entity.legalAddress.reset();
   }
-  if (const auto value = optionalColumn(row, "status")) {
+  if (const auto value = fasc::server::database::optionalColumn<fasc::server::domain::SupplierStatus>(row, "status")) {
     entity.status = *value;
   } else {
     entity.status.reset();
@@ -51,7 +53,7 @@ fasc::server::persistence::SupplierEntity rowToEntity(const fasc::server::databa
 std::vector<fasc::server::database::SqlParameter> keyValues(
     const fasc::server::controllers::dto::SupplierKeyDto& key) {
   std::vector<fasc::server::database::SqlParameter> values;
-  values.push_back(fasc::server::database::SqlParameter{std::to_string(key.id), false});
+  values.push_back(fasc::server::database::makeSqlParameter(key.id));
   return values;
 }
 
@@ -102,15 +104,15 @@ SupplierMutationResult SupplierController::create(
   std::vector<fasc::server::database::SqlParameter> values;
   if (dto.name.has_value()) {
     columns.push_back("name");
-    values.push_back(fasc::server::database::SqlParameter{*dto.name, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.name));
   }
   if (dto.legalAddress.has_value()) {
     columns.push_back("legal_address");
-    values.push_back(fasc::server::database::SqlParameter{*dto.legalAddress, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.legalAddress));
   }
   if (dto.status.has_value()) {
     columns.push_back("status");
-    values.push_back(fasc::server::database::SqlParameter{*dto.status, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.status));
   }
   if (columns.empty()) {
     return SupplierMutationResult::failure(
@@ -137,15 +139,15 @@ SupplierMutationResult SupplierController::update(
   std::vector<fasc::server::database::SqlParameter> values;
   if (dto.name.has_value()) {
     columns.push_back("name");
-    values.push_back(fasc::server::database::SqlParameter{*dto.name, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.name));
   }
   if (dto.legalAddress.has_value()) {
     columns.push_back("legal_address");
-    values.push_back(fasc::server::database::SqlParameter{*dto.legalAddress, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.legalAddress));
   }
   if (dto.status.has_value()) {
     columns.push_back("status");
-    values.push_back(fasc::server::database::SqlParameter{*dto.status, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.status));
   }
   if (columns.empty()) {
     return SupplierMutationResult::failure(

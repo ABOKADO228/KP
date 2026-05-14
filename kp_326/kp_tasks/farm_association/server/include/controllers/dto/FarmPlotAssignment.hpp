@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <persistence/FarmPlotAssignment.hpp>
 
 #include <optional>
@@ -11,23 +15,23 @@ namespace fasc::server::controllers::dto {
 /// Ключ строки таблицы farm_plot_assignment.
 struct FarmPlotAssignmentKeyDto {
   /// Значение колонки farm_id.
-  int farmId{};
+  std::uint64_t farmId{};
 
   /// Значение колонки farm_plot_id.
-  int farmPlotId{};
+  std::uint64_t farmPlotId{};
 
 };
 
 /// DTO создания строки таблицы farm_plot_assignment.
 struct FarmPlotAssignmentCreateDto {
   /// Значение колонки farm_id.
-  std::optional<int> farmId;
+  std::optional<std::uint64_t> farmId;
 
   /// Значение колонки farm_plot_id.
-  std::optional<int> farmPlotId;
+  std::optional<std::uint64_t> farmPlotId;
 
   /// Значение колонки status.
-  std::optional<std::string> status;
+  std::optional<fasc::server::domain::FarmPlotAssignmentStatus> status;
 
   /// Значение колонки notes.
   std::optional<std::string> notes;
@@ -37,7 +41,7 @@ struct FarmPlotAssignmentCreateDto {
 /// DTO обновления строки таблицы farm_plot_assignment.
 struct FarmPlotAssignmentUpdateDto {
   /// Значение колонки status.
-  std::optional<std::string> status;
+  std::optional<fasc::server::domain::FarmPlotAssignmentStatus> status;
 
   /// Значение колонки notes.
   std::optional<std::string> notes;

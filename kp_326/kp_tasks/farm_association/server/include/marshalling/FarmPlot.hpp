@@ -1,5 +1,9 @@
 #pragma once
 
+#include <marshalling/Nullable.hpp>
+
+#include <domain/Types.hpp>
+
 #include <controllers/dto/FarmPlot.hpp>
 #include <views/FarmPlot.hpp>
 #include <optional>
@@ -29,7 +33,7 @@ namespace fasc::server::controllers::dto {
 /// Читает DTO создания таблицы farm_plot.
 inline void from_json(const nlohmann::json& json, FarmPlotCreateDto& value) {
   if (json.contains("farm_plot_type_id") && !json.at("farm_plot_type_id").is_null()) {
-    value.farmPlotTypeId = json.at("farm_plot_type_id").get<int>();
+    value.farmPlotTypeId = json.at("farm_plot_type_id").get<std::uint64_t>();
   }
   if (json.contains("name") && !json.at("name").is_null()) {
     value.name = json.at("name").get<std::string>();
@@ -44,14 +48,14 @@ inline void from_json(const nlohmann::json& json, FarmPlotCreateDto& value) {
     value.cadastralNumber = json.at("cadastral_number").get<std::string>();
   }
   if (json.contains("status") && !json.at("status").is_null()) {
-    value.status = json.at("status").get<std::string>();
+    value.status = json.at("status").get<fasc::server::domain::FarmPlotStatus>();
   }
 }
 
 /// Читает DTO обновления таблицы farm_plot.
 inline void from_json(const nlohmann::json& json, FarmPlotUpdateDto& value) {
   if (json.contains("farm_plot_type_id") && !json.at("farm_plot_type_id").is_null()) {
-    value.farmPlotTypeId = json.at("farm_plot_type_id").get<int>();
+    value.farmPlotTypeId = json.at("farm_plot_type_id").get<std::uint64_t>();
   }
   if (json.contains("name") && !json.at("name").is_null()) {
     value.name = json.at("name").get<std::string>();
@@ -66,7 +70,7 @@ inline void from_json(const nlohmann::json& json, FarmPlotUpdateDto& value) {
     value.cadastralNumber = json.at("cadastral_number").get<std::string>();
   }
   if (json.contains("status") && !json.at("status").is_null()) {
-    value.status = json.at("status").get<std::string>();
+    value.status = json.at("status").get<fasc::server::domain::FarmPlotStatus>();
   }
 }
 
@@ -75,14 +79,6 @@ inline void from_json(const nlohmann::json& json, FarmPlotUpdateDto& value) {
 namespace fasc::server::views {
 
 namespace detail {
-
-template <typename T>
-inline std::optional<T> toOptional(const odb::nullable<T>& value) {
-  if (value.null()) {
-    return std::nullopt;
-  }
-  return value.get();
-}
 
 inline nlohmann::json FarmPlotRowPayload(const FarmPlotRowView& view) {
   nlohmann::json json = nlohmann::json::object();

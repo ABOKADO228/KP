@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <odb/core.hxx>
 #include <odb/nullable.hxx>
 
@@ -10,7 +14,7 @@ namespace fasc::server::persistence {
 /// Сущность таблицы supplier.
 struct SupplierEntity {
   /// Значение колонки id.
-  int id{};
+  std::uint64_t id{};
 
   /// Значение колонки name.
   odb::nullable<std::string> name;
@@ -19,7 +23,7 @@ struct SupplierEntity {
   odb::nullable<std::string> legalAddress;
 
   /// Значение колонки status.
-  odb::nullable<std::string> status;
+  odb::nullable<fasc::server::domain::SupplierStatus> status;
 
 };
 

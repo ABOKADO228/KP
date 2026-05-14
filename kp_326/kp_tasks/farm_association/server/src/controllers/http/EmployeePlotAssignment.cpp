@@ -1,5 +1,7 @@
 #include <controllers/http/EmployeePlotAssignment.hpp>
 
+#include <exception>
+
 #include <marshalling/EmployeePlotAssignment.hpp>
 
 #include <nlohmann/json.hpp>
@@ -54,7 +56,7 @@ EmployeePlotAssignmentMutationViewResult EmployeePlotAssignmentHttpController::c
     }
     return EmployeePlotAssignmentMutationViewResult::success(
         fasc::server::views::EmployeePlotAssignmentMutationView{result.success().affectedRows});
-  } catch (const nlohmann::json::exception& exception) {
+  } catch (const std::exception& exception) {
     return EmployeePlotAssignmentMutationViewResult::failure(
         fasc::server::views::ErrorView{fasc::server::views::ErrorViewCode::BadRequest, exception.what()});
   }
@@ -71,7 +73,7 @@ EmployeePlotAssignmentMutationViewResult EmployeePlotAssignmentHttpController::u
     }
     return EmployeePlotAssignmentMutationViewResult::success(
         fasc::server::views::EmployeePlotAssignmentMutationView{result.success().affectedRows});
-  } catch (const nlohmann::json::exception& exception) {
+  } catch (const std::exception& exception) {
     return EmployeePlotAssignmentMutationViewResult::failure(
         fasc::server::views::ErrorView{fasc::server::views::ErrorViewCode::BadRequest, exception.what()});
   }

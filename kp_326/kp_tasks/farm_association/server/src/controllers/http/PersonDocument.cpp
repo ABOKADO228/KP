@@ -1,5 +1,7 @@
 #include <controllers/http/PersonDocument.hpp>
 
+#include <exception>
+
 #include <marshalling/PersonDocument.hpp>
 
 #include <nlohmann/json.hpp>
@@ -54,7 +56,7 @@ PersonDocumentMutationViewResult PersonDocumentHttpController::create(std::strin
     }
     return PersonDocumentMutationViewResult::success(
         fasc::server::views::PersonDocumentMutationView{result.success().affectedRows});
-  } catch (const nlohmann::json::exception& exception) {
+  } catch (const std::exception& exception) {
     return PersonDocumentMutationViewResult::failure(
         fasc::server::views::ErrorView{fasc::server::views::ErrorViewCode::BadRequest, exception.what()});
   }
@@ -71,7 +73,7 @@ PersonDocumentMutationViewResult PersonDocumentHttpController::update(
     }
     return PersonDocumentMutationViewResult::success(
         fasc::server::views::PersonDocumentMutationView{result.success().affectedRows});
-  } catch (const nlohmann::json::exception& exception) {
+  } catch (const std::exception& exception) {
     return PersonDocumentMutationViewResult::failure(
         fasc::server::views::ErrorView{fasc::server::views::ErrorViewCode::BadRequest, exception.what()});
   }

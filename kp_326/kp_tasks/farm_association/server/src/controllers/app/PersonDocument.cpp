@@ -1,5 +1,7 @@
 #include <controllers/app/PersonDocument.hpp>
 
+#include <database/SqlValue.hpp>
+
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -29,9 +31,9 @@ std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& 
 
 fasc::server::persistence::PersonDocumentEntity rowToEntity(const fasc::server::database::SqlRow& row) {
   fasc::server::persistence::PersonDocumentEntity entity;
-  entity.id = std::stoi(requireColumn(row, "id"));
-  entity.personId = std::stoi(requireColumn(row, "person_id"));
-  entity.documentTypeId = std::stoi(requireColumn(row, "document_type_id"));
+  entity.id = fasc::server::database::requireColumn<std::uint64_t>(row, "id");
+  entity.personId = fasc::server::database::requireColumn<std::uint64_t>(row, "person_id");
+  entity.documentTypeId = fasc::server::database::requireColumn<std::uint64_t>(row, "document_type_id");
   if (const auto value = optionalColumn(row, "document_number")) {
     entity.documentNumber = *value;
   } else {
@@ -42,18 +44,18 @@ fasc::server::persistence::PersonDocumentEntity rowToEntity(const fasc::server::
   } else {
     entity.issuedBy.reset();
   }
-  if (const auto value = optionalColumn(row, "issued_date")) {
+  if (const auto value = fasc::server::database::optionalColumn<fasc::server::domain::Date>(row, "issued_date")) {
     entity.issuedDate = *value;
   } else {
     entity.issuedDate.reset();
   }
-  if (const auto value = optionalColumn(row, "expiration_date")) {
+  if (const auto value = fasc::server::database::optionalColumn<fasc::server::domain::Date>(row, "expiration_date")) {
     entity.expirationDate = *value;
   } else {
     entity.expirationDate.reset();
   }
-  if (const auto value = optionalColumn(row, "is_primary")) {
-    entity.isPrimary = std::stoi(*value);
+  if (const auto value = fasc::server::database::optionalColumn<bool>(row, "is_primary")) {
+    entity.isPrimary = *value;
   } else {
     entity.isPrimary.reset();
   }
@@ -63,7 +65,7 @@ fasc::server::persistence::PersonDocumentEntity rowToEntity(const fasc::server::
 std::vector<fasc::server::database::SqlParameter> keyValues(
     const fasc::server::controllers::dto::PersonDocumentKeyDto& key) {
   std::vector<fasc::server::database::SqlParameter> values;
-  values.push_back(fasc::server::database::SqlParameter{std::to_string(key.id), false});
+  values.push_back(fasc::server::database::makeSqlParameter(key.id));
   return values;
 }
 
@@ -118,7 +120,7 @@ PersonDocumentMutationResult PersonDocumentController::create(
   }
   if (dto.personId.has_value()) {
     columns.push_back("person_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.personId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.personId));
   }
   if (!dto.documentTypeId.has_value()) {
     return PersonDocumentMutationResult::failure(
@@ -126,27 +128,27 @@ PersonDocumentMutationResult PersonDocumentController::create(
   }
   if (dto.documentTypeId.has_value()) {
     columns.push_back("document_type_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.documentTypeId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.documentTypeId));
   }
   if (dto.documentNumber.has_value()) {
     columns.push_back("document_number");
-    values.push_back(fasc::server::database::SqlParameter{*dto.documentNumber, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.documentNumber));
   }
   if (dto.issuedBy.has_value()) {
     columns.push_back("issued_by");
-    values.push_back(fasc::server::database::SqlParameter{*dto.issuedBy, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.issuedBy));
   }
   if (dto.issuedDate.has_value()) {
     columns.push_back("issued_date");
-    values.push_back(fasc::server::database::SqlParameter{*dto.issuedDate, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.issuedDate));
   }
   if (dto.expirationDate.has_value()) {
     columns.push_back("expiration_date");
-    values.push_back(fasc::server::database::SqlParameter{*dto.expirationDate, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.expirationDate));
   }
   if (dto.isPrimary.has_value()) {
     columns.push_back("is_primary");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.isPrimary), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.isPrimary));
   }
   if (columns.empty()) {
     return PersonDocumentMutationResult::failure(
@@ -173,31 +175,31 @@ PersonDocumentMutationResult PersonDocumentController::update(
   std::vector<fasc::server::database::SqlParameter> values;
   if (dto.personId.has_value()) {
     columns.push_back("person_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.personId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.personId));
   }
   if (dto.documentTypeId.has_value()) {
     columns.push_back("document_type_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.documentTypeId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.documentTypeId));
   }
   if (dto.documentNumber.has_value()) {
     columns.push_back("document_number");
-    values.push_back(fasc::server::database::SqlParameter{*dto.documentNumber, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.documentNumber));
   }
   if (dto.issuedBy.has_value()) {
     columns.push_back("issued_by");
-    values.push_back(fasc::server::database::SqlParameter{*dto.issuedBy, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.issuedBy));
   }
   if (dto.issuedDate.has_value()) {
     columns.push_back("issued_date");
-    values.push_back(fasc::server::database::SqlParameter{*dto.issuedDate, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.issuedDate));
   }
   if (dto.expirationDate.has_value()) {
     columns.push_back("expiration_date");
-    values.push_back(fasc::server::database::SqlParameter{*dto.expirationDate, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.expirationDate));
   }
   if (dto.isPrimary.has_value()) {
     columns.push_back("is_primary");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.isPrimary), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.isPrimary));
   }
   if (columns.empty()) {
     return PersonDocumentMutationResult::failure(

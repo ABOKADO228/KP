@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <odb/core.hxx>
 #include <odb/nullable.hxx>
 
@@ -10,10 +14,10 @@ namespace fasc::server::persistence {
 /// Сущность таблицы farm_plot_production_product.
 struct FarmPlotProductionProductEntity {
   /// Значение колонки product_id.
-  int productId{};
+  std::uint64_t productId{};
 
   /// Значение колонки farm_plot_id.
-  int farmPlotId{};
+  std::uint64_t farmPlotId{};
 
   /// Значение колонки quantity.
   int quantity{};

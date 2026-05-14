@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <persistence/EmploymentStatus.hpp>
 
 #include <optional>
@@ -11,24 +15,24 @@ namespace fasc::server::controllers::dto {
 /// Ключ строки таблицы employment_status.
 struct EmploymentStatusKeyDto {
   /// Значение колонки id.
-  int id{};
+  std::uint64_t id{};
 
 };
 
 /// DTO создания строки таблицы employment_status.
 struct EmploymentStatusCreateDto {
   /// Значение колонки id.
-  std::optional<int> id;
+  std::optional<std::uint64_t> id;
 
   /// Значение колонки name.
-  std::optional<std::string> name;
+  std::optional<fasc::server::domain::EmploymentStatusCode> name;
 
 };
 
 /// DTO обновления строки таблицы employment_status.
 struct EmploymentStatusUpdateDto {
   /// Значение колонки name.
-  std::optional<std::string> name;
+  std::optional<fasc::server::domain::EmploymentStatusCode> name;
 
 };
 

@@ -1,5 +1,9 @@
 #pragma once
 
+#include <marshalling/Nullable.hpp>
+
+#include <domain/Types.hpp>
+
 #include <controllers/dto/Person.hpp>
 #include <views/Person.hpp>
 #include <optional>
@@ -39,7 +43,7 @@ inline void from_json(const nlohmann::json& json, PersonCreateDto& value) {
     value.middleName = json.at("middle_name").get<std::string>();
   }
   if (json.contains("birth_date") && !json.at("birth_date").is_null()) {
-    value.birthDate = json.at("birth_date").get<std::string>();
+    value.birthDate = json.at("birth_date").get<fasc::server::domain::Date>();
   }
   if (json.contains("phone") && !json.at("phone").is_null()) {
     value.phone = json.at("phone").get<std::string>();
@@ -64,7 +68,7 @@ inline void from_json(const nlohmann::json& json, PersonUpdateDto& value) {
     value.middleName = json.at("middle_name").get<std::string>();
   }
   if (json.contains("birth_date") && !json.at("birth_date").is_null()) {
-    value.birthDate = json.at("birth_date").get<std::string>();
+    value.birthDate = json.at("birth_date").get<fasc::server::domain::Date>();
   }
   if (json.contains("phone") && !json.at("phone").is_null()) {
     value.phone = json.at("phone").get<std::string>();
@@ -82,14 +86,6 @@ inline void from_json(const nlohmann::json& json, PersonUpdateDto& value) {
 namespace fasc::server::views {
 
 namespace detail {
-
-template <typename T>
-inline std::optional<T> toOptional(const odb::nullable<T>& value) {
-  if (value.null()) {
-    return std::nullopt;
-  }
-  return value.get();
-}
 
 inline nlohmann::json PersonRowPayload(const PersonRowView& view) {
   nlohmann::json json = nlohmann::json::object();

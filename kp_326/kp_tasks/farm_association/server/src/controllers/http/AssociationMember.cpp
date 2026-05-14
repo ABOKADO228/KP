@@ -1,5 +1,7 @@
 #include <controllers/http/AssociationMember.hpp>
 
+#include <exception>
+
 #include <marshalling/AssociationMember.hpp>
 
 #include <nlohmann/json.hpp>
@@ -54,7 +56,7 @@ AssociationMemberMutationViewResult AssociationMemberHttpController::create(std:
     }
     return AssociationMemberMutationViewResult::success(
         fasc::server::views::AssociationMemberMutationView{result.success().affectedRows});
-  } catch (const nlohmann::json::exception& exception) {
+  } catch (const std::exception& exception) {
     return AssociationMemberMutationViewResult::failure(
         fasc::server::views::ErrorView{fasc::server::views::ErrorViewCode::BadRequest, exception.what()});
   }
@@ -71,7 +73,7 @@ AssociationMemberMutationViewResult AssociationMemberHttpController::update(
     }
     return AssociationMemberMutationViewResult::success(
         fasc::server::views::AssociationMemberMutationView{result.success().affectedRows});
-  } catch (const nlohmann::json::exception& exception) {
+  } catch (const std::exception& exception) {
     return AssociationMemberMutationViewResult::failure(
         fasc::server::views::ErrorView{fasc::server::views::ErrorViewCode::BadRequest, exception.what()});
   }

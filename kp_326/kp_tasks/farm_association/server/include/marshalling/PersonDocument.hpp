@@ -1,5 +1,9 @@
 #pragma once
 
+#include <marshalling/Nullable.hpp>
+
+#include <domain/Types.hpp>
+
 #include <controllers/dto/PersonDocument.hpp>
 #include <views/PersonDocument.hpp>
 #include <optional>
@@ -30,10 +34,10 @@ namespace fasc::server::controllers::dto {
 /// Читает DTO создания таблицы person_document.
 inline void from_json(const nlohmann::json& json, PersonDocumentCreateDto& value) {
   if (json.contains("person_id") && !json.at("person_id").is_null()) {
-    value.personId = json.at("person_id").get<int>();
+    value.personId = json.at("person_id").get<std::uint64_t>();
   }
   if (json.contains("document_type_id") && !json.at("document_type_id").is_null()) {
-    value.documentTypeId = json.at("document_type_id").get<int>();
+    value.documentTypeId = json.at("document_type_id").get<std::uint64_t>();
   }
   if (json.contains("document_number") && !json.at("document_number").is_null()) {
     value.documentNumber = json.at("document_number").get<std::string>();
@@ -42,23 +46,23 @@ inline void from_json(const nlohmann::json& json, PersonDocumentCreateDto& value
     value.issuedBy = json.at("issued_by").get<std::string>();
   }
   if (json.contains("issued_date") && !json.at("issued_date").is_null()) {
-    value.issuedDate = json.at("issued_date").get<std::string>();
+    value.issuedDate = json.at("issued_date").get<fasc::server::domain::Date>();
   }
   if (json.contains("expiration_date") && !json.at("expiration_date").is_null()) {
-    value.expirationDate = json.at("expiration_date").get<std::string>();
+    value.expirationDate = json.at("expiration_date").get<fasc::server::domain::Date>();
   }
   if (json.contains("is_primary") && !json.at("is_primary").is_null()) {
-    value.isPrimary = json.at("is_primary").get<int>();
+    value.isPrimary = json.at("is_primary").get<bool>();
   }
 }
 
 /// Читает DTO обновления таблицы person_document.
 inline void from_json(const nlohmann::json& json, PersonDocumentUpdateDto& value) {
   if (json.contains("person_id") && !json.at("person_id").is_null()) {
-    value.personId = json.at("person_id").get<int>();
+    value.personId = json.at("person_id").get<std::uint64_t>();
   }
   if (json.contains("document_type_id") && !json.at("document_type_id").is_null()) {
-    value.documentTypeId = json.at("document_type_id").get<int>();
+    value.documentTypeId = json.at("document_type_id").get<std::uint64_t>();
   }
   if (json.contains("document_number") && !json.at("document_number").is_null()) {
     value.documentNumber = json.at("document_number").get<std::string>();
@@ -67,13 +71,13 @@ inline void from_json(const nlohmann::json& json, PersonDocumentUpdateDto& value
     value.issuedBy = json.at("issued_by").get<std::string>();
   }
   if (json.contains("issued_date") && !json.at("issued_date").is_null()) {
-    value.issuedDate = json.at("issued_date").get<std::string>();
+    value.issuedDate = json.at("issued_date").get<fasc::server::domain::Date>();
   }
   if (json.contains("expiration_date") && !json.at("expiration_date").is_null()) {
-    value.expirationDate = json.at("expiration_date").get<std::string>();
+    value.expirationDate = json.at("expiration_date").get<fasc::server::domain::Date>();
   }
   if (json.contains("is_primary") && !json.at("is_primary").is_null()) {
-    value.isPrimary = json.at("is_primary").get<int>();
+    value.isPrimary = json.at("is_primary").get<bool>();
   }
 }
 
@@ -82,14 +86,6 @@ inline void from_json(const nlohmann::json& json, PersonDocumentUpdateDto& value
 namespace fasc::server::views {
 
 namespace detail {
-
-template <typename T>
-inline std::optional<T> toOptional(const odb::nullable<T>& value) {
-  if (value.null()) {
-    return std::nullopt;
-  }
-  return value.get();
-}
 
 inline nlohmann::json PersonDocumentRowPayload(const PersonDocumentRowView& view) {
   nlohmann::json json = nlohmann::json::object();

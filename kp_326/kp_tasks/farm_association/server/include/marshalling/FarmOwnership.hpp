@@ -1,5 +1,9 @@
 #pragma once
 
+#include <marshalling/Nullable.hpp>
+
+#include <domain/Types.hpp>
+
 #include <controllers/dto/FarmOwnership.hpp>
 #include <views/FarmOwnership.hpp>
 #include <optional>
@@ -28,38 +32,38 @@ namespace fasc::server::controllers::dto {
 /// Читает DTO создания таблицы farm_ownership.
 inline void from_json(const nlohmann::json& json, FarmOwnershipCreateDto& value) {
   if (json.contains("farm_id") && !json.at("farm_id").is_null()) {
-    value.farmId = json.at("farm_id").get<int>();
+    value.farmId = json.at("farm_id").get<std::uint64_t>();
   }
   if (json.contains("farm_owner_id") && !json.at("farm_owner_id").is_null()) {
-    value.farmOwnerId = json.at("farm_owner_id").get<int>();
+    value.farmOwnerId = json.at("farm_owner_id").get<std::uint64_t>();
   }
   if (json.contains("ownership_percentage") && !json.at("ownership_percentage").is_null()) {
     value.ownershipPercentage = json.at("ownership_percentage").get<double>();
   }
   if (json.contains("started_at") && !json.at("started_at").is_null()) {
-    value.startedAt = json.at("started_at").get<std::string>();
+    value.startedAt = json.at("started_at").get<fasc::server::domain::Date>();
   }
   if (json.contains("ended_at") && !json.at("ended_at").is_null()) {
-    value.endedAt = json.at("ended_at").get<std::string>();
+    value.endedAt = json.at("ended_at").get<fasc::server::domain::Date>();
   }
 }
 
 /// Читает DTO обновления таблицы farm_ownership.
 inline void from_json(const nlohmann::json& json, FarmOwnershipUpdateDto& value) {
   if (json.contains("farm_id") && !json.at("farm_id").is_null()) {
-    value.farmId = json.at("farm_id").get<int>();
+    value.farmId = json.at("farm_id").get<std::uint64_t>();
   }
   if (json.contains("farm_owner_id") && !json.at("farm_owner_id").is_null()) {
-    value.farmOwnerId = json.at("farm_owner_id").get<int>();
+    value.farmOwnerId = json.at("farm_owner_id").get<std::uint64_t>();
   }
   if (json.contains("ownership_percentage") && !json.at("ownership_percentage").is_null()) {
     value.ownershipPercentage = json.at("ownership_percentage").get<double>();
   }
   if (json.contains("started_at") && !json.at("started_at").is_null()) {
-    value.startedAt = json.at("started_at").get<std::string>();
+    value.startedAt = json.at("started_at").get<fasc::server::domain::Date>();
   }
   if (json.contains("ended_at") && !json.at("ended_at").is_null()) {
-    value.endedAt = json.at("ended_at").get<std::string>();
+    value.endedAt = json.at("ended_at").get<fasc::server::domain::Date>();
   }
 }
 
@@ -68,14 +72,6 @@ inline void from_json(const nlohmann::json& json, FarmOwnershipUpdateDto& value)
 namespace fasc::server::views {
 
 namespace detail {
-
-template <typename T>
-inline std::optional<T> toOptional(const odb::nullable<T>& value) {
-  if (value.null()) {
-    return std::nullopt;
-  }
-  return value.get();
-}
 
 inline nlohmann::json FarmOwnershipRowPayload(const FarmOwnershipRowView& view) {
   nlohmann::json json = nlohmann::json::object();

@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <optional>
 #include <string>
 #include <vector>
@@ -7,12 +11,12 @@
 namespace fasc::server::views {
 
 struct EmployeePlotAssignmentRowView {
-  int id{};
-  int farmEmployeeId{};
-  int farmPlotId{};
-  std::optional<std::string> assignmentType{};
-  std::string assignedAt{};
-  std::optional<std::string> unassignedAt{};
+  std::uint64_t id{};
+  std::uint64_t farmEmployeeId{};
+  std::uint64_t farmPlotId{};
+  std::optional<fasc::server::domain::EmployeePlotAssignmentType> assignmentType{};
+  fasc::server::domain::Date assignedAt{};
+  std::optional<fasc::server::domain::Date> unassignedAt{};
   std::optional<std::string> notes{};
 };
 

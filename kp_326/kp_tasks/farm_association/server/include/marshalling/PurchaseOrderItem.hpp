@@ -1,5 +1,9 @@
 #pragma once
 
+#include <marshalling/Nullable.hpp>
+
+#include <domain/Types.hpp>
+
 #include <controllers/dto/PurchaseOrderItem.hpp>
 #include <views/PurchaseOrderItem.hpp>
 #include <optional>
@@ -29,10 +33,10 @@ namespace fasc::server::controllers::dto {
 /// Читает DTO создания таблицы purchase_order_item.
 inline void from_json(const nlohmann::json& json, PurchaseOrderItemCreateDto& value) {
   if (json.contains("purchase_order_id") && !json.at("purchase_order_id").is_null()) {
-    value.purchaseOrderId = json.at("purchase_order_id").get<int>();
+    value.purchaseOrderId = json.at("purchase_order_id").get<std::uint64_t>();
   }
   if (json.contains("product_id") && !json.at("product_id").is_null()) {
-    value.productId = json.at("product_id").get<int>();
+    value.productId = json.at("product_id").get<std::uint64_t>();
   }
   if (json.contains("quantity") && !json.at("quantity").is_null()) {
     value.quantity = json.at("quantity").get<double>();
@@ -44,17 +48,17 @@ inline void from_json(const nlohmann::json& json, PurchaseOrderItemCreateDto& va
     value.vatRate = json.at("vat_rate").get<double>();
   }
   if (json.contains("currency") && !json.at("currency").is_null()) {
-    value.currency = json.at("currency").get<std::string>();
+    value.currency = json.at("currency").get<fasc::server::domain::CurrencyCode>();
   }
 }
 
 /// Читает DTO обновления таблицы purchase_order_item.
 inline void from_json(const nlohmann::json& json, PurchaseOrderItemUpdateDto& value) {
   if (json.contains("purchase_order_id") && !json.at("purchase_order_id").is_null()) {
-    value.purchaseOrderId = json.at("purchase_order_id").get<int>();
+    value.purchaseOrderId = json.at("purchase_order_id").get<std::uint64_t>();
   }
   if (json.contains("product_id") && !json.at("product_id").is_null()) {
-    value.productId = json.at("product_id").get<int>();
+    value.productId = json.at("product_id").get<std::uint64_t>();
   }
   if (json.contains("quantity") && !json.at("quantity").is_null()) {
     value.quantity = json.at("quantity").get<double>();
@@ -66,7 +70,7 @@ inline void from_json(const nlohmann::json& json, PurchaseOrderItemUpdateDto& va
     value.vatRate = json.at("vat_rate").get<double>();
   }
   if (json.contains("currency") && !json.at("currency").is_null()) {
-    value.currency = json.at("currency").get<std::string>();
+    value.currency = json.at("currency").get<fasc::server::domain::CurrencyCode>();
   }
 }
 
@@ -75,14 +79,6 @@ inline void from_json(const nlohmann::json& json, PurchaseOrderItemUpdateDto& va
 namespace fasc::server::views {
 
 namespace detail {
-
-template <typename T>
-inline std::optional<T> toOptional(const odb::nullable<T>& value) {
-  if (value.null()) {
-    return std::nullopt;
-  }
-  return value.get();
-}
 
 inline nlohmann::json PurchaseOrderItemRowPayload(const PurchaseOrderItemRowView& view) {
   nlohmann::json json = nlohmann::json::object();

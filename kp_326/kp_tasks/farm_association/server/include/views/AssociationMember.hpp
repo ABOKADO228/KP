@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <optional>
 #include <string>
 #include <vector>
@@ -7,12 +11,12 @@
 namespace fasc::server::views {
 
 struct AssociationMemberRowView {
-  int id{};
-  int associationId{};
-  int personId{};
+  std::uint64_t id{};
+  std::uint64_t associationId{};
+  std::uint64_t personId{};
   std::optional<std::string> membershipNumber{};
-  std::string joinedDate{};
-  std::optional<std::string> status{};
+  fasc::server::domain::Date joinedDate{};
+  std::optional<fasc::server::domain::AssociationMemberStatus> status{};
   std::optional<std::string> notes{};
 };
 

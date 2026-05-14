@@ -1,5 +1,7 @@
 #include <controllers/http/Unit.hpp>
 
+#include <exception>
+
 #include <marshalling/Unit.hpp>
 
 #include <nlohmann/json.hpp>
@@ -54,7 +56,7 @@ UnitMutationViewResult UnitHttpController::create(std::string_view body) const {
     }
     return UnitMutationViewResult::success(
         fasc::server::views::UnitMutationView{result.success().affectedRows});
-  } catch (const nlohmann::json::exception& exception) {
+  } catch (const std::exception& exception) {
     return UnitMutationViewResult::failure(
         fasc::server::views::ErrorView{fasc::server::views::ErrorViewCode::BadRequest, exception.what()});
   }
@@ -71,7 +73,7 @@ UnitMutationViewResult UnitHttpController::update(
     }
     return UnitMutationViewResult::success(
         fasc::server::views::UnitMutationView{result.success().affectedRows});
-  } catch (const nlohmann::json::exception& exception) {
+  } catch (const std::exception& exception) {
     return UnitMutationViewResult::failure(
         fasc::server::views::ErrorView{fasc::server::views::ErrorViewCode::BadRequest, exception.what()});
   }

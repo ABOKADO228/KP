@@ -1,5 +1,7 @@
 #include <controllers/app/Farm.hpp>
 
+#include <database/SqlValue.hpp>
+
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -29,7 +31,7 @@ std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& 
 
 fasc::server::persistence::FarmEntity rowToEntity(const fasc::server::database::SqlRow& row) {
   fasc::server::persistence::FarmEntity entity;
-  entity.id = std::stoi(requireColumn(row, "id"));
+  entity.id = fasc::server::database::requireColumn<std::uint64_t>(row, "id");
   if (const auto value = optionalColumn(row, "name")) {
     entity.name = *value;
   } else {
@@ -60,12 +62,12 @@ fasc::server::persistence::FarmEntity rowToEntity(const fasc::server::database::
   } else {
     entity.ogrn.reset();
   }
-  if (const auto value = optionalColumn(row, "status")) {
+  if (const auto value = fasc::server::database::optionalColumn<fasc::server::domain::FarmStatus>(row, "status")) {
     entity.status = *value;
   } else {
     entity.status.reset();
   }
-  if (const auto value = optionalColumn(row, "farm_type")) {
+  if (const auto value = fasc::server::database::optionalColumn<fasc::server::domain::FarmType>(row, "farm_type")) {
     entity.farmType = *value;
   } else {
     entity.farmType.reset();
@@ -76,7 +78,7 @@ fasc::server::persistence::FarmEntity rowToEntity(const fasc::server::database::
 std::vector<fasc::server::database::SqlParameter> keyValues(
     const fasc::server::controllers::dto::FarmKeyDto& key) {
   std::vector<fasc::server::database::SqlParameter> values;
-  values.push_back(fasc::server::database::SqlParameter{std::to_string(key.id), false});
+  values.push_back(fasc::server::database::makeSqlParameter(key.id));
   return values;
 }
 
@@ -127,35 +129,35 @@ FarmMutationResult FarmController::create(
   std::vector<fasc::server::database::SqlParameter> values;
   if (dto.name.has_value()) {
     columns.push_back("name");
-    values.push_back(fasc::server::database::SqlParameter{*dto.name, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.name));
   }
   if (dto.legalName.has_value()) {
     columns.push_back("legal_name");
-    values.push_back(fasc::server::database::SqlParameter{*dto.legalName, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.legalName));
   }
   if (dto.legalAddress.has_value()) {
     columns.push_back("legal_address");
-    values.push_back(fasc::server::database::SqlParameter{*dto.legalAddress, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.legalAddress));
   }
   if (dto.actualAddress.has_value()) {
     columns.push_back("actual_address");
-    values.push_back(fasc::server::database::SqlParameter{*dto.actualAddress, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.actualAddress));
   }
   if (dto.inn.has_value()) {
     columns.push_back("inn");
-    values.push_back(fasc::server::database::SqlParameter{*dto.inn, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.inn));
   }
   if (dto.ogrn.has_value()) {
     columns.push_back("ogrn");
-    values.push_back(fasc::server::database::SqlParameter{*dto.ogrn, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.ogrn));
   }
   if (dto.status.has_value()) {
     columns.push_back("status");
-    values.push_back(fasc::server::database::SqlParameter{*dto.status, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.status));
   }
   if (dto.farmType.has_value()) {
     columns.push_back("farm_type");
-    values.push_back(fasc::server::database::SqlParameter{*dto.farmType, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.farmType));
   }
   if (columns.empty()) {
     return FarmMutationResult::failure(
@@ -182,35 +184,35 @@ FarmMutationResult FarmController::update(
   std::vector<fasc::server::database::SqlParameter> values;
   if (dto.name.has_value()) {
     columns.push_back("name");
-    values.push_back(fasc::server::database::SqlParameter{*dto.name, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.name));
   }
   if (dto.legalName.has_value()) {
     columns.push_back("legal_name");
-    values.push_back(fasc::server::database::SqlParameter{*dto.legalName, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.legalName));
   }
   if (dto.legalAddress.has_value()) {
     columns.push_back("legal_address");
-    values.push_back(fasc::server::database::SqlParameter{*dto.legalAddress, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.legalAddress));
   }
   if (dto.actualAddress.has_value()) {
     columns.push_back("actual_address");
-    values.push_back(fasc::server::database::SqlParameter{*dto.actualAddress, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.actualAddress));
   }
   if (dto.inn.has_value()) {
     columns.push_back("inn");
-    values.push_back(fasc::server::database::SqlParameter{*dto.inn, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.inn));
   }
   if (dto.ogrn.has_value()) {
     columns.push_back("ogrn");
-    values.push_back(fasc::server::database::SqlParameter{*dto.ogrn, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.ogrn));
   }
   if (dto.status.has_value()) {
     columns.push_back("status");
-    values.push_back(fasc::server::database::SqlParameter{*dto.status, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.status));
   }
   if (dto.farmType.has_value()) {
     columns.push_back("farm_type");
-    values.push_back(fasc::server::database::SqlParameter{*dto.farmType, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.farmType));
   }
   if (columns.empty()) {
     return FarmMutationResult::failure(

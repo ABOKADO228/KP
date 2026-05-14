@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <odb/core.hxx>
 #include <odb/nullable.hxx>
 
@@ -10,7 +14,7 @@ namespace fasc::server::persistence {
 /// Сущность таблицы farm.
 struct FarmEntity {
   /// Значение колонки id.
-  int id{};
+  std::uint64_t id{};
 
   /// Значение колонки name.
   odb::nullable<std::string> name;
@@ -31,10 +35,10 @@ struct FarmEntity {
   odb::nullable<std::string> ogrn;
 
   /// Значение колонки status.
-  odb::nullable<std::string> status;
+  odb::nullable<fasc::server::domain::FarmStatus> status;
 
   /// Значение колонки farm_type.
-  odb::nullable<std::string> farmType;
+  odb::nullable<fasc::server::domain::FarmType> farmType;
 
 };
 

@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <odb/core.hxx>
 #include <odb/nullable.hxx>
 
@@ -10,16 +14,16 @@ namespace fasc::server::persistence {
 /// Сущность таблицы product.
 struct ProductEntity {
   /// Значение колонки id.
-  int id{};
+  std::uint64_t id{};
 
   /// Значение колонки type_id.
-  int typeId{};
+  std::uint64_t typeId{};
 
   /// Значение колонки name.
   odb::nullable<std::string> name;
 
   /// Значение колонки unit_id.
-  odb::nullable<int> unitId;
+  odb::nullable<std::uint64_t> unitId;
 
 };
 

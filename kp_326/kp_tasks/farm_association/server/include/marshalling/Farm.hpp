@@ -1,5 +1,9 @@
 #pragma once
 
+#include <marshalling/Nullable.hpp>
+
+#include <domain/Types.hpp>
+
 #include <controllers/dto/Farm.hpp>
 #include <views/Farm.hpp>
 #include <optional>
@@ -49,10 +53,10 @@ inline void from_json(const nlohmann::json& json, FarmCreateDto& value) {
     value.ogrn = json.at("ogrn").get<std::string>();
   }
   if (json.contains("status") && !json.at("status").is_null()) {
-    value.status = json.at("status").get<std::string>();
+    value.status = json.at("status").get<fasc::server::domain::FarmStatus>();
   }
   if (json.contains("farm_type") && !json.at("farm_type").is_null()) {
-    value.farmType = json.at("farm_type").get<std::string>();
+    value.farmType = json.at("farm_type").get<fasc::server::domain::FarmType>();
   }
 }
 
@@ -77,10 +81,10 @@ inline void from_json(const nlohmann::json& json, FarmUpdateDto& value) {
     value.ogrn = json.at("ogrn").get<std::string>();
   }
   if (json.contains("status") && !json.at("status").is_null()) {
-    value.status = json.at("status").get<std::string>();
+    value.status = json.at("status").get<fasc::server::domain::FarmStatus>();
   }
   if (json.contains("farm_type") && !json.at("farm_type").is_null()) {
-    value.farmType = json.at("farm_type").get<std::string>();
+    value.farmType = json.at("farm_type").get<fasc::server::domain::FarmType>();
   }
 }
 
@@ -89,14 +93,6 @@ inline void from_json(const nlohmann::json& json, FarmUpdateDto& value) {
 namespace fasc::server::views {
 
 namespace detail {
-
-template <typename T>
-inline std::optional<T> toOptional(const odb::nullable<T>& value) {
-  if (value.null()) {
-    return std::nullopt;
-  }
-  return value.get();
-}
 
 inline nlohmann::json FarmRowPayload(const FarmRowView& view) {
   nlohmann::json json = nlohmann::json::object();

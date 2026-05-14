@@ -1,5 +1,7 @@
 #include <controllers/app/FarmPlotType.hpp>
 
+#include <database/SqlValue.hpp>
+
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -29,7 +31,7 @@ std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& 
 
 fasc::server::persistence::FarmPlotTypeEntity rowToEntity(const fasc::server::database::SqlRow& row) {
   fasc::server::persistence::FarmPlotTypeEntity entity;
-  entity.id = std::stoi(requireColumn(row, "id"));
+  entity.id = fasc::server::database::requireColumn<std::uint64_t>(row, "id");
   if (const auto value = optionalColumn(row, "name")) {
     entity.name = *value;
   } else {
@@ -40,9 +42,9 @@ fasc::server::persistence::FarmPlotTypeEntity rowToEntity(const fasc::server::da
   } else {
     entity.description.reset();
   }
-  entity.farmPlotLevel = std::stoi(requireColumn(row, "farm_plot_level"));
-  if (const auto value = optionalColumn(row, "parent_id")) {
-    entity.parentId = std::stoi(*value);
+  entity.farmPlotLevel = fasc::server::database::requireColumn<int>(row, "farm_plot_level");
+  if (const auto value = fasc::server::database::optionalColumn<std::uint64_t>(row, "parent_id")) {
+    entity.parentId = *value;
   } else {
     entity.parentId.reset();
   }
@@ -52,7 +54,7 @@ fasc::server::persistence::FarmPlotTypeEntity rowToEntity(const fasc::server::da
 std::vector<fasc::server::database::SqlParameter> keyValues(
     const fasc::server::controllers::dto::FarmPlotTypeKeyDto& key) {
   std::vector<fasc::server::database::SqlParameter> values;
-  values.push_back(fasc::server::database::SqlParameter{std::to_string(key.id), false});
+  values.push_back(fasc::server::database::makeSqlParameter(key.id));
   return values;
 }
 
@@ -107,15 +109,15 @@ FarmPlotTypeMutationResult FarmPlotTypeController::create(
   }
   if (dto.id.has_value()) {
     columns.push_back("id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.id), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.id));
   }
   if (dto.name.has_value()) {
     columns.push_back("name");
-    values.push_back(fasc::server::database::SqlParameter{*dto.name, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.name));
   }
   if (dto.description.has_value()) {
     columns.push_back("description");
-    values.push_back(fasc::server::database::SqlParameter{*dto.description, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.description));
   }
   if (!dto.farmPlotLevel.has_value()) {
     return FarmPlotTypeMutationResult::failure(
@@ -123,11 +125,11 @@ FarmPlotTypeMutationResult FarmPlotTypeController::create(
   }
   if (dto.farmPlotLevel.has_value()) {
     columns.push_back("farm_plot_level");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.farmPlotLevel), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.farmPlotLevel));
   }
   if (dto.parentId.has_value()) {
     columns.push_back("parent_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.parentId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.parentId));
   }
   if (columns.empty()) {
     return FarmPlotTypeMutationResult::failure(
@@ -154,19 +156,19 @@ FarmPlotTypeMutationResult FarmPlotTypeController::update(
   std::vector<fasc::server::database::SqlParameter> values;
   if (dto.name.has_value()) {
     columns.push_back("name");
-    values.push_back(fasc::server::database::SqlParameter{*dto.name, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.name));
   }
   if (dto.description.has_value()) {
     columns.push_back("description");
-    values.push_back(fasc::server::database::SqlParameter{*dto.description, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.description));
   }
   if (dto.farmPlotLevel.has_value()) {
     columns.push_back("farm_plot_level");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.farmPlotLevel), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.farmPlotLevel));
   }
   if (dto.parentId.has_value()) {
     columns.push_back("parent_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.parentId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.parentId));
   }
   if (columns.empty()) {
     return FarmPlotTypeMutationResult::failure(

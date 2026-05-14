@@ -1,5 +1,7 @@
 #include <controllers/http/AssociationFarms.hpp>
 
+#include <exception>
+
 #include <marshalling/AssociationFarms.hpp>
 
 #include <nlohmann/json.hpp>
@@ -54,7 +56,7 @@ AssociationFarmsMutationViewResult AssociationFarmsHttpController::create(std::s
     }
     return AssociationFarmsMutationViewResult::success(
         fasc::server::views::AssociationFarmsMutationView{result.success().affectedRows});
-  } catch (const nlohmann::json::exception& exception) {
+  } catch (const std::exception& exception) {
     return AssociationFarmsMutationViewResult::failure(
         fasc::server::views::ErrorView{fasc::server::views::ErrorViewCode::BadRequest, exception.what()});
   }
@@ -71,7 +73,7 @@ AssociationFarmsMutationViewResult AssociationFarmsHttpController::update(
     }
     return AssociationFarmsMutationViewResult::success(
         fasc::server::views::AssociationFarmsMutationView{result.success().affectedRows});
-  } catch (const nlohmann::json::exception& exception) {
+  } catch (const std::exception& exception) {
     return AssociationFarmsMutationViewResult::failure(
         fasc::server::views::ErrorView{fasc::server::views::ErrorViewCode::BadRequest, exception.what()});
   }

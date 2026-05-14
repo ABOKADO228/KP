@@ -1,5 +1,7 @@
 #include <controllers/app/FarmPlotAssignment.hpp>
 
+#include <database/SqlValue.hpp>
+
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -29,9 +31,9 @@ std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& 
 
 fasc::server::persistence::FarmPlotAssignmentEntity rowToEntity(const fasc::server::database::SqlRow& row) {
   fasc::server::persistence::FarmPlotAssignmentEntity entity;
-  entity.farmId = std::stoi(requireColumn(row, "farm_id"));
-  entity.farmPlotId = std::stoi(requireColumn(row, "farm_plot_id"));
-  if (const auto value = optionalColumn(row, "status")) {
+  entity.farmId = fasc::server::database::requireColumn<std::uint64_t>(row, "farm_id");
+  entity.farmPlotId = fasc::server::database::requireColumn<std::uint64_t>(row, "farm_plot_id");
+  if (const auto value = fasc::server::database::optionalColumn<fasc::server::domain::FarmPlotAssignmentStatus>(row, "status")) {
     entity.status = *value;
   } else {
     entity.status.reset();
@@ -47,8 +49,8 @@ fasc::server::persistence::FarmPlotAssignmentEntity rowToEntity(const fasc::serv
 std::vector<fasc::server::database::SqlParameter> keyValues(
     const fasc::server::controllers::dto::FarmPlotAssignmentKeyDto& key) {
   std::vector<fasc::server::database::SqlParameter> values;
-  values.push_back(fasc::server::database::SqlParameter{std::to_string(key.farmId), false});
-  values.push_back(fasc::server::database::SqlParameter{std::to_string(key.farmPlotId), false});
+  values.push_back(fasc::server::database::makeSqlParameter(key.farmId));
+  values.push_back(fasc::server::database::makeSqlParameter(key.farmPlotId));
   return values;
 }
 
@@ -103,7 +105,7 @@ FarmPlotAssignmentMutationResult FarmPlotAssignmentController::create(
   }
   if (dto.farmId.has_value()) {
     columns.push_back("farm_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.farmId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.farmId));
   }
   if (!dto.farmPlotId.has_value()) {
     return FarmPlotAssignmentMutationResult::failure(
@@ -111,15 +113,15 @@ FarmPlotAssignmentMutationResult FarmPlotAssignmentController::create(
   }
   if (dto.farmPlotId.has_value()) {
     columns.push_back("farm_plot_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.farmPlotId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.farmPlotId));
   }
   if (dto.status.has_value()) {
     columns.push_back("status");
-    values.push_back(fasc::server::database::SqlParameter{*dto.status, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.status));
   }
   if (dto.notes.has_value()) {
     columns.push_back("notes");
-    values.push_back(fasc::server::database::SqlParameter{*dto.notes, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.notes));
   }
   if (columns.empty()) {
     return FarmPlotAssignmentMutationResult::failure(
@@ -146,11 +148,11 @@ FarmPlotAssignmentMutationResult FarmPlotAssignmentController::update(
   std::vector<fasc::server::database::SqlParameter> values;
   if (dto.status.has_value()) {
     columns.push_back("status");
-    values.push_back(fasc::server::database::SqlParameter{*dto.status, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.status));
   }
   if (dto.notes.has_value()) {
     columns.push_back("notes");
-    values.push_back(fasc::server::database::SqlParameter{*dto.notes, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.notes));
   }
   if (columns.empty()) {
     return FarmPlotAssignmentMutationResult::failure(

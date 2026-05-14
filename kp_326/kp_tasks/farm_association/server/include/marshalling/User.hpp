@@ -1,5 +1,7 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
 #include <controllers/dto/User.hpp>
 #include <views/Auth.hpp>
 #include <views/Error.hpp>

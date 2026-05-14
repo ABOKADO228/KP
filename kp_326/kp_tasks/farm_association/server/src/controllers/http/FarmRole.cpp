@@ -1,5 +1,7 @@
 #include <controllers/http/FarmRole.hpp>
 
+#include <exception>
+
 #include <marshalling/FarmRole.hpp>
 
 #include <nlohmann/json.hpp>
@@ -54,7 +56,7 @@ FarmRoleMutationViewResult FarmRoleHttpController::create(std::string_view body)
     }
     return FarmRoleMutationViewResult::success(
         fasc::server::views::FarmRoleMutationView{result.success().affectedRows});
-  } catch (const nlohmann::json::exception& exception) {
+  } catch (const std::exception& exception) {
     return FarmRoleMutationViewResult::failure(
         fasc::server::views::ErrorView{fasc::server::views::ErrorViewCode::BadRequest, exception.what()});
   }
@@ -71,7 +73,7 @@ FarmRoleMutationViewResult FarmRoleHttpController::update(
     }
     return FarmRoleMutationViewResult::success(
         fasc::server::views::FarmRoleMutationView{result.success().affectedRows});
-  } catch (const nlohmann::json::exception& exception) {
+  } catch (const std::exception& exception) {
     return FarmRoleMutationViewResult::failure(
         fasc::server::views::ErrorView{fasc::server::views::ErrorViewCode::BadRequest, exception.what()});
   }

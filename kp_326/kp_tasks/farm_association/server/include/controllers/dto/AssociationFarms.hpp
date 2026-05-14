@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <persistence/AssociationFarms.hpp>
 
 #include <optional>
@@ -11,26 +15,26 @@ namespace fasc::server::controllers::dto {
 /// Ключ строки таблицы association_farms.
 struct AssociationFarmsKeyDto {
   /// Значение колонки farm_id.
-  int farmId{};
+  std::uint64_t farmId{};
 
   /// Значение колонки association_id.
-  int associationId{};
+  std::uint64_t associationId{};
 
 };
 
 /// DTO создания строки таблицы association_farms.
 struct AssociationFarmsCreateDto {
   /// Значение колонки farm_id.
-  std::optional<int> farmId;
+  std::optional<std::uint64_t> farmId;
 
   /// Значение колонки association_id.
-  std::optional<int> associationId;
+  std::optional<std::uint64_t> associationId;
 
   /// Значение колонки join_date.
-  std::optional<std::string> joinDate;
+  std::optional<fasc::server::domain::Date> joinDate;
 
   /// Значение колонки status.
-  std::optional<std::string> status;
+  std::optional<fasc::server::domain::AssociationFarmsStatus> status;
 
   /// Значение колонки notes.
   std::optional<std::string> notes;
@@ -40,10 +44,10 @@ struct AssociationFarmsCreateDto {
 /// DTO обновления строки таблицы association_farms.
 struct AssociationFarmsUpdateDto {
   /// Значение колонки join_date.
-  std::optional<std::string> joinDate;
+  std::optional<fasc::server::domain::Date> joinDate;
 
   /// Значение колонки status.
-  std::optional<std::string> status;
+  std::optional<fasc::server::domain::AssociationFarmsStatus> status;
 
   /// Значение колонки notes.
   std::optional<std::string> notes;

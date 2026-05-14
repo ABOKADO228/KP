@@ -1,5 +1,9 @@
 #pragma once
 
+#include <marshalling/Nullable.hpp>
+
+#include <domain/Types.hpp>
+
 #include <controllers/dto/EmployeePlotAssignment.hpp>
 #include <views/EmployeePlotAssignment.hpp>
 #include <optional>
@@ -29,19 +33,19 @@ namespace fasc::server::controllers::dto {
 /// Читает DTO создания таблицы employee_plot_assignment.
 inline void from_json(const nlohmann::json& json, EmployeePlotAssignmentCreateDto& value) {
   if (json.contains("farm_employee_id") && !json.at("farm_employee_id").is_null()) {
-    value.farmEmployeeId = json.at("farm_employee_id").get<int>();
+    value.farmEmployeeId = json.at("farm_employee_id").get<std::uint64_t>();
   }
   if (json.contains("farm_plot_id") && !json.at("farm_plot_id").is_null()) {
-    value.farmPlotId = json.at("farm_plot_id").get<int>();
+    value.farmPlotId = json.at("farm_plot_id").get<std::uint64_t>();
   }
   if (json.contains("assignment_type") && !json.at("assignment_type").is_null()) {
-    value.assignmentType = json.at("assignment_type").get<std::string>();
+    value.assignmentType = json.at("assignment_type").get<fasc::server::domain::EmployeePlotAssignmentType>();
   }
   if (json.contains("assigned_at") && !json.at("assigned_at").is_null()) {
-    value.assignedAt = json.at("assigned_at").get<std::string>();
+    value.assignedAt = json.at("assigned_at").get<fasc::server::domain::Date>();
   }
   if (json.contains("unassigned_at") && !json.at("unassigned_at").is_null()) {
-    value.unassignedAt = json.at("unassigned_at").get<std::string>();
+    value.unassignedAt = json.at("unassigned_at").get<fasc::server::domain::Date>();
   }
   if (json.contains("notes") && !json.at("notes").is_null()) {
     value.notes = json.at("notes").get<std::string>();
@@ -51,19 +55,19 @@ inline void from_json(const nlohmann::json& json, EmployeePlotAssignmentCreateDt
 /// Читает DTO обновления таблицы employee_plot_assignment.
 inline void from_json(const nlohmann::json& json, EmployeePlotAssignmentUpdateDto& value) {
   if (json.contains("farm_employee_id") && !json.at("farm_employee_id").is_null()) {
-    value.farmEmployeeId = json.at("farm_employee_id").get<int>();
+    value.farmEmployeeId = json.at("farm_employee_id").get<std::uint64_t>();
   }
   if (json.contains("farm_plot_id") && !json.at("farm_plot_id").is_null()) {
-    value.farmPlotId = json.at("farm_plot_id").get<int>();
+    value.farmPlotId = json.at("farm_plot_id").get<std::uint64_t>();
   }
   if (json.contains("assignment_type") && !json.at("assignment_type").is_null()) {
-    value.assignmentType = json.at("assignment_type").get<std::string>();
+    value.assignmentType = json.at("assignment_type").get<fasc::server::domain::EmployeePlotAssignmentType>();
   }
   if (json.contains("assigned_at") && !json.at("assigned_at").is_null()) {
-    value.assignedAt = json.at("assigned_at").get<std::string>();
+    value.assignedAt = json.at("assigned_at").get<fasc::server::domain::Date>();
   }
   if (json.contains("unassigned_at") && !json.at("unassigned_at").is_null()) {
-    value.unassignedAt = json.at("unassigned_at").get<std::string>();
+    value.unassignedAt = json.at("unassigned_at").get<fasc::server::domain::Date>();
   }
   if (json.contains("notes") && !json.at("notes").is_null()) {
     value.notes = json.at("notes").get<std::string>();
@@ -75,14 +79,6 @@ inline void from_json(const nlohmann::json& json, EmployeePlotAssignmentUpdateDt
 namespace fasc::server::views {
 
 namespace detail {
-
-template <typename T>
-inline std::optional<T> toOptional(const odb::nullable<T>& value) {
-  if (value.null()) {
-    return std::nullopt;
-  }
-  return value.get();
-}
 
 inline nlohmann::json EmployeePlotAssignmentRowPayload(const EmployeePlotAssignmentRowView& view) {
   nlohmann::json json = nlohmann::json::object();

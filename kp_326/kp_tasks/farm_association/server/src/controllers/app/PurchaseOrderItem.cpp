@@ -1,5 +1,7 @@
 #include <controllers/app/PurchaseOrderItem.hpp>
 
+#include <database/SqlValue.hpp>
+
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -29,25 +31,25 @@ std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& 
 
 fasc::server::persistence::PurchaseOrderItemEntity rowToEntity(const fasc::server::database::SqlRow& row) {
   fasc::server::persistence::PurchaseOrderItemEntity entity;
-  entity.id = std::stoi(requireColumn(row, "id"));
-  entity.purchaseOrderId = std::stoi(requireColumn(row, "purchase_order_id"));
-  entity.productId = std::stoi(requireColumn(row, "product_id"));
-  if (const auto value = optionalColumn(row, "quantity")) {
-    entity.quantity = std::stod(*value);
+  entity.id = fasc::server::database::requireColumn<std::uint64_t>(row, "id");
+  entity.purchaseOrderId = fasc::server::database::requireColumn<std::uint64_t>(row, "purchase_order_id");
+  entity.productId = fasc::server::database::requireColumn<std::uint64_t>(row, "product_id");
+  if (const auto value = fasc::server::database::optionalColumn<double>(row, "quantity")) {
+    entity.quantity = *value;
   } else {
     entity.quantity.reset();
   }
-  if (const auto value = optionalColumn(row, "unit_price")) {
-    entity.unitPrice = std::stod(*value);
+  if (const auto value = fasc::server::database::optionalColumn<double>(row, "unit_price")) {
+    entity.unitPrice = *value;
   } else {
     entity.unitPrice.reset();
   }
-  if (const auto value = optionalColumn(row, "vat_rate")) {
-    entity.vatRate = std::stod(*value);
+  if (const auto value = fasc::server::database::optionalColumn<double>(row, "vat_rate")) {
+    entity.vatRate = *value;
   } else {
     entity.vatRate.reset();
   }
-  if (const auto value = optionalColumn(row, "currency")) {
+  if (const auto value = fasc::server::database::optionalColumn<fasc::server::domain::CurrencyCode>(row, "currency")) {
     entity.currency = *value;
   } else {
     entity.currency.reset();
@@ -58,7 +60,7 @@ fasc::server::persistence::PurchaseOrderItemEntity rowToEntity(const fasc::serve
 std::vector<fasc::server::database::SqlParameter> keyValues(
     const fasc::server::controllers::dto::PurchaseOrderItemKeyDto& key) {
   std::vector<fasc::server::database::SqlParameter> values;
-  values.push_back(fasc::server::database::SqlParameter{std::to_string(key.id), false});
+  values.push_back(fasc::server::database::makeSqlParameter(key.id));
   return values;
 }
 
@@ -113,7 +115,7 @@ PurchaseOrderItemMutationResult PurchaseOrderItemController::create(
   }
   if (dto.purchaseOrderId.has_value()) {
     columns.push_back("purchase_order_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.purchaseOrderId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.purchaseOrderId));
   }
   if (!dto.productId.has_value()) {
     return PurchaseOrderItemMutationResult::failure(
@@ -121,23 +123,23 @@ PurchaseOrderItemMutationResult PurchaseOrderItemController::create(
   }
   if (dto.productId.has_value()) {
     columns.push_back("product_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.productId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.productId));
   }
   if (dto.quantity.has_value()) {
     columns.push_back("quantity");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.quantity), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.quantity));
   }
   if (dto.unitPrice.has_value()) {
     columns.push_back("unit_price");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.unitPrice), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.unitPrice));
   }
   if (dto.vatRate.has_value()) {
     columns.push_back("vat_rate");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.vatRate), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.vatRate));
   }
   if (dto.currency.has_value()) {
     columns.push_back("currency");
-    values.push_back(fasc::server::database::SqlParameter{*dto.currency, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.currency));
   }
   if (columns.empty()) {
     return PurchaseOrderItemMutationResult::failure(
@@ -164,27 +166,27 @@ PurchaseOrderItemMutationResult PurchaseOrderItemController::update(
   std::vector<fasc::server::database::SqlParameter> values;
   if (dto.purchaseOrderId.has_value()) {
     columns.push_back("purchase_order_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.purchaseOrderId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.purchaseOrderId));
   }
   if (dto.productId.has_value()) {
     columns.push_back("product_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.productId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.productId));
   }
   if (dto.quantity.has_value()) {
     columns.push_back("quantity");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.quantity), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.quantity));
   }
   if (dto.unitPrice.has_value()) {
     columns.push_back("unit_price");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.unitPrice), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.unitPrice));
   }
   if (dto.vatRate.has_value()) {
     columns.push_back("vat_rate");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.vatRate), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.vatRate));
   }
   if (dto.currency.has_value()) {
     columns.push_back("currency");
-    values.push_back(fasc::server::database::SqlParameter{*dto.currency, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.currency));
   }
   if (columns.empty()) {
     return PurchaseOrderItemMutationResult::failure(

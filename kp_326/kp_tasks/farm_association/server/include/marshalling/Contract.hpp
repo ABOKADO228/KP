@@ -1,5 +1,9 @@
 #pragma once
 
+#include <marshalling/Nullable.hpp>
+
+#include <domain/Types.hpp>
+
 #include <controllers/dto/Contract.hpp>
 #include <views/Contract.hpp>
 #include <optional>
@@ -32,28 +36,28 @@ namespace fasc::server::controllers::dto {
 /// Читает DTO создания таблицы contract.
 inline void from_json(const nlohmann::json& json, ContractCreateDto& value) {
   if (json.contains("supplier_id") && !json.at("supplier_id").is_null()) {
-    value.supplierId = json.at("supplier_id").get<int>();
+    value.supplierId = json.at("supplier_id").get<std::uint64_t>();
   }
   if (json.contains("farm_id") && !json.at("farm_id").is_null()) {
-    value.farmId = json.at("farm_id").get<int>();
+    value.farmId = json.at("farm_id").get<std::uint64_t>();
   }
   if (json.contains("association_id") && !json.at("association_id").is_null()) {
-    value.associationId = json.at("association_id").get<int>();
+    value.associationId = json.at("association_id").get<std::uint64_t>();
   }
   if (json.contains("contract_number") && !json.at("contract_number").is_null()) {
     value.contractNumber = json.at("contract_number").get<std::string>();
   }
   if (json.contains("sign_date") && !json.at("sign_date").is_null()) {
-    value.signDate = json.at("sign_date").get<std::string>();
+    value.signDate = json.at("sign_date").get<fasc::server::domain::Date>();
   }
   if (json.contains("start_date") && !json.at("start_date").is_null()) {
-    value.startDate = json.at("start_date").get<std::string>();
+    value.startDate = json.at("start_date").get<fasc::server::domain::Date>();
   }
   if (json.contains("end_date") && !json.at("end_date").is_null()) {
-    value.endDate = json.at("end_date").get<std::string>();
+    value.endDate = json.at("end_date").get<fasc::server::domain::Date>();
   }
   if (json.contains("status") && !json.at("status").is_null()) {
-    value.status = json.at("status").get<std::string>();
+    value.status = json.at("status").get<fasc::server::domain::ContractStatus>();
   }
   if (json.contains("description") && !json.at("description").is_null()) {
     value.description = json.at("description").get<std::string>();
@@ -63,28 +67,28 @@ inline void from_json(const nlohmann::json& json, ContractCreateDto& value) {
 /// Читает DTO обновления таблицы contract.
 inline void from_json(const nlohmann::json& json, ContractUpdateDto& value) {
   if (json.contains("supplier_id") && !json.at("supplier_id").is_null()) {
-    value.supplierId = json.at("supplier_id").get<int>();
+    value.supplierId = json.at("supplier_id").get<std::uint64_t>();
   }
   if (json.contains("farm_id") && !json.at("farm_id").is_null()) {
-    value.farmId = json.at("farm_id").get<int>();
+    value.farmId = json.at("farm_id").get<std::uint64_t>();
   }
   if (json.contains("association_id") && !json.at("association_id").is_null()) {
-    value.associationId = json.at("association_id").get<int>();
+    value.associationId = json.at("association_id").get<std::uint64_t>();
   }
   if (json.contains("contract_number") && !json.at("contract_number").is_null()) {
     value.contractNumber = json.at("contract_number").get<std::string>();
   }
   if (json.contains("sign_date") && !json.at("sign_date").is_null()) {
-    value.signDate = json.at("sign_date").get<std::string>();
+    value.signDate = json.at("sign_date").get<fasc::server::domain::Date>();
   }
   if (json.contains("start_date") && !json.at("start_date").is_null()) {
-    value.startDate = json.at("start_date").get<std::string>();
+    value.startDate = json.at("start_date").get<fasc::server::domain::Date>();
   }
   if (json.contains("end_date") && !json.at("end_date").is_null()) {
-    value.endDate = json.at("end_date").get<std::string>();
+    value.endDate = json.at("end_date").get<fasc::server::domain::Date>();
   }
   if (json.contains("status") && !json.at("status").is_null()) {
-    value.status = json.at("status").get<std::string>();
+    value.status = json.at("status").get<fasc::server::domain::ContractStatus>();
   }
   if (json.contains("description") && !json.at("description").is_null()) {
     value.description = json.at("description").get<std::string>();
@@ -96,14 +100,6 @@ inline void from_json(const nlohmann::json& json, ContractUpdateDto& value) {
 namespace fasc::server::views {
 
 namespace detail {
-
-template <typename T>
-inline std::optional<T> toOptional(const odb::nullable<T>& value) {
-  if (value.null()) {
-    return std::nullopt;
-  }
-  return value.get();
-}
 
 inline nlohmann::json ContractRowPayload(const ContractRowView& view) {
   nlohmann::json json = nlohmann::json::object();

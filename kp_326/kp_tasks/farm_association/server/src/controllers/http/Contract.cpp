@@ -1,5 +1,7 @@
 #include <controllers/http/Contract.hpp>
 
+#include <exception>
+
 #include <marshalling/Contract.hpp>
 
 #include <nlohmann/json.hpp>
@@ -54,7 +56,7 @@ ContractMutationViewResult ContractHttpController::create(std::string_view body)
     }
     return ContractMutationViewResult::success(
         fasc::server::views::ContractMutationView{result.success().affectedRows});
-  } catch (const nlohmann::json::exception& exception) {
+  } catch (const std::exception& exception) {
     return ContractMutationViewResult::failure(
         fasc::server::views::ErrorView{fasc::server::views::ErrorViewCode::BadRequest, exception.what()});
   }
@@ -71,7 +73,7 @@ ContractMutationViewResult ContractHttpController::update(
     }
     return ContractMutationViewResult::success(
         fasc::server::views::ContractMutationView{result.success().affectedRows});
-  } catch (const nlohmann::json::exception& exception) {
+  } catch (const std::exception& exception) {
     return ContractMutationViewResult::failure(
         fasc::server::views::ErrorView{fasc::server::views::ErrorViewCode::BadRequest, exception.what()});
   }

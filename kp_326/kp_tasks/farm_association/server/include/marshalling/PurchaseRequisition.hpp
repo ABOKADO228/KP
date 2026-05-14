@@ -1,5 +1,9 @@
 #pragma once
 
+#include <marshalling/Nullable.hpp>
+
+#include <domain/Types.hpp>
+
 #include <controllers/dto/PurchaseRequisition.hpp>
 #include <views/PurchaseRequisition.hpp>
 #include <optional>
@@ -33,10 +37,10 @@ namespace fasc::server::controllers::dto {
 /// Читает DTO создания таблицы purchase_requisition.
 inline void from_json(const nlohmann::json& json, PurchaseRequisitionCreateDto& value) {
   if (json.contains("farm_id") && !json.at("farm_id").is_null()) {
-    value.farmId = json.at("farm_id").get<int>();
+    value.farmId = json.at("farm_id").get<std::uint64_t>();
   }
   if (json.contains("product_id") && !json.at("product_id").is_null()) {
-    value.productId = json.at("product_id").get<int>();
+    value.productId = json.at("product_id").get<std::uint64_t>();
   }
   if (json.contains("quantity") && !json.at("quantity").is_null()) {
     value.quantity = json.at("quantity").get<int>();
@@ -45,19 +49,19 @@ inline void from_json(const nlohmann::json& json, PurchaseRequisitionCreateDto& 
     value.maxPricePerUnit = json.at("max_price_per_unit").get<double>();
   }
   if (json.contains("offer_date") && !json.at("offer_date").is_null()) {
-    value.offerDate = json.at("offer_date").get<std::string>();
+    value.offerDate = json.at("offer_date").get<fasc::server::domain::Date>();
   }
   if (json.contains("required_date") && !json.at("required_date").is_null()) {
-    value.requiredDate = json.at("required_date").get<std::string>();
+    value.requiredDate = json.at("required_date").get<fasc::server::domain::Date>();
   }
   if (json.contains("priority") && !json.at("priority").is_null()) {
     value.priority = json.at("priority").get<int>();
   }
   if (json.contains("valid_until") && !json.at("valid_until").is_null()) {
-    value.validUntil = json.at("valid_until").get<std::string>();
+    value.validUntil = json.at("valid_until").get<fasc::server::domain::Date>();
   }
   if (json.contains("status") && !json.at("status").is_null()) {
-    value.status = json.at("status").get<std::string>();
+    value.status = json.at("status").get<fasc::server::domain::PurchaseRequisitionStatus>();
   }
   if (json.contains("notes") && !json.at("notes").is_null()) {
     value.notes = json.at("notes").get<std::string>();
@@ -67,10 +71,10 @@ inline void from_json(const nlohmann::json& json, PurchaseRequisitionCreateDto& 
 /// Читает DTO обновления таблицы purchase_requisition.
 inline void from_json(const nlohmann::json& json, PurchaseRequisitionUpdateDto& value) {
   if (json.contains("farm_id") && !json.at("farm_id").is_null()) {
-    value.farmId = json.at("farm_id").get<int>();
+    value.farmId = json.at("farm_id").get<std::uint64_t>();
   }
   if (json.contains("product_id") && !json.at("product_id").is_null()) {
-    value.productId = json.at("product_id").get<int>();
+    value.productId = json.at("product_id").get<std::uint64_t>();
   }
   if (json.contains("quantity") && !json.at("quantity").is_null()) {
     value.quantity = json.at("quantity").get<int>();
@@ -79,19 +83,19 @@ inline void from_json(const nlohmann::json& json, PurchaseRequisitionUpdateDto& 
     value.maxPricePerUnit = json.at("max_price_per_unit").get<double>();
   }
   if (json.contains("offer_date") && !json.at("offer_date").is_null()) {
-    value.offerDate = json.at("offer_date").get<std::string>();
+    value.offerDate = json.at("offer_date").get<fasc::server::domain::Date>();
   }
   if (json.contains("required_date") && !json.at("required_date").is_null()) {
-    value.requiredDate = json.at("required_date").get<std::string>();
+    value.requiredDate = json.at("required_date").get<fasc::server::domain::Date>();
   }
   if (json.contains("priority") && !json.at("priority").is_null()) {
     value.priority = json.at("priority").get<int>();
   }
   if (json.contains("valid_until") && !json.at("valid_until").is_null()) {
-    value.validUntil = json.at("valid_until").get<std::string>();
+    value.validUntil = json.at("valid_until").get<fasc::server::domain::Date>();
   }
   if (json.contains("status") && !json.at("status").is_null()) {
-    value.status = json.at("status").get<std::string>();
+    value.status = json.at("status").get<fasc::server::domain::PurchaseRequisitionStatus>();
   }
   if (json.contains("notes") && !json.at("notes").is_null()) {
     value.notes = json.at("notes").get<std::string>();
@@ -103,14 +107,6 @@ inline void from_json(const nlohmann::json& json, PurchaseRequisitionUpdateDto& 
 namespace fasc::server::views {
 
 namespace detail {
-
-template <typename T>
-inline std::optional<T> toOptional(const odb::nullable<T>& value) {
-  if (value.null()) {
-    return std::nullopt;
-  }
-  return value.get();
-}
 
 inline nlohmann::json PurchaseRequisitionRowPayload(const PurchaseRequisitionRowView& view) {
   nlohmann::json json = nlohmann::json::object();

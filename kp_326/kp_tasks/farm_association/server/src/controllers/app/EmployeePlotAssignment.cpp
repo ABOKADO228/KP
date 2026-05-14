@@ -1,5 +1,7 @@
 #include <controllers/app/EmployeePlotAssignment.hpp>
 
+#include <database/SqlValue.hpp>
+
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -29,16 +31,16 @@ std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& 
 
 fasc::server::persistence::EmployeePlotAssignmentEntity rowToEntity(const fasc::server::database::SqlRow& row) {
   fasc::server::persistence::EmployeePlotAssignmentEntity entity;
-  entity.id = std::stoi(requireColumn(row, "id"));
-  entity.farmEmployeeId = std::stoi(requireColumn(row, "farm_employee_id"));
-  entity.farmPlotId = std::stoi(requireColumn(row, "farm_plot_id"));
-  if (const auto value = optionalColumn(row, "assignment_type")) {
+  entity.id = fasc::server::database::requireColumn<std::uint64_t>(row, "id");
+  entity.farmEmployeeId = fasc::server::database::requireColumn<std::uint64_t>(row, "farm_employee_id");
+  entity.farmPlotId = fasc::server::database::requireColumn<std::uint64_t>(row, "farm_plot_id");
+  if (const auto value = fasc::server::database::optionalColumn<fasc::server::domain::EmployeePlotAssignmentType>(row, "assignment_type")) {
     entity.assignmentType = *value;
   } else {
     entity.assignmentType.reset();
   }
-  entity.assignedAt = requireColumn(row, "assigned_at");
-  if (const auto value = optionalColumn(row, "unassigned_at")) {
+  entity.assignedAt = fasc::server::database::requireColumn<fasc::server::domain::Date>(row, "assigned_at");
+  if (const auto value = fasc::server::database::optionalColumn<fasc::server::domain::Date>(row, "unassigned_at")) {
     entity.unassignedAt = *value;
   } else {
     entity.unassignedAt.reset();
@@ -54,7 +56,7 @@ fasc::server::persistence::EmployeePlotAssignmentEntity rowToEntity(const fasc::
 std::vector<fasc::server::database::SqlParameter> keyValues(
     const fasc::server::controllers::dto::EmployeePlotAssignmentKeyDto& key) {
   std::vector<fasc::server::database::SqlParameter> values;
-  values.push_back(fasc::server::database::SqlParameter{std::to_string(key.id), false});
+  values.push_back(fasc::server::database::makeSqlParameter(key.id));
   return values;
 }
 
@@ -109,7 +111,7 @@ EmployeePlotAssignmentMutationResult EmployeePlotAssignmentController::create(
   }
   if (dto.farmEmployeeId.has_value()) {
     columns.push_back("farm_employee_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.farmEmployeeId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.farmEmployeeId));
   }
   if (!dto.farmPlotId.has_value()) {
     return EmployeePlotAssignmentMutationResult::failure(
@@ -117,11 +119,11 @@ EmployeePlotAssignmentMutationResult EmployeePlotAssignmentController::create(
   }
   if (dto.farmPlotId.has_value()) {
     columns.push_back("farm_plot_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.farmPlotId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.farmPlotId));
   }
   if (dto.assignmentType.has_value()) {
     columns.push_back("assignment_type");
-    values.push_back(fasc::server::database::SqlParameter{*dto.assignmentType, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.assignmentType));
   }
   if (!dto.assignedAt.has_value()) {
     return EmployeePlotAssignmentMutationResult::failure(
@@ -129,15 +131,15 @@ EmployeePlotAssignmentMutationResult EmployeePlotAssignmentController::create(
   }
   if (dto.assignedAt.has_value()) {
     columns.push_back("assigned_at");
-    values.push_back(fasc::server::database::SqlParameter{*dto.assignedAt, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.assignedAt));
   }
   if (dto.unassignedAt.has_value()) {
     columns.push_back("unassigned_at");
-    values.push_back(fasc::server::database::SqlParameter{*dto.unassignedAt, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.unassignedAt));
   }
   if (dto.notes.has_value()) {
     columns.push_back("notes");
-    values.push_back(fasc::server::database::SqlParameter{*dto.notes, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.notes));
   }
   if (columns.empty()) {
     return EmployeePlotAssignmentMutationResult::failure(
@@ -164,27 +166,27 @@ EmployeePlotAssignmentMutationResult EmployeePlotAssignmentController::update(
   std::vector<fasc::server::database::SqlParameter> values;
   if (dto.farmEmployeeId.has_value()) {
     columns.push_back("farm_employee_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.farmEmployeeId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.farmEmployeeId));
   }
   if (dto.farmPlotId.has_value()) {
     columns.push_back("farm_plot_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.farmPlotId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.farmPlotId));
   }
   if (dto.assignmentType.has_value()) {
     columns.push_back("assignment_type");
-    values.push_back(fasc::server::database::SqlParameter{*dto.assignmentType, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.assignmentType));
   }
   if (dto.assignedAt.has_value()) {
     columns.push_back("assigned_at");
-    values.push_back(fasc::server::database::SqlParameter{*dto.assignedAt, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.assignedAt));
   }
   if (dto.unassignedAt.has_value()) {
     columns.push_back("unassigned_at");
-    values.push_back(fasc::server::database::SqlParameter{*dto.unassignedAt, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.unassignedAt));
   }
   if (dto.notes.has_value()) {
     columns.push_back("notes");
-    values.push_back(fasc::server::database::SqlParameter{*dto.notes, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.notes));
   }
   if (columns.empty()) {
     return EmployeePlotAssignmentMutationResult::failure(

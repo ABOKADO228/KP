@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <persistence/AssociationMember.hpp>
 
 #include <optional>
@@ -11,26 +15,26 @@ namespace fasc::server::controllers::dto {
 /// Ключ строки таблицы association_member.
 struct AssociationMemberKeyDto {
   /// Значение колонки id.
-  int id{};
+  std::uint64_t id{};
 
 };
 
 /// DTO создания строки таблицы association_member.
 struct AssociationMemberCreateDto {
   /// Значение колонки association_id.
-  std::optional<int> associationId;
+  std::optional<std::uint64_t> associationId;
 
   /// Значение колонки person_id.
-  std::optional<int> personId;
+  std::optional<std::uint64_t> personId;
 
   /// Значение колонки membership_number.
   std::optional<std::string> membershipNumber;
 
   /// Значение колонки joined_date.
-  std::optional<std::string> joinedDate;
+  std::optional<fasc::server::domain::Date> joinedDate;
 
   /// Значение колонки status.
-  std::optional<std::string> status;
+  std::optional<fasc::server::domain::AssociationMemberStatus> status;
 
   /// Значение колонки notes.
   std::optional<std::string> notes;
@@ -40,19 +44,19 @@ struct AssociationMemberCreateDto {
 /// DTO обновления строки таблицы association_member.
 struct AssociationMemberUpdateDto {
   /// Значение колонки association_id.
-  std::optional<int> associationId;
+  std::optional<std::uint64_t> associationId;
 
   /// Значение колонки person_id.
-  std::optional<int> personId;
+  std::optional<std::uint64_t> personId;
 
   /// Значение колонки membership_number.
   std::optional<std::string> membershipNumber;
 
   /// Значение колонки joined_date.
-  std::optional<std::string> joinedDate;
+  std::optional<fasc::server::domain::Date> joinedDate;
 
   /// Значение колонки status.
-  std::optional<std::string> status;
+  std::optional<fasc::server::domain::AssociationMemberStatus> status;
 
   /// Значение колонки notes.
   std::optional<std::string> notes;

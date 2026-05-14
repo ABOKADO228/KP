@@ -1,5 +1,7 @@
 #include <controllers/app/FarmPlot.hpp>
 
+#include <database/SqlValue.hpp>
+
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -29,9 +31,9 @@ std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& 
 
 fasc::server::persistence::FarmPlotEntity rowToEntity(const fasc::server::database::SqlRow& row) {
   fasc::server::persistence::FarmPlotEntity entity;
-  entity.id = std::stoi(requireColumn(row, "id"));
-  if (const auto value = optionalColumn(row, "farm_plot_type_id")) {
-    entity.farmPlotTypeId = std::stoi(*value);
+  entity.id = fasc::server::database::requireColumn<std::uint64_t>(row, "id");
+  if (const auto value = fasc::server::database::optionalColumn<std::uint64_t>(row, "farm_plot_type_id")) {
+    entity.farmPlotTypeId = *value;
   } else {
     entity.farmPlotTypeId.reset();
   }
@@ -40,8 +42,8 @@ fasc::server::persistence::FarmPlotEntity rowToEntity(const fasc::server::databa
   } else {
     entity.name.reset();
   }
-  if (const auto value = optionalColumn(row, "area")) {
-    entity.area = std::stod(*value);
+  if (const auto value = fasc::server::database::optionalColumn<double>(row, "area")) {
+    entity.area = *value;
   } else {
     entity.area.reset();
   }
@@ -55,7 +57,7 @@ fasc::server::persistence::FarmPlotEntity rowToEntity(const fasc::server::databa
   } else {
     entity.cadastralNumber.reset();
   }
-  if (const auto value = optionalColumn(row, "status")) {
+  if (const auto value = fasc::server::database::optionalColumn<fasc::server::domain::FarmPlotStatus>(row, "status")) {
     entity.status = *value;
   } else {
     entity.status.reset();
@@ -66,7 +68,7 @@ fasc::server::persistence::FarmPlotEntity rowToEntity(const fasc::server::databa
 std::vector<fasc::server::database::SqlParameter> keyValues(
     const fasc::server::controllers::dto::FarmPlotKeyDto& key) {
   std::vector<fasc::server::database::SqlParameter> values;
-  values.push_back(fasc::server::database::SqlParameter{std::to_string(key.id), false});
+  values.push_back(fasc::server::database::makeSqlParameter(key.id));
   return values;
 }
 
@@ -117,27 +119,27 @@ FarmPlotMutationResult FarmPlotController::create(
   std::vector<fasc::server::database::SqlParameter> values;
   if (dto.farmPlotTypeId.has_value()) {
     columns.push_back("farm_plot_type_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.farmPlotTypeId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.farmPlotTypeId));
   }
   if (dto.name.has_value()) {
     columns.push_back("name");
-    values.push_back(fasc::server::database::SqlParameter{*dto.name, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.name));
   }
   if (dto.area.has_value()) {
     columns.push_back("area");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.area), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.area));
   }
   if (dto.location.has_value()) {
     columns.push_back("location");
-    values.push_back(fasc::server::database::SqlParameter{*dto.location, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.location));
   }
   if (dto.cadastralNumber.has_value()) {
     columns.push_back("cadastral_number");
-    values.push_back(fasc::server::database::SqlParameter{*dto.cadastralNumber, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.cadastralNumber));
   }
   if (dto.status.has_value()) {
     columns.push_back("status");
-    values.push_back(fasc::server::database::SqlParameter{*dto.status, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.status));
   }
   if (columns.empty()) {
     return FarmPlotMutationResult::failure(
@@ -164,27 +166,27 @@ FarmPlotMutationResult FarmPlotController::update(
   std::vector<fasc::server::database::SqlParameter> values;
   if (dto.farmPlotTypeId.has_value()) {
     columns.push_back("farm_plot_type_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.farmPlotTypeId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.farmPlotTypeId));
   }
   if (dto.name.has_value()) {
     columns.push_back("name");
-    values.push_back(fasc::server::database::SqlParameter{*dto.name, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.name));
   }
   if (dto.area.has_value()) {
     columns.push_back("area");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.area), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.area));
   }
   if (dto.location.has_value()) {
     columns.push_back("location");
-    values.push_back(fasc::server::database::SqlParameter{*dto.location, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.location));
   }
   if (dto.cadastralNumber.has_value()) {
     columns.push_back("cadastral_number");
-    values.push_back(fasc::server::database::SqlParameter{*dto.cadastralNumber, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.cadastralNumber));
   }
   if (dto.status.has_value()) {
     columns.push_back("status");
-    values.push_back(fasc::server::database::SqlParameter{*dto.status, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.status));
   }
   if (columns.empty()) {
     return FarmPlotMutationResult::failure(

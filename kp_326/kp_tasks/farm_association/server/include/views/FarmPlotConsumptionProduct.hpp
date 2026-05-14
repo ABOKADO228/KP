@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <optional>
 #include <string>
 #include <vector>
@@ -7,8 +11,8 @@
 namespace fasc::server::views {
 
 struct FarmPlotConsumptionProductRowView {
-  int productId{};
-  int farmPlotId{};
+  std::uint64_t productId{};
+  std::uint64_t farmPlotId{};
   int quantity{};
   int consumptionNow{};
 };

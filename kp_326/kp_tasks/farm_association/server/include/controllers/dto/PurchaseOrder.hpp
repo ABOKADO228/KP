@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <persistence/PurchaseOrder.hpp>
 
 #include <optional>
@@ -11,69 +15,69 @@ namespace fasc::server::controllers::dto {
 /// Ключ строки таблицы purchase_order.
 struct PurchaseOrderKeyDto {
   /// Значение колонки id.
-  int id{};
+  std::uint64_t id{};
 
 };
 
 /// DTO создания строки таблицы purchase_order.
 struct PurchaseOrderCreateDto {
   /// Значение колонки association_id.
-  std::optional<int> associationId;
+  std::optional<std::uint64_t> associationId;
 
   /// Значение колонки supplier_id.
-  std::optional<int> supplierId;
+  std::optional<std::uint64_t> supplierId;
 
   /// Значение колонки delivery_address.
   std::optional<std::string> deliveryAddress;
 
   /// Значение колонки order_date.
-  std::optional<std::string> orderDate;
+  std::optional<fasc::server::domain::Date> orderDate;
 
   /// Значение колонки expected_delivery_date.
-  std::optional<std::string> expectedDeliveryDate;
+  std::optional<fasc::server::domain::Date> expectedDeliveryDate;
 
   /// Значение колонки status.
-  std::optional<std::string> status;
+  std::optional<fasc::server::domain::PurchaseOrderStatus> status;
 
   /// Значение колонки total_amount.
   std::optional<double> totalAmount;
 
   /// Значение колонки received_at.
-  std::optional<std::string> receivedAt;
+  std::optional<fasc::server::domain::Date> receivedAt;
 
   /// Значение колонки created_by.
-  std::optional<int> createdBy;
+  std::optional<std::uint64_t> createdBy;
 
 };
 
 /// DTO обновления строки таблицы purchase_order.
 struct PurchaseOrderUpdateDto {
   /// Значение колонки association_id.
-  std::optional<int> associationId;
+  std::optional<std::uint64_t> associationId;
 
   /// Значение колонки supplier_id.
-  std::optional<int> supplierId;
+  std::optional<std::uint64_t> supplierId;
 
   /// Значение колонки delivery_address.
   std::optional<std::string> deliveryAddress;
 
   /// Значение колонки order_date.
-  std::optional<std::string> orderDate;
+  std::optional<fasc::server::domain::Date> orderDate;
 
   /// Значение колонки expected_delivery_date.
-  std::optional<std::string> expectedDeliveryDate;
+  std::optional<fasc::server::domain::Date> expectedDeliveryDate;
 
   /// Значение колонки status.
-  std::optional<std::string> status;
+  std::optional<fasc::server::domain::PurchaseOrderStatus> status;
 
   /// Значение колонки total_amount.
   std::optional<double> totalAmount;
 
   /// Значение колонки received_at.
-  std::optional<std::string> receivedAt;
+  std::optional<fasc::server::domain::Date> receivedAt;
 
   /// Значение колонки created_by.
-  std::optional<int> createdBy;
+  std::optional<std::uint64_t> createdBy;
 
 };
 

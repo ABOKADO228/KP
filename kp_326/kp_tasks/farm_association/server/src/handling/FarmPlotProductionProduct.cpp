@@ -46,12 +46,12 @@ fasc::server::controllers::dto::FarmPlotProductionProductKeyDto keyFrom(
     const fasc::server::core::HttpRequest& request) {
   fasc::server::controllers::dto::FarmPlotProductionProductKeyDto key;
   if (const auto it = request.query_params.find("product_id"); it != request.query_params.end()) {
-    key.productId = std::stoi(it->second);
+    key.productId = std::stoull(it->second);
   } else {
     throw std::invalid_argument{"Missing key field: product_id"};
   }
   if (const auto it = request.query_params.find("farm_plot_id"); it != request.query_params.end()) {
-    key.farmPlotId = std::stoi(it->second);
+    key.farmPlotId = std::stoull(it->second);
   } else {
     throw std::invalid_argument{"Missing key field: farm_plot_id"};
   }

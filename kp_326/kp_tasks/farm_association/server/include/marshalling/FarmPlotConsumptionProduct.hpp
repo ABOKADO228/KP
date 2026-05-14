@@ -1,5 +1,9 @@
 #pragma once
 
+#include <marshalling/Nullable.hpp>
+
+#include <domain/Types.hpp>
+
 #include <controllers/dto/FarmPlotConsumptionProduct.hpp>
 #include <views/FarmPlotConsumptionProduct.hpp>
 #include <optional>
@@ -26,10 +30,10 @@ namespace fasc::server::controllers::dto {
 /// Читает DTO создания таблицы farm_plot_consumption_product.
 inline void from_json(const nlohmann::json& json, FarmPlotConsumptionProductCreateDto& value) {
   if (json.contains("product_id") && !json.at("product_id").is_null()) {
-    value.productId = json.at("product_id").get<int>();
+    value.productId = json.at("product_id").get<std::uint64_t>();
   }
   if (json.contains("farm_plot_id") && !json.at("farm_plot_id").is_null()) {
-    value.farmPlotId = json.at("farm_plot_id").get<int>();
+    value.farmPlotId = json.at("farm_plot_id").get<std::uint64_t>();
   }
   if (json.contains("quantity") && !json.at("quantity").is_null()) {
     value.quantity = json.at("quantity").get<int>();
@@ -54,14 +58,6 @@ inline void from_json(const nlohmann::json& json, FarmPlotConsumptionProductUpda
 namespace fasc::server::views {
 
 namespace detail {
-
-template <typename T>
-inline std::optional<T> toOptional(const odb::nullable<T>& value) {
-  if (value.null()) {
-    return std::nullopt;
-  }
-  return value.get();
-}
 
 inline nlohmann::json FarmPlotConsumptionProductRowPayload(const FarmPlotConsumptionProductRowView& view) {
   nlohmann::json json = nlohmann::json::object();

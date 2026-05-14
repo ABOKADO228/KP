@@ -1,5 +1,9 @@
 #pragma once
 
+#include <marshalling/Nullable.hpp>
+
+#include <domain/Types.hpp>
+
 #include <controllers/dto/AssociationMember.hpp>
 #include <views/AssociationMember.hpp>
 #include <optional>
@@ -29,19 +33,19 @@ namespace fasc::server::controllers::dto {
 /// Читает DTO создания таблицы association_member.
 inline void from_json(const nlohmann::json& json, AssociationMemberCreateDto& value) {
   if (json.contains("association_id") && !json.at("association_id").is_null()) {
-    value.associationId = json.at("association_id").get<int>();
+    value.associationId = json.at("association_id").get<std::uint64_t>();
   }
   if (json.contains("person_id") && !json.at("person_id").is_null()) {
-    value.personId = json.at("person_id").get<int>();
+    value.personId = json.at("person_id").get<std::uint64_t>();
   }
   if (json.contains("membership_number") && !json.at("membership_number").is_null()) {
     value.membershipNumber = json.at("membership_number").get<std::string>();
   }
   if (json.contains("joined_date") && !json.at("joined_date").is_null()) {
-    value.joinedDate = json.at("joined_date").get<std::string>();
+    value.joinedDate = json.at("joined_date").get<fasc::server::domain::Date>();
   }
   if (json.contains("status") && !json.at("status").is_null()) {
-    value.status = json.at("status").get<std::string>();
+    value.status = json.at("status").get<fasc::server::domain::AssociationMemberStatus>();
   }
   if (json.contains("notes") && !json.at("notes").is_null()) {
     value.notes = json.at("notes").get<std::string>();
@@ -51,19 +55,19 @@ inline void from_json(const nlohmann::json& json, AssociationMemberCreateDto& va
 /// Читает DTO обновления таблицы association_member.
 inline void from_json(const nlohmann::json& json, AssociationMemberUpdateDto& value) {
   if (json.contains("association_id") && !json.at("association_id").is_null()) {
-    value.associationId = json.at("association_id").get<int>();
+    value.associationId = json.at("association_id").get<std::uint64_t>();
   }
   if (json.contains("person_id") && !json.at("person_id").is_null()) {
-    value.personId = json.at("person_id").get<int>();
+    value.personId = json.at("person_id").get<std::uint64_t>();
   }
   if (json.contains("membership_number") && !json.at("membership_number").is_null()) {
     value.membershipNumber = json.at("membership_number").get<std::string>();
   }
   if (json.contains("joined_date") && !json.at("joined_date").is_null()) {
-    value.joinedDate = json.at("joined_date").get<std::string>();
+    value.joinedDate = json.at("joined_date").get<fasc::server::domain::Date>();
   }
   if (json.contains("status") && !json.at("status").is_null()) {
-    value.status = json.at("status").get<std::string>();
+    value.status = json.at("status").get<fasc::server::domain::AssociationMemberStatus>();
   }
   if (json.contains("notes") && !json.at("notes").is_null()) {
     value.notes = json.at("notes").get<std::string>();
@@ -75,14 +79,6 @@ inline void from_json(const nlohmann::json& json, AssociationMemberUpdateDto& va
 namespace fasc::server::views {
 
 namespace detail {
-
-template <typename T>
-inline std::optional<T> toOptional(const odb::nullable<T>& value) {
-  if (value.null()) {
-    return std::nullopt;
-  }
-  return value.get();
-}
 
 inline nlohmann::json AssociationMemberRowPayload(const AssociationMemberRowView& view) {
   nlohmann::json json = nlohmann::json::object();

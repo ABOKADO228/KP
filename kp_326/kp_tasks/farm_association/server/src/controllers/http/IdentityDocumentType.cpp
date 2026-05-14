@@ -1,5 +1,7 @@
 #include <controllers/http/IdentityDocumentType.hpp>
 
+#include <exception>
+
 #include <marshalling/IdentityDocumentType.hpp>
 
 #include <nlohmann/json.hpp>
@@ -54,7 +56,7 @@ IdentityDocumentTypeMutationViewResult IdentityDocumentTypeHttpController::creat
     }
     return IdentityDocumentTypeMutationViewResult::success(
         fasc::server::views::IdentityDocumentTypeMutationView{result.success().affectedRows});
-  } catch (const nlohmann::json::exception& exception) {
+  } catch (const std::exception& exception) {
     return IdentityDocumentTypeMutationViewResult::failure(
         fasc::server::views::ErrorView{fasc::server::views::ErrorViewCode::BadRequest, exception.what()});
   }
@@ -71,7 +73,7 @@ IdentityDocumentTypeMutationViewResult IdentityDocumentTypeHttpController::updat
     }
     return IdentityDocumentTypeMutationViewResult::success(
         fasc::server::views::IdentityDocumentTypeMutationView{result.success().affectedRows});
-  } catch (const nlohmann::json::exception& exception) {
+  } catch (const std::exception& exception) {
     return IdentityDocumentTypeMutationViewResult::failure(
         fasc::server::views::ErrorView{fasc::server::views::ErrorViewCode::BadRequest, exception.what()});
   }

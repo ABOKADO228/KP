@@ -1,5 +1,9 @@
 #pragma once
 
+#include <marshalling/Nullable.hpp>
+
+#include <domain/Types.hpp>
+
 #include <controllers/dto/FarmAssociation.hpp>
 #include <views/FarmAssociation.hpp>
 #include <optional>
@@ -40,7 +44,7 @@ inline void from_json(const nlohmann::json& json, FarmAssociationCreateDto& valu
     value.legalAddress = json.at("legal_address").get<std::string>();
   }
   if (json.contains("status") && !json.at("status").is_null()) {
-    value.status = json.at("status").get<std::string>();
+    value.status = json.at("status").get<fasc::server::domain::FarmAssociationStatus>();
   }
 }
 
@@ -59,7 +63,7 @@ inline void from_json(const nlohmann::json& json, FarmAssociationUpdateDto& valu
     value.legalAddress = json.at("legal_address").get<std::string>();
   }
   if (json.contains("status") && !json.at("status").is_null()) {
-    value.status = json.at("status").get<std::string>();
+    value.status = json.at("status").get<fasc::server::domain::FarmAssociationStatus>();
   }
 }
 
@@ -68,14 +72,6 @@ inline void from_json(const nlohmann::json& json, FarmAssociationUpdateDto& valu
 namespace fasc::server::views {
 
 namespace detail {
-
-template <typename T>
-inline std::optional<T> toOptional(const odb::nullable<T>& value) {
-  if (value.null()) {
-    return std::nullopt;
-  }
-  return value.get();
-}
 
 inline nlohmann::json FarmAssociationRowPayload(const FarmAssociationRowView& view) {
   nlohmann::json json = nlohmann::json::object();

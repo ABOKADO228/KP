@@ -1,5 +1,7 @@
 #include <controllers/app/FarmEmployee.hpp>
 
+#include <database/SqlValue.hpp>
+
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -29,19 +31,19 @@ std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& 
 
 fasc::server::persistence::FarmEmployeeEntity rowToEntity(const fasc::server::database::SqlRow& row) {
   fasc::server::persistence::FarmEmployeeEntity entity;
-  entity.id = std::stoi(requireColumn(row, "id"));
-  entity.personId = std::stoi(requireColumn(row, "person_id"));
-  entity.farmId = std::stoi(requireColumn(row, "farm_id"));
-  entity.roleId = std::stoi(requireColumn(row, "role_id"));
-  entity.employmentStatusId = std::stoi(requireColumn(row, "employment_status_id"));
-  entity.hireDate = requireColumn(row, "hire_date");
-  if (const auto value = optionalColumn(row, "dismissal_date")) {
+  entity.id = fasc::server::database::requireColumn<std::uint64_t>(row, "id");
+  entity.personId = fasc::server::database::requireColumn<std::uint64_t>(row, "person_id");
+  entity.farmId = fasc::server::database::requireColumn<std::uint64_t>(row, "farm_id");
+  entity.roleId = fasc::server::database::requireColumn<std::uint64_t>(row, "role_id");
+  entity.employmentStatusId = fasc::server::database::requireColumn<std::uint64_t>(row, "employment_status_id");
+  entity.hireDate = fasc::server::database::requireColumn<fasc::server::domain::Date>(row, "hire_date");
+  if (const auto value = fasc::server::database::optionalColumn<fasc::server::domain::Date>(row, "dismissal_date")) {
     entity.dismissalDate = *value;
   } else {
     entity.dismissalDate.reset();
   }
-  if (const auto value = optionalColumn(row, "salary")) {
-    entity.salary = std::stod(*value);
+  if (const auto value = fasc::server::database::optionalColumn<double>(row, "salary")) {
+    entity.salary = *value;
   } else {
     entity.salary.reset();
   }
@@ -50,8 +52,8 @@ fasc::server::persistence::FarmEmployeeEntity rowToEntity(const fasc::server::da
   } else {
     entity.employmentContractNumber.reset();
   }
-  if (const auto value = optionalColumn(row, "is_primary_workplace")) {
-    entity.isPrimaryWorkplace = std::stoi(*value);
+  if (const auto value = fasc::server::database::optionalColumn<bool>(row, "is_primary_workplace")) {
+    entity.isPrimaryWorkplace = *value;
   } else {
     entity.isPrimaryWorkplace.reset();
   }
@@ -61,7 +63,7 @@ fasc::server::persistence::FarmEmployeeEntity rowToEntity(const fasc::server::da
 std::vector<fasc::server::database::SqlParameter> keyValues(
     const fasc::server::controllers::dto::FarmEmployeeKeyDto& key) {
   std::vector<fasc::server::database::SqlParameter> values;
-  values.push_back(fasc::server::database::SqlParameter{std::to_string(key.id), false});
+  values.push_back(fasc::server::database::makeSqlParameter(key.id));
   return values;
 }
 
@@ -116,7 +118,7 @@ FarmEmployeeMutationResult FarmEmployeeController::create(
   }
   if (dto.personId.has_value()) {
     columns.push_back("person_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.personId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.personId));
   }
   if (!dto.farmId.has_value()) {
     return FarmEmployeeMutationResult::failure(
@@ -124,7 +126,7 @@ FarmEmployeeMutationResult FarmEmployeeController::create(
   }
   if (dto.farmId.has_value()) {
     columns.push_back("farm_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.farmId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.farmId));
   }
   if (!dto.roleId.has_value()) {
     return FarmEmployeeMutationResult::failure(
@@ -132,7 +134,7 @@ FarmEmployeeMutationResult FarmEmployeeController::create(
   }
   if (dto.roleId.has_value()) {
     columns.push_back("role_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.roleId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.roleId));
   }
   if (!dto.employmentStatusId.has_value()) {
     return FarmEmployeeMutationResult::failure(
@@ -140,7 +142,7 @@ FarmEmployeeMutationResult FarmEmployeeController::create(
   }
   if (dto.employmentStatusId.has_value()) {
     columns.push_back("employment_status_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.employmentStatusId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.employmentStatusId));
   }
   if (!dto.hireDate.has_value()) {
     return FarmEmployeeMutationResult::failure(
@@ -148,23 +150,23 @@ FarmEmployeeMutationResult FarmEmployeeController::create(
   }
   if (dto.hireDate.has_value()) {
     columns.push_back("hire_date");
-    values.push_back(fasc::server::database::SqlParameter{*dto.hireDate, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.hireDate));
   }
   if (dto.dismissalDate.has_value()) {
     columns.push_back("dismissal_date");
-    values.push_back(fasc::server::database::SqlParameter{*dto.dismissalDate, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.dismissalDate));
   }
   if (dto.salary.has_value()) {
     columns.push_back("salary");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.salary), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.salary));
   }
   if (dto.employmentContractNumber.has_value()) {
     columns.push_back("employment_contract_number");
-    values.push_back(fasc::server::database::SqlParameter{*dto.employmentContractNumber, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.employmentContractNumber));
   }
   if (dto.isPrimaryWorkplace.has_value()) {
     columns.push_back("is_primary_workplace");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.isPrimaryWorkplace), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.isPrimaryWorkplace));
   }
   if (columns.empty()) {
     return FarmEmployeeMutationResult::failure(
@@ -191,39 +193,39 @@ FarmEmployeeMutationResult FarmEmployeeController::update(
   std::vector<fasc::server::database::SqlParameter> values;
   if (dto.personId.has_value()) {
     columns.push_back("person_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.personId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.personId));
   }
   if (dto.farmId.has_value()) {
     columns.push_back("farm_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.farmId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.farmId));
   }
   if (dto.roleId.has_value()) {
     columns.push_back("role_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.roleId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.roleId));
   }
   if (dto.employmentStatusId.has_value()) {
     columns.push_back("employment_status_id");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.employmentStatusId), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.employmentStatusId));
   }
   if (dto.hireDate.has_value()) {
     columns.push_back("hire_date");
-    values.push_back(fasc::server::database::SqlParameter{*dto.hireDate, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.hireDate));
   }
   if (dto.dismissalDate.has_value()) {
     columns.push_back("dismissal_date");
-    values.push_back(fasc::server::database::SqlParameter{*dto.dismissalDate, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.dismissalDate));
   }
   if (dto.salary.has_value()) {
     columns.push_back("salary");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.salary), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.salary));
   }
   if (dto.employmentContractNumber.has_value()) {
     columns.push_back("employment_contract_number");
-    values.push_back(fasc::server::database::SqlParameter{*dto.employmentContractNumber, false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.employmentContractNumber));
   }
   if (dto.isPrimaryWorkplace.has_value()) {
     columns.push_back("is_primary_workplace");
-    values.push_back(fasc::server::database::SqlParameter{std::to_string(*dto.isPrimaryWorkplace), false});
+    values.push_back(fasc::server::database::makeSqlParameter(*dto.isPrimaryWorkplace));
   }
   if (columns.empty()) {
     return FarmEmployeeMutationResult::failure(

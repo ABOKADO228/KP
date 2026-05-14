@@ -1,5 +1,7 @@
 #include <controllers/http/PurchaseOrderItem.hpp>
 
+#include <exception>
+
 #include <marshalling/PurchaseOrderItem.hpp>
 
 #include <nlohmann/json.hpp>
@@ -54,7 +56,7 @@ PurchaseOrderItemMutationViewResult PurchaseOrderItemHttpController::create(std:
     }
     return PurchaseOrderItemMutationViewResult::success(
         fasc::server::views::PurchaseOrderItemMutationView{result.success().affectedRows});
-  } catch (const nlohmann::json::exception& exception) {
+  } catch (const std::exception& exception) {
     return PurchaseOrderItemMutationViewResult::failure(
         fasc::server::views::ErrorView{fasc::server::views::ErrorViewCode::BadRequest, exception.what()});
   }
@@ -71,7 +73,7 @@ PurchaseOrderItemMutationViewResult PurchaseOrderItemHttpController::update(
     }
     return PurchaseOrderItemMutationViewResult::success(
         fasc::server::views::PurchaseOrderItemMutationView{result.success().affectedRows});
-  } catch (const nlohmann::json::exception& exception) {
+  } catch (const std::exception& exception) {
     return PurchaseOrderItemMutationViewResult::failure(
         fasc::server::views::ErrorView{fasc::server::views::ErrorViewCode::BadRequest, exception.what()});
   }

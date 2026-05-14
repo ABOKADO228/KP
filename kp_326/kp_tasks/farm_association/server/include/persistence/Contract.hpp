@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <odb/core.hxx>
 #include <odb/nullable.hxx>
 
@@ -10,35 +14,34 @@ namespace fasc::server::persistence {
 /// Сущность таблицы contract.
 struct ContractEntity {
   /// Значение колонки id.
-  int id{};
+  std::uint64_t id{};
 
   /// Значение колонки supplier_id.
-  odb::nullable<int> supplierId;
+  odb::nullable<std::uint64_t> supplierId;
 
   /// Значение колонки farm_id.
-  odb::nullable<int> farmId;
+  odb::nullable<std::uint64_t> farmId;
 
   /// Значение колонки association_id.
-  int associationId{};
+  std::uint64_t associationId{};
 
   /// Значение колонки contract_number.
   odb::nullable<std::string> contractNumber;
 
   /// Значение колонки sign_date.
-  std::string signDate;
+  fasc::server::domain::Date signDate;
 
   /// Значение колонки start_date.
-  std::string startDate;
+  fasc::server::domain::Date startDate;
 
   /// Значение колонки end_date.
-  odb::nullable<std::string> endDate;
+  odb::nullable<fasc::server::domain::Date> endDate;
 
   /// Значение колонки status.
-  odb::nullable<std::string> status;
+  odb::nullable<fasc::server::domain::ContractStatus> status;
 
   /// Значение колонки description.
   odb::nullable<std::string> description;
-
 };
 
 #pragma db object(ContractEntity) table("contract")

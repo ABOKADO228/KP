@@ -1,5 +1,9 @@
 #pragma once
 
+#include <marshalling/Nullable.hpp>
+
+#include <domain/Types.hpp>
+
 #include <controllers/dto/Product.hpp>
 #include <views/Product.hpp>
 #include <optional>
@@ -26,26 +30,26 @@ namespace fasc::server::controllers::dto {
 /// Читает DTO создания таблицы product.
 inline void from_json(const nlohmann::json& json, ProductCreateDto& value) {
   if (json.contains("type_id") && !json.at("type_id").is_null()) {
-    value.typeId = json.at("type_id").get<int>();
+    value.typeId = json.at("type_id").get<std::uint64_t>();
   }
   if (json.contains("name") && !json.at("name").is_null()) {
     value.name = json.at("name").get<std::string>();
   }
   if (json.contains("unit_id") && !json.at("unit_id").is_null()) {
-    value.unitId = json.at("unit_id").get<int>();
+    value.unitId = json.at("unit_id").get<std::uint64_t>();
   }
 }
 
 /// Читает DTO обновления таблицы product.
 inline void from_json(const nlohmann::json& json, ProductUpdateDto& value) {
   if (json.contains("type_id") && !json.at("type_id").is_null()) {
-    value.typeId = json.at("type_id").get<int>();
+    value.typeId = json.at("type_id").get<std::uint64_t>();
   }
   if (json.contains("name") && !json.at("name").is_null()) {
     value.name = json.at("name").get<std::string>();
   }
   if (json.contains("unit_id") && !json.at("unit_id").is_null()) {
-    value.unitId = json.at("unit_id").get<int>();
+    value.unitId = json.at("unit_id").get<std::uint64_t>();
   }
 }
 
@@ -54,14 +58,6 @@ inline void from_json(const nlohmann::json& json, ProductUpdateDto& value) {
 namespace fasc::server::views {
 
 namespace detail {
-
-template <typename T>
-inline std::optional<T> toOptional(const odb::nullable<T>& value) {
-  if (value.null()) {
-    return std::nullopt;
-  }
-  return value.get();
-}
 
 inline nlohmann::json ProductRowPayload(const ProductRowView& view) {
   nlohmann::json json = nlohmann::json::object();

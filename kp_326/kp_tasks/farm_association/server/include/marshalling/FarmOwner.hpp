@@ -1,5 +1,9 @@
 #pragma once
 
+#include <marshalling/Nullable.hpp>
+
+#include <domain/Types.hpp>
+
 #include <controllers/dto/FarmOwner.hpp>
 #include <views/FarmOwner.hpp>
 #include <optional>
@@ -26,10 +30,10 @@ namespace fasc::server::controllers::dto {
 /// Читает DTO создания таблицы farm_owner.
 inline void from_json(const nlohmann::json& json, FarmOwnerCreateDto& value) {
   if (json.contains("person_id") && !json.at("person_id").is_null()) {
-    value.personId = json.at("person_id").get<int>();
+    value.personId = json.at("person_id").get<std::uint64_t>();
   }
   if (json.contains("status") && !json.at("status").is_null()) {
-    value.status = json.at("status").get<std::string>();
+    value.status = json.at("status").get<fasc::server::domain::FarmOwnerStatus>();
   }
   if (json.contains("rating") && !json.at("rating").is_null()) {
     value.rating = json.at("rating").get<double>();
@@ -39,10 +43,10 @@ inline void from_json(const nlohmann::json& json, FarmOwnerCreateDto& value) {
 /// Читает DTO обновления таблицы farm_owner.
 inline void from_json(const nlohmann::json& json, FarmOwnerUpdateDto& value) {
   if (json.contains("person_id") && !json.at("person_id").is_null()) {
-    value.personId = json.at("person_id").get<int>();
+    value.personId = json.at("person_id").get<std::uint64_t>();
   }
   if (json.contains("status") && !json.at("status").is_null()) {
-    value.status = json.at("status").get<std::string>();
+    value.status = json.at("status").get<fasc::server::domain::FarmOwnerStatus>();
   }
   if (json.contains("rating") && !json.at("rating").is_null()) {
     value.rating = json.at("rating").get<double>();
@@ -54,14 +58,6 @@ inline void from_json(const nlohmann::json& json, FarmOwnerUpdateDto& value) {
 namespace fasc::server::views {
 
 namespace detail {
-
-template <typename T>
-inline std::optional<T> toOptional(const odb::nullable<T>& value) {
-  if (value.null()) {
-    return std::nullopt;
-  }
-  return value.get();
-}
 
 inline nlohmann::json FarmOwnerRowPayload(const FarmOwnerRowView& view) {
   nlohmann::json json = nlohmann::json::object();

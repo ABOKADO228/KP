@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <optional>
 #include <string>
 #include <vector>
@@ -7,12 +11,12 @@
 namespace fasc::server::views {
 
 struct FarmOwnershipRowView {
-  int id{};
-  int farmId{};
-  int farmOwnerId{};
+  std::uint64_t id{};
+  std::uint64_t farmId{};
+  std::uint64_t farmOwnerId{};
   std::optional<double> ownershipPercentage{};
-  std::string startedAt{};
-  std::optional<std::string> endedAt{};
+  fasc::server::domain::Date startedAt{};
+  std::optional<fasc::server::domain::Date> endedAt{};
 };
 
 struct FarmOwnershipRowsView {

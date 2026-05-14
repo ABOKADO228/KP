@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <persistence/SalesRequisition.hpp>
 
 #include <optional>
@@ -11,17 +15,17 @@ namespace fasc::server::controllers::dto {
 /// Ключ строки таблицы sales_requisition.
 struct SalesRequisitionKeyDto {
   /// Значение колонки id.
-  int id{};
+  std::uint64_t id{};
 
 };
 
 /// DTO создания строки таблицы sales_requisition.
 struct SalesRequisitionCreateDto {
   /// Значение колонки farm_id.
-  std::optional<int> farmId;
+  std::optional<std::uint64_t> farmId;
 
   /// Значение колонки product_id.
-  std::optional<int> productId;
+  std::optional<std::uint64_t> productId;
 
   /// Значение колонки quantity.
   std::optional<int> quantity;
@@ -30,13 +34,13 @@ struct SalesRequisitionCreateDto {
   std::optional<double> pricePerUnit;
 
   /// Значение колонки offer_date.
-  std::optional<std::string> offerDate;
+  std::optional<fasc::server::domain::Date> offerDate;
 
   /// Значение колонки valid_until.
-  std::optional<std::string> validUntil;
+  std::optional<fasc::server::domain::Date> validUntil;
 
   /// Значение колонки status.
-  std::optional<std::string> status;
+  std::optional<fasc::server::domain::SalesRequisitionStatus> status;
 
   /// Значение колонки notes.
   std::optional<std::string> notes;
@@ -46,10 +50,10 @@ struct SalesRequisitionCreateDto {
 /// DTO обновления строки таблицы sales_requisition.
 struct SalesRequisitionUpdateDto {
   /// Значение колонки farm_id.
-  std::optional<int> farmId;
+  std::optional<std::uint64_t> farmId;
 
   /// Значение колонки product_id.
-  std::optional<int> productId;
+  std::optional<std::uint64_t> productId;
 
   /// Значение колонки quantity.
   std::optional<int> quantity;
@@ -58,13 +62,13 @@ struct SalesRequisitionUpdateDto {
   std::optional<double> pricePerUnit;
 
   /// Значение колонки offer_date.
-  std::optional<std::string> offerDate;
+  std::optional<fasc::server::domain::Date> offerDate;
 
   /// Значение колонки valid_until.
-  std::optional<std::string> validUntil;
+  std::optional<fasc::server::domain::Date> validUntil;
 
   /// Значение колонки status.
-  std::optional<std::string> status;
+  std::optional<fasc::server::domain::SalesRequisitionStatus> status;
 
   /// Значение колонки notes.
   std::optional<std::string> notes;

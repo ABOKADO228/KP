@@ -1,5 +1,9 @@
 #pragma once
 
+#include <domain/Types.hpp>
+
+#include <cstdint>
+
 #include <persistence/Supplier.hpp>
 
 #include <optional>
@@ -11,7 +15,7 @@ namespace fasc::server::controllers::dto {
 /// Ключ строки таблицы supplier.
 struct SupplierKeyDto {
   /// Значение колонки id.
-  int id{};
+  std::uint64_t id{};
 
 };
 
@@ -24,7 +28,7 @@ struct SupplierCreateDto {
   std::optional<std::string> legalAddress;
 
   /// Значение колонки status.
-  std::optional<std::string> status;
+  std::optional<fasc::server::domain::SupplierStatus> status;
 
 };
 
@@ -37,7 +41,7 @@ struct SupplierUpdateDto {
   std::optional<std::string> legalAddress;
 
   /// Значение колонки status.
-  std::optional<std::string> status;
+  std::optional<fasc::server::domain::SupplierStatus> status;
 
 };
 
