@@ -2,6 +2,7 @@
 build*/
 server/build*/
 out/
+client/dist/
 
 # Local dependency cache/install tree. Recreate with tools/bootstrap-deps.*
 server/third_party/*
@@ -12,6 +13,9 @@ server/third_party/*
 .vs/
 .vscode/.cmake/
 compile_commands.json
+client/node_modules/
+client/coverage/
+verify/
 
 # Python/tooling caches
 __pycache__/

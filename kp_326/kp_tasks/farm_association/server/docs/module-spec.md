@@ -1,23 +1,27 @@
-# Спецификация модуля: C++ сервер ассоциации фермерских хозяйств
+# Спецификация Модуля: C++ Сервер Фермерской Ассоциации
 
 ## Назначение
 
-Модуль `server` содержит C++20 HTTP-сервер для backend-части проекта. Сервер должен принимать HTTP-запросы, сериализовать ответы в JSON, работать с PostgreSQL через ORM ODB и собираться через CMake, Ninja и clang++.
+Модуль `server` содержит C++20 HTTP backend. Он принимает HTTP-запросы, маршрутизирует их через Boost.Beast/Asio, сериализует JSON через nlohmann/json, работает с PostgreSQL через ODB/libpq и собирается через CMake + Ninja + clang++.
 
-## Технологический стек
+## Технологический Стек
 
-- Язык: C++20.
-- Сборка: CMake + Ninja.
-- Компилятор: clang++.
-- Тесты: CTest.
-- HTTP: Boost.Beast.
-- JSON: nlohmann/json.
-- ORM: ODB.
-- База данных: PostgreSQL, клиентская библиотека `libpq`.
+```text
+C++20
+CMake + Ninja
+clang++
+Boost.Asio/Beast
+nlohmann/json
+fmt
+ODB
+PostgreSQL/libpq
+OpenSSL/libcrypto
+GoogleTest/CTest
+```
 
-## Политика зависимостей
+## Политика Зависимостей
 
-Зависимости устанавливаются локально внутрь проекта, без vcpkg:
+Зависимости устанавливаются локально внутри проекта, без vcpkg и без хранения больших библиотек в Git:
 
 ```text
 server/
@@ -25,50 +29,144 @@ server/
     boost/
     nlohmann_json/
     odb/
-    libodb/
-    libodb-pgsql/
     postgresql/
+    openssl/                 Manjaro
+    libodb-Debug/            Windows Debug build output
+    libodb-pgsql-Debug/      Windows Debug build output
+    libodb-Release/          Windows Release build output
+    libodb-pgsql-Release/    Windows Release build output
+    _sources/
+    _downloads/
+    _build/
 ```
 
-`third_party` является локальным каталогом зависимостей сервера. CMake ищет пакеты только через локальные префиксы из `server/third_party` и стандартные системные пути CMake. Предпочтительный режим работы: все нужные заголовки, библиотеки и инструменты лежат внутри `server/third_party`.
+В Git должен оставаться только `server/third_party/.gitkeep`.
 
-## Роли зависимостей
+## Сборочная Модель
 
-- Boost установлен локально полностью в `server/third_party/boost`, включая общий каталог заголовков `include/boost` и собранные статические `.lib` файлы в `lib`.
-- Boost.Beast предоставляет HTTP/WebSocket-примитивы поверх Boost.Asio.
-- Boost.System может использоваться как собранная библиотека или как header-only error_code через текущую настройку CMake.
-- nlohmann/json используется для JSON-тел запросов и ответов.
-- ODB compiler (`odb.exe`) генерирует C++ код доступа к данным из persistent-классов.
-- `libodb` содержит базовый runtime ODB.
-- `libodb-pgsql` содержит PostgreSQL-драйвер ODB.
-- PostgreSQL `libpq` используется драйвером ODB PostgreSQL.
+CMake создает:
 
-## Сборочная модель
+```text
+farm_association_server_core
+farm_association_server
+farm_association_unit_tests
+farm_association_integration_tests
+```
 
-CMake-файл сервера:
+`farm_association_server_core` содержит основную логику: controllers, handlers, database layer, security, router, dispatcher и server core.
 
-- задает стандарт C++20;
-- создает исполняемый файл `farm_association_server`;
-- подключает локальные зависимости через `CMAKE_PREFIX_PATH`;
-- подключает локальные заголовки Boost и nlohmann/json из `server/third_party`;
-- добавляет `server/third_party/boost/lib` в link directories для будущих компонентов Boost;
-- при включенной опции `FARM_SERVER_WITH_ODB=ON` ищет `odb.exe`, `libodb`, `libodb-pgsql` и `libpq`;
-- регистрирует smoke-тест `farm_association_server_version` для CTest.
+`farm_association_server` содержит `src/Main.cpp` и запускает приложение.
 
-## ODB workflow
+Тестовые targets линкуются к `farm_association_server_core`, чтобы проверять тот же код, который используется сервером.
 
-Для классов модели, которые должны храниться в PostgreSQL, используется схема:
+## Слои Кода
 
-1. Описать persistent-класс в `include/...`.
-2. Запустить `odb.exe` с параметрами `--database pgsql`, `--std c++20`, `--generate-query`, `--generate-schema`.
-3. Добавить сгенерированные `.cxx` файлы в сборку.
-4. Применить сгенерированную SQL-схему к PostgreSQL.
+```text
+include/views
+  JSON-facing структуры API. Не зависят от persistence.
 
-Генерацию ODB-кода лучше добавить в CMake после появления первой модели данных, чтобы не держать в проекте абстрактную команду без реального входного файла.
+include/persistence
+  ODB-facing persistent classes.
 
-## Текущий статус
+src/controllers/app
+  Бизнес-операции и работа через database wrapper.
 
-- Подготовлен каркас CMake для локальных зависимостей без vcpkg.
-- Boost 1.90.0 скачан полностью, распакован и установлен локально в `server/third_party/boost`.
-- Добавлен минимальный `src/main.cpp`, который проверяет подключение Boost.Beast и nlohmann/json.
-- ODB включен в сборку через `FARM_SERVER_WITH_ODB=ON`, но фактическая сборка требует локально установленного `odb.exe`, `libodb`, `libodb-pgsql` и `libpq`.
+src/controllers/http
+  HTTP-facing controller адаптеры.
+
+src/handling
+  Endpoint handlers и регистрация CRUD routes.
+
+src/marshalling
+  JSON serialization/deserialization.
+
+src/database
+  Database wrapper и startup bootstrap PostgreSQL.
+
+src/server/core
+  Router, dispatcher и Beast server loop.
+```
+
+## ODB Workflow
+
+Текущий ODB persistent model:
+
+```text
+server/include/persistence/User.hpp
+```
+
+На build этапе ODB генерирует:
+
+```text
+server/build/generated/persistence/user-odb.cxx
+server/build/generated/persistence/user-odb.hxx
+server/build/generated/persistence/user-odb.ixx
+server/build/generated/persistence/user.sql
+```
+
+Generated `.cxx` входит в `farm_association_server_core`. Generated `user.sql` используется bootstrap-ом базы данных.
+
+## Database Bootstrap
+
+Сервер готовит PostgreSQL на старте:
+
+```text
+Debug
+  target database: fasc_test
+  behavior: drop/create/init on every server start
+
+Release
+  target database: fasc_db
+  behavior: create/init only when missing
+```
+
+SQL-источники:
+
+```text
+database/dump-mydb-sprinthost-public.sql
+server/build/generated/persistence/user.sql
+```
+
+Управление через окружение:
+
+```text
+FARM_DB_USER
+FARM_DB_PASSWORD
+FARM_DB_HOST
+FARM_DB_PORT
+FARM_DB_NAME
+FARM_DB_MAINTENANCE_NAME
+FARM_DB_BOOTSTRAP
+FARM_DB_RESET_ON_START
+FARM_DB_SCHEMA_SQL
+FARM_DB_USER_SQL
+```
+
+Обычный запуск не требует ручных `createdb` и `psql -f`: сервер создает целевую базу и применяет SQL сам, когда PostgreSQL service доступен.
+
+## API Model
+
+View-слой отделен от persistence. JSON endpoints работают со структурами из `include/views`, а не напрямую с ODB-классами. Это позволяет менять схему хранения без обязательного изменения внешнего API и держать маршаллинг независимым.
+
+Ключи сущностей используют `std::uint64_t`. Поля, которые имеют фиксированный набор значений, должны быть enum-типами во view/domain-слое и маршаллиться как ожидаемые JSON значения.
+
+## Тестирование
+
+Текущий набор тестов покрывает:
+
+```text
+unit/controller
+unit/database
+unit/marshalling
+integration/endpoints
+integration/business
+integration/database
+```
+
+CTest запускается так:
+
+```bash
+ctest --test-dir server/build -C Debug --output-on-failure
+```
+
+Unit tests не требуют живой PostgreSQL. Integration tests включают DB-backed проверки и работают через `fasc_test`: тестовый bootstrap сбрасывает базу, применяет SQL-схемы и проверяет реальные DB-backed endpoints.

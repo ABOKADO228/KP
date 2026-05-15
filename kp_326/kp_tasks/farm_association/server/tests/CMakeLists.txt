@@ -9,6 +9,7 @@ target_sources(farm_association_unit_tests
         unit/controller/FarmEntityHandlerTests.cpp
         unit/controller/HealthHandlerTests.cpp
         unit/controller/UserControllerTests.cpp
+        unit/database/BootstrapTests.cpp
         unit/marshalling/DomainTypesTests.cpp
         unit/marshalling/UserMarshallingTests.cpp
         unit/security/JwtServiceTests.cpp
@@ -28,6 +29,7 @@ add_executable(farm_association_integration_tests)
 target_sources(farm_association_integration_tests
     PRIVATE
         integration/business/UsersBusinessProcessTests.cpp
+        integration/database/DatabaseBackedEndpointTests.cpp
         integration/endpoints/FarmEntityEndpointTests.cpp
         integration/endpoints/HealthEndpointTests.cpp
         integration/endpoints/RequestDispatcherTests.cpp)
@@ -56,4 +58,7 @@ include(GoogleTest)
 gtest_discover_tests(farm_association_unit_tests
     TEST_PREFIX unit.)
 gtest_discover_tests(farm_association_integration_tests
-    TEST_PREFIX integration.)
+    TEST_PREFIX integration.
+    PROPERTIES
+        ENVIRONMENT "FARM_DB_NAME=fasc_test;FARM_DB_RESET_ON_START=1;FARM_DB_BOOTSTRAP=1"
+        RESOURCE_LOCK fasc_test)

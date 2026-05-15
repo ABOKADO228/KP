@@ -1,5 +1,7 @@
 #include <handling/AssociationFarms.hpp>
 
+#include <handling/RequestParsing.hpp>
+
 #include <controllers/app/AssociationFarms.hpp>
 
 #include <marshalling/AssociationFarms.hpp>
@@ -46,12 +48,12 @@ fasc::server::controllers::dto::AssociationFarmsKeyDto keyFrom(
     const fasc::server::core::HttpRequest& request) {
   fasc::server::controllers::dto::AssociationFarmsKeyDto key;
   if (const auto it = request.query_params.find("farm_id"); it != request.query_params.end()) {
-    key.farmId = std::stoull(it->second);
+    key.farmId = parseUint64KeyField(it->second, it->first);
   } else {
     throw std::invalid_argument{"Missing key field: farm_id"};
   }
   if (const auto it = request.query_params.find("association_id"); it != request.query_params.end()) {
-    key.associationId = std::stoull(it->second);
+    key.associationId = parseUint64KeyField(it->second, it->first);
   } else {
     throw std::invalid_argument{"Missing key field: association_id"};
   }

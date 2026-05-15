@@ -95,6 +95,7 @@ set_source_files_properties(
 set(FARM_SERVER_CORE_SOURCES
         src/controllers/app/Users.cpp
         src/controllers/http/Users.cpp
+        src/database/Bootstrap.cpp
         src/database/Database.cpp
         src/handling/Health.cpp
         src/handling/Users.cpp
@@ -126,6 +127,14 @@ target_link_libraries(farm_association_server_core
         farm_nlohmann_json
         farm_fmt
         FarmOpenSSL::Crypto)
+
+target_compile_definitions(farm_association_server_core
+    PUBLIC
+        FARM_SERVER_BUILD_CONFIG="$<CONFIG>"
+        FARM_SERVER_DEFAULT_DB_NAME="$<IF:$<CONFIG:Debug>,fasc_test,fasc_db>"
+        FARM_SERVER_RESET_DATABASE_ON_START=$<IF:$<CONFIG:Debug>,1,0>
+        FARM_SERVER_DOMAIN_SQL_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../database/dump-mydb-sprinthost-public.sql"
+        FARM_SERVER_USER_SQL_PATH="${FARM_SERVER_USER_SQL}")
 
 if(WIN32)
     target_compile_definitions(farm_association_server_core PUBLIC _WIN32_WINNT=0x0601)
@@ -219,6 +228,18 @@ target_sources(farm_association_server
 target_link_libraries(farm_association_server
     PRIVATE
         farm_association_server_core)
+
+add_custom_command(TARGET farm_association_server POST_BUILD
+    COMMAND "${CMAKE_COMMAND}" -E make_directory
+        "$<TARGET_FILE_DIR:farm_association_server>/sql"
+    COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+        "${CMAKE_CURRENT_SOURCE_DIR}/../database/dump-mydb-sprinthost-public.sql"
+        "$<TARGET_FILE_DIR:farm_association_server>/sql/farm_schema.sql"
+    COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+        "${FARM_SERVER_USER_SQL}"
+        "$<TARGET_FILE_DIR:farm_association_server>/sql/user.sql"
+    COMMENT "Copying SQL bootstrap scripts for farm_association_server"
+    VERBATIM)
 
 if(FARM_SERVER_WITH_ODB)
     if(WIN32 AND FARM_SERVER_POSTGRESQL_RUNTIME_DLLS)

@@ -1,5 +1,6 @@
 #include <controllers/app/Users.hpp>
 #include <controllers/http/Users.hpp>
+#include <database/Bootstrap.hpp>
 #include <database/Database.hpp>
 #include <handling/FarmEntityRoutes.hpp>
 #include <handling/Health.hpp>
@@ -16,6 +17,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 
 namespace {
 
@@ -139,7 +141,9 @@ int main(int argc, char* argv[]) {
 
   const ServerSettings settings = settingsFromEnvAndCli(argc, argv);
 
-  auto database = fasc::server::database::Database::createFromEnv();
+  auto databaseBootstrap = fasc::server::database::bootstrapOptionsFromEnv();
+  fasc::server::database::prepareDatabase(databaseBootstrap);
+  auto database = fasc::server::database::Database::create(std::move(databaseBootstrap.connection));
   fasc::server::security::PasswordHasher passwordHasher;
   fasc::server::security::JwtService jwt_service{
       envOr("FARM_JWT_SECRET", std::string{kDefaultJwtSecret})};

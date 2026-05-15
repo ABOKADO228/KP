@@ -15,6 +15,14 @@
 
 namespace fasc::server::database {
 
+struct ConnectionSettings {
+  std::string user;
+  std::string password;
+  std::string databaseName;
+  std::string host;
+  unsigned int port{};
+};
+
 ///SQL-параметр для низкоуровневой операции database layer.
 struct SqlParameter {
   ///Текстовое значение параметра.
@@ -76,6 +84,8 @@ public:
   ///@returns database wrapper с настроенным @c odb::pgsql::database.
   ///@throws Исключения ODB/PostgreSQL, если подключение не может быть создано.
   static Database createFromEnv();
+
+  static Database create(ConnectionSettings settings);
 
   ///Создает транзакцию или присоединяется к активной транзакции этой же базы.
   ///@returns объект @c Transaction, владеющий новой транзакцией или no-op объект для вложенного вызова.

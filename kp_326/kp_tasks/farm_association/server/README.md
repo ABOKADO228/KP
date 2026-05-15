@@ -1,6 +1,6 @@
 # Server
 
-Этот каталог содержит C++20 backend для farm_association.
+Этот каталог содержит C++20 backend для `farm_association`.
 
 Поддерживаемая схема сборки:
 
@@ -8,40 +8,60 @@
 CMake + Ninja + clang++
 ```
 
-Перед сборкой нужно подготовить `server/third_party` через bootstrap-скрипты из корня репозитория:
+Перед сборкой подготовь зависимости из корня репозитория:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File tools\bootstrap-deps.ps1
 ```
 
 ```bash
+chmod +x tools/bootstrap-deps.sh
 ./tools/bootstrap-deps.sh
 ```
 
-Основные команды:
+Debug:
 
 ```powershell
 cmake -S server -B server\build -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug
-cmake --build server\build
+cmake --build server\build --config Debug --parallel
+$pg = "$PWD\server\third_party\postgresql"
+if (!(Test-Path "$pg\data\PG_VERSION")) { & "$pg\bin\initdb.exe" -D "$pg\data" -U postgres -A trust --encoding=UTF8 --locale=C }
+& "$pg\bin\pg_isready.exe" -h localhost -p 5432
+if ($LASTEXITCODE -ne 0) { & "$pg\bin\pg_ctl.exe" -D "$pg\data" -l "$pg\postgres.log" start }
 ctest --test-dir server\build -C Debug --output-on-failure
 ```
 
-```bash
-cmake -S server -B server/build -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug
-cmake --build server/build
-ctest --test-dir server/build --output-on-failure
+Release:
+
+```powershell
+cmake -S server -B server\build-release -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release
+cmake --build server\build-release --config Release --parallel
+$pg = "$PWD\server\third_party\postgresql"
+if (!(Test-Path "$pg\data\PG_VERSION")) { & "$pg\bin\initdb.exe" -D "$pg\data" -U postgres -A trust --encoding=UTF8 --locale=C }
+& "$pg\bin\pg_isready.exe" -h localhost -p 5432
+if ($LASTEXITCODE -ne 0) { & "$pg\bin\pg_ctl.exe" -D "$pg\data" -l "$pg\postgres.log" start }
+ctest --test-dir server\build-release -C Release --output-on-failure
 ```
 
-Краткая карта зависимостей:
+Для полного CTest и запуска сервера PostgreSQL должен быть доступен. Integration tests используют `fasc_test`; сам сервер готовит базу по конфигурации сборки:
 
 ```text
-Boost
-nlohmann/json
-fmt
-ODB compiler/runtime
-PostgreSQL/libpq
-OpenSSL
-GoogleTest
+Debug:   fasc_test, очистка и повторная инициализация на каждом старте
+Release: fasc_db, создание и инициализация при отсутствии схем
 ```
 
-Подробное руководство по установке зависимостей, PostgreSQL и запуску сервера находится в корневом [README.md](../README.md).
+Основные runtime-настройки:
+
+```text
+FARM_DB_USER
+FARM_DB_PASSWORD
+FARM_DB_HOST
+FARM_DB_PORT
+FARM_DB_NAME
+FARM_DB_BOOTSTRAP
+FARM_DB_RESET_ON_START
+FARM_SERVER_ADDRESS
+FARM_SERVER_PORT
+```
+
+Подробное руководство находится в корневом [README.md](../README.md) и в `docs/02_BUILD_RUN_TEST.md`.

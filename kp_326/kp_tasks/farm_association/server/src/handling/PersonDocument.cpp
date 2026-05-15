@@ -1,5 +1,7 @@
 #include <handling/PersonDocument.hpp>
 
+#include <handling/RequestParsing.hpp>
+
 #include <controllers/app/PersonDocument.hpp>
 
 #include <marshalling/PersonDocument.hpp>
@@ -46,7 +48,7 @@ fasc::server::controllers::dto::PersonDocumentKeyDto keyFrom(
     const fasc::server::core::HttpRequest& request) {
   fasc::server::controllers::dto::PersonDocumentKeyDto key;
   if (const auto it = request.query_params.find("id"); it != request.query_params.end()) {
-    key.id = std::stoull(it->second);
+    key.id = parseUint64KeyField(it->second, it->first);
   } else {
     throw std::invalid_argument{"Missing key field: id"};
   }

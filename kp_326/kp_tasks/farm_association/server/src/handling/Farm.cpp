@@ -1,5 +1,7 @@
 #include <handling/Farm.hpp>
 
+#include <handling/RequestParsing.hpp>
+
 #include <controllers/app/Farm.hpp>
 
 #include <marshalling/Farm.hpp>
@@ -46,7 +48,7 @@ fasc::server::controllers::dto::FarmKeyDto keyFrom(
     const fasc::server::core::HttpRequest& request) {
   fasc::server::controllers::dto::FarmKeyDto key;
   if (const auto it = request.query_params.find("id"); it != request.query_params.end()) {
-    key.id = std::stoull(it->second);
+    key.id = parseUint64KeyField(it->second, it->first);
   } else {
     throw std::invalid_argument{"Missing key field: id"};
   }

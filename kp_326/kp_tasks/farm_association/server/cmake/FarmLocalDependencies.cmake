@@ -78,26 +78,39 @@ function(farm_add_odb_local_build target deps_dir)
     farm_require_path("${odb_pgsql_source_dir}/odb/pgsql/database.hxx" "libodb-pgsql sources")
     farm_require_path("${postgresql_dir}/include/libpq-fe.h" "PostgreSQL libpq headers")
 
+    if(CMAKE_CONFIGURATION_TYPES)
+        set(odb_config_dir "$<CONFIG>")
+    elseif(CMAKE_BUILD_TYPE)
+        set(odb_config_dir "${CMAKE_BUILD_TYPE}")
+    else()
+        set(odb_config_dir "Default")
+    endif()
+
+    set(odb_install_dir "${deps_dir}/libodb-${odb_config_dir}")
+    set(odb_pgsql_install_dir "${deps_dir}/libodb-pgsql-${odb_config_dir}")
+
     file(MAKE_DIRECTORY
-        "${deps_dir}/libodb/include"
-        "${deps_dir}/libodb/lib"
-        "${deps_dir}/libodb-pgsql/include"
-        "${deps_dir}/libodb-pgsql/lib")
+        "${odb_install_dir}/include"
+        "${odb_install_dir}/lib"
+        "${odb_pgsql_install_dir}/include"
+        "${odb_pgsql_install_dir}/lib")
 
     set(build_dir
-        "${deps_dir}/_build/odb-local/${platform}-${CMAKE_CXX_COMPILER_ID}-${CMAKE_SYSTEM_PROCESSOR}")
+        "${deps_dir}/_build/odb-local/${platform}-${CMAKE_CXX_COMPILER_ID}-${CMAKE_SYSTEM_PROCESSOR}-${odb_config_dir}")
     set(stamp_file "${build_dir}/farm-odb-local.stamp")
 
     set(odb_library
-        "${deps_dir}/libodb/lib/${CMAKE_STATIC_LIBRARY_PREFIX}odb${CMAKE_STATIC_LIBRARY_SUFFIX}")
+        "${odb_install_dir}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}odb${CMAKE_STATIC_LIBRARY_SUFFIX}")
     set(odb_pgsql_library
-        "${deps_dir}/libodb-pgsql/lib/${CMAKE_STATIC_LIBRARY_PREFIX}odb-pgsql${CMAKE_STATIC_LIBRARY_SUFFIX}")
+        "${odb_pgsql_install_dir}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}odb-pgsql${CMAKE_STATIC_LIBRARY_SUFFIX}")
 
     set(configure_args
         -S "${local_build_project}"
         -B "${build_dir}"
         -G "${CMAKE_GENERATOR}"
         "-DTHIRD_PARTY_DIR=${deps_dir}"
+        "-DLIBODB_INSTALL_DIR=${odb_install_dir}"
+        "-DLIBODB_PGSQL_INSTALL_DIR=${odb_pgsql_install_dir}"
         "-DCMAKE_CXX_STANDARD=14")
 
     if(CMAKE_CXX_COMPILER)
@@ -139,8 +152,8 @@ function(farm_add_odb_local_build target deps_dir)
 
     set(${target}_ODB_LIBRARY "${odb_library}" PARENT_SCOPE)
     set(${target}_ODB_PGSQL_LIBRARY "${odb_pgsql_library}" PARENT_SCOPE)
-    set(${target}_ODB_INCLUDE_DIR "${deps_dir}/libodb/include" PARENT_SCOPE)
-    set(${target}_ODB_PGSQL_INCLUDE_DIR "${deps_dir}/libodb-pgsql/include" PARENT_SCOPE)
+    set(${target}_ODB_INCLUDE_DIR "${odb_install_dir}/include" PARENT_SCOPE)
+    set(${target}_ODB_PGSQL_INCLUDE_DIR "${odb_pgsql_install_dir}/include" PARENT_SCOPE)
     set(${target}_POSTGRESQL_INCLUDE_DIR "${postgresql_dir}/include" PARENT_SCOPE)
 endfunction()
 

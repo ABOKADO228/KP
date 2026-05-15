@@ -1,5 +1,7 @@
 #include <handling/FarmPlotProductionProduct.hpp>
 
+#include <handling/RequestParsing.hpp>
+
 #include <controllers/app/FarmPlotProductionProduct.hpp>
 
 #include <marshalling/FarmPlotProductionProduct.hpp>
@@ -46,12 +48,12 @@ fasc::server::controllers::dto::FarmPlotProductionProductKeyDto keyFrom(
     const fasc::server::core::HttpRequest& request) {
   fasc::server::controllers::dto::FarmPlotProductionProductKeyDto key;
   if (const auto it = request.query_params.find("product_id"); it != request.query_params.end()) {
-    key.productId = std::stoull(it->second);
+    key.productId = parseUint64KeyField(it->second, it->first);
   } else {
     throw std::invalid_argument{"Missing key field: product_id"};
   }
   if (const auto it = request.query_params.find("farm_plot_id"); it != request.query_params.end()) {
-    key.farmPlotId = std::stoull(it->second);
+    key.farmPlotId = parseUint64KeyField(it->second, it->first);
   } else {
     throw std::invalid_argument{"Missing key field: farm_plot_id"};
   }

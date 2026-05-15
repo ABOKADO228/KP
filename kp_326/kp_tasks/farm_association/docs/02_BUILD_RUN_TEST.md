@@ -1,245 +1,187 @@
-# 02. Сборка, запуск и тесты
+# 02. Сборка, Запуск И Тесты
 
-Документ объясняет полный путь от чистого репозитория до работающего сервера и пройденных тестов.
+Документ описывает реальный рабочий цикл проекта: подготовка зависимостей, Debug/Release сборка, запуск сервера и проверка тестов.
 
-## Структура сборки
+## Каталоги Сборки
 
-Исходники лежат в:
-
-```text
-server/include
-server/src
-server/tests
-```
-
-Build directory создается отдельно:
+Исходники лежат в `server/include`, `server/src` и `server/tests`. Результаты сборки держим отдельно:
 
 ```text
-server/build
+server/build          Debug
+server/build-release  Release
 ```
 
-Это важно: исходники и результаты сборки не смешиваются. Каталог `server/build` можно удалить и создать заново без потери кода.
+Если нужно начать заново, можно удалить только build-каталог. Исходный код и зависимости в `server/third_party` при этом не затрагиваются.
 
-## Конфигурация CMake
+## Debug
 
 Windows:
 
 ```powershell
 cmake -S server -B server\build -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug
+cmake --build server\build --config Debug --parallel
+$pg = "$PWD\server\third_party\postgresql"
+if (!(Test-Path "$pg\data\PG_VERSION")) { & "$pg\bin\initdb.exe" -D "$pg\data" -U postgres -A trust --encoding=UTF8 --locale=C }
+& "$pg\bin\pg_isready.exe" -h localhost -p 5432
+if ($LASTEXITCODE -ne 0) { & "$pg\bin\pg_ctl.exe" -D "$pg\data" -l "$pg\postgres.log" start }
+ctest --test-dir server\build -C Debug --output-on-failure
 ```
 
 Manjaro:
 
 ```bash
 cmake -S server -B server/build -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug
+cmake --build server/build --config Debug --parallel
+sudo test -f /var/lib/postgres/data/PG_VERSION || sudo -iu postgres initdb -D /var/lib/postgres/data
+sudo systemctl enable --now postgresql
+sudo -iu postgres psql -c "ALTER USER postgres WITH PASSWORD 'password';"
+ctest --test-dir server/build -C Debug --output-on-failure
 ```
 
-Смысл аргументов:
+Debug-сервер при старте использует базу `fasc_test`, каждый раз удаляет ее, создает заново и применяет SQL-инициализацию. Это удобно для разработки и ручной проверки: состояние базы не протухает между запусками.
 
-```text
-cmake
-  запускает этап конфигурации
-
--S server
-  source directory; CMakeLists.txt находится в server
-
--B server/build
-  build directory; сюда CMake положит Ninja-файлы, object files и generated files
-
--G Ninja
-  выбрать генератор Ninja
-
--DCMAKE_CXX_COMPILER=clang++
-  явно выбрать C++ компилятор
-
--DCMAKE_BUILD_TYPE=Debug
-  собрать Debug-конфигурацию для single-config генератора Ninja
-```
-
-Синтаксис `-DNAME=value` задает CMake cache variable. CMake запоминает ее в `server/build/CMakeCache.txt`.
-
-## Сборка
+## Release
 
 Windows:
 
 ```powershell
-cmake --build server\build
+cmake -S server -B server\build-release -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release
+cmake --build server\build-release --config Release --parallel
+$pg = "$PWD\server\third_party\postgresql"
+if (!(Test-Path "$pg\data\PG_VERSION")) { & "$pg\bin\initdb.exe" -D "$pg\data" -U postgres -A trust --encoding=UTF8 --locale=C }
+& "$pg\bin\pg_isready.exe" -h localhost -p 5432
+if ($LASTEXITCODE -ne 0) { & "$pg\bin\pg_ctl.exe" -D "$pg\data" -l "$pg\postgres.log" start }
+ctest --test-dir server\build-release -C Release --output-on-failure
 ```
 
 Manjaro:
 
 ```bash
-cmake --build server/build
+cmake -S server -B server/build-release -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release
+cmake --build server/build-release --config Release --parallel
+sudo test -f /var/lib/postgres/data/PG_VERSION || sudo -iu postgres initdb -D /var/lib/postgres/data
+sudo systemctl enable --now postgresql
+sudo -iu postgres psql -c "ALTER USER postgres WITH PASSWORD 'password';"
+ctest --test-dir server/build-release -C Release --output-on-failure
 ```
 
-Синтаксис:
+Release-сервер при старте использует базу `fasc_db`. Если базы нет, он создает ее. Если отсутствуют основные таблицы, он применяет SQL-инициализацию. Существующие данные в Release не очищаются.
 
-```text
-cmake --build <build-dir>
-  не конфигурирует проект заново, а запускает выбранную build-систему
-```
+## Что Делает Build
 
-Так как генератор `Ninja`, фактически CMake вызывает Ninja с правильными путями.
-
-## Что происходит во время сборки
-
-Основные этапы:
+Основные шаги:
 
 ```text
 1. ODB compiler читает server/include/persistence/User.hpp
-2. ODB генерирует user-odb.cxx, user-odb.hxx, user-odb.ixx и user.sql
-3. C++ компилятор собирает farm_association_server_core
-4. C++ компилятор собирает farm_association_server
-5. C++ компилятор собирает GoogleTest targets
-6. На Windows копируются PostgreSQL runtime DLL рядом с exe
+2. Генерирует user-odb.cxx, user-odb.hxx, user-odb.ixx и user.sql
+3. При необходимости собирает локальные libodb/libodb-pgsql для текущей конфигурации
+4. Собирает farm_association_server_core
+5. Собирает farm_association_server
+6. Собирает GoogleTest targets
+7. Копирует SQL bootstrap scripts рядом с executable в каталог sql/
+8. На Windows копирует PostgreSQL runtime DLL рядом с executable и tests
 ```
 
-`farm_association_server_core` - это библиотека с основной логикой. Она нужна, чтобы тесты могли линковаться к серверному коду без `main()`.
-
-`farm_association_server` - это executable, который содержит `main.cpp`.
-
-## Основные CMake options
-
-```bash
--DFARM_SERVER_WITH_ODB=ON
-```
-
-Включает ODB/PostgreSQL слой. Это нормальный режим.
-
-```bash
--DFARM_SERVER_BUILD_LOCAL_ODB_DEPS=ON
-```
-
-Разрешает CMake собрать локальные `libodb` и `libodb-pgsql`, если они еще не собраны.
-
-```bash
--DFARM_SERVER_BUILD_TESTS=ON
-```
-
-Включает сборку GoogleTest unit/integration tests.
-
-Пример отключения тестов:
-
-```bash
-cmake -S server -B server/build -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DFARM_SERVER_BUILD_TESTS=OFF
-```
+`farm_association_server_core` содержит основную серверную логику без `main()`, чтобы тесты могли линковаться к тому же коду. `farm_association_server` содержит только точку входа и запускает HTTP-сервер.
 
 ## PostgreSQL
 
-Сервер берет параметры подключения из окружения:
+Unit tests не требуют запущенный PostgreSQL. Полный CTest включает DB-backed integration tests, поэтому перед запуском `ctest` PostgreSQL должен быть доступен на `FARM_DB_HOST:FARM_DB_PORT`.
+
+DB-backed integration tests всегда используют `fasc_test`, даже если проверяется Release build. Перед DB-backed проверкой тесты сбрасывают `fasc_test`, применяют предметный SQL и generated ODB `user.sql`, затем проверяют чтение `/api/farm` и auth register/login через реальную БД.
+
+Для запуска сервера PostgreSQL должен быть доступен на `FARM_DB_HOST:FARM_DB_PORT`. Базу и схемы сервер готовит сам.
+
+Переменные подключения:
 
 ```text
-FARM_DB_USER      postgres
-FARM_DB_PASSWORD  password
-FARM_DB_NAME      farm_association
-FARM_DB_HOST      localhost
-FARM_DB_PORT      5432
+FARM_DB_USER              postgres
+FARM_DB_PASSWORD          password
+FARM_DB_HOST              localhost
+FARM_DB_PORT              5432
+FARM_DB_NAME              fasc_test в Debug, fasc_db в Release
+FARM_DB_MAINTENANCE_NAME  postgres
 ```
 
-Если переменная не задана, используется значение по умолчанию.
-
-Windows пример:
-
-```powershell
-$env:FARM_DB_USER = "postgres"
-$env:FARM_DB_PASSWORD = "password"
-$env:FARM_DB_NAME = "farm_association"
-$env:FARM_DB_HOST = "localhost"
-$env:FARM_DB_PORT = "5432"
-```
-
-Manjaro пример:
-
-```bash
-export FARM_DB_USER=postgres
-export FARM_DB_PASSWORD=password
-export FARM_DB_NAME=farm_association
-export FARM_DB_HOST=localhost
-export FARM_DB_PORT=5432
-```
-
-## Применение SQL-схемы
-
-ODB генерирует схему:
+Переменные bootstrap:
 
 ```text
-server/build/generated/persistence/user.sql
+FARM_DB_BOOTSTRAP
+  true/false, 1/0, yes/no, on/off; по умолчанию включен
+
+FARM_DB_RESET_ON_START
+  по умолчанию true в Debug и false в Release
+
+FARM_DB_SCHEMA_SQL
+  путь к SQL предметной области; по умолчанию database/dump-mydb-sprinthost-public.sql
+
+FARM_DB_USER_SQL
+  путь к generated ODB SQL для User
 ```
 
-В проекте есть и SQL-схема предметной области:
+Ручные `createdb` и `psql -f ...` теперь не являются частью обычного сценария запуска. Они могут пригодиться только для диагностики.
 
-```text
-database/dump-mydb-sprinthost-public.sql
-```
+## Запуск PostgreSQL
 
-Применение на Manjaro:
-
-```bash
-psql -h localhost -p 5432 -U postgres -d farm_association -f server/build/generated/persistence/user.sql
-```
-
-```bash
-psql -h localhost -p 5432 -U postgres -d farm_association -f database/dump-mydb-sprinthost-public.sql
-```
-
-Применение на Windows через локальный PostgreSQL из `third_party`:
+Windows, локальный PostgreSQL из `server/third_party`:
 
 ```powershell
 $pg = "$PWD\server\third_party\postgresql"
-& "$pg\bin\psql.exe" -h localhost -p 5432 -U postgres -d farm_association -f database\dump-mydb-sprinthost-public.sql
-& "$pg\bin\psql.exe" -h localhost -p 5432 -U postgres -d farm_association -f server\build\generated\persistence\user.sql
+& "$pg\bin\initdb.exe" -D "$pg\data" -U postgres -A trust
+& "$pg\bin\pg_ctl.exe" -D "$pg\data" -l "$pg\postgres.log" start
+& "$pg\bin\pg_isready.exe" -h localhost -p 5432
 ```
 
-Синтаксис `psql`:
+Если кластер уже создан, `initdb` повторно запускать не нужно:
 
-```text
--h localhost
-  host PostgreSQL
-
--p 5432
-  port PostgreSQL
-
--U postgres
-  user
-
--d farm_association
-  database name
-
--f file.sql
-  выполнить SQL из файла
+```powershell
+$pg = "$PWD\server\third_party\postgresql"
+& "$pg\bin\pg_ctl.exe" -D "$pg\data" -l "$pg\postgres.log" start
 ```
 
-## Запуск сервера
+Manjaro:
 
-Windows:
+```bash
+sudo -iu postgres initdb -D /var/lib/postgres/data
+sudo systemctl enable --now postgresql
+sudo -iu postgres psql -c "ALTER USER postgres WITH PASSWORD 'password';"
+pg_isready -h localhost -p 5432
+```
+
+## Запуск Сервера
+
+Debug Windows:
 
 ```powershell
 .\server\build\farm_association_server.exe
 ```
 
-Manjaro:
+Debug Manjaro:
 
 ```bash
 ./server/build/farm_association_server
 ```
 
-Сервер регистрирует маршруты:
+Release:
 
-```text
-GET  /health
-POST /auth/register
-POST /auth/login
-POST /users
-CRUD /api/*
+```bash
+./server/build-release/farm_association_server
 ```
 
-И слушает:
+По умолчанию сервер слушает `0.0.0.0:8080`.
+
+HTTP-настройки:
 
 ```text
-0.0.0.0:8080
+FARM_SERVER_ADDRESS
+FARM_SERVER_PORT
+FARM_SERVER_THREADS
+FARM_SERVER_BODY_LIMIT
+FARM_SERVER_TIMEOUT_SECONDS
+FARM_SERVER_LISTEN_BACKLOG
 ```
 
-## Проверка endpoints
+## Проверка Endpoints
 
 Health:
 
@@ -247,396 +189,74 @@ Health:
 curl http://localhost:8080/health
 ```
 
-Создание пользователя:
+Регистрация и логин:
 
 ```bash
-curl -X POST http://localhost:8080/users -H "Content-Type: application/json" -d '{"name":"Alex"}'
+curl -X POST http://localhost:8080/auth/register -H "Content-Type: application/json" -d '{"name":"Alex","password":"password123"}'
+curl -X POST http://localhost:8080/auth/login -H "Content-Type: application/json" -d '{"name":"Alex","password":"password123"}'
 ```
 
-Смысл аргументов `curl`:
+Пример чтения предметной сущности:
 
-```text
--X POST
-  выбрать HTTP method POST
-
--H "Content-Type: application/json"
-  добавить HTTP header
-
--d '{"name":"Alex"}'
-  отправить request body
+```bash
+curl http://localhost:8080/api/farm
 ```
+
+Все `/api/*` endpoints ожидают и возвращают JSON с типами view-слоя, а не persistence-структуры.
 
 ## Тесты
 
-Команда:
-
-```bash
-ctest --test-dir server/build --output-on-failure
-```
-
-Windows:
+Тесты запускаются через CTest:
 
 ```powershell
 ctest --test-dir server\build -C Debug --output-on-failure
 ```
 
-Синтаксис:
-
-```text
-ctest
-  test runner из CMake
-
---test-dir server/build
-  где искать CTestTestfile.cmake
-
--C Debug
-  конфигурация для multi-config генераторов; для Ninja обычно не критично
-
---output-on-failure
-  показать stdout/stderr теста, если он упал
+```bash
+ctest --test-dir server/build -C Debug --output-on-failure
 ```
 
-Тестовый слой:
+Текущий набор проверяет:
 
 ```text
 unit/controller
+unit/database
 unit/marshalling
+integration/database
 integration/endpoints
 integration/business
 fixtures
 utils
 ```
 
-Unit tests проверяют маленькие части логики. Integration tests проверяют цепочки, например:
+На текущей ревизии ожидается полное прохождение набора CTest при запущенном PostgreSQL. В последней проверке Debug и Release проходили `113/113` тестов.
 
-```text
-BeastRequest -> RequestDispatcher -> AppRouter -> Handler -> BeastResponse
-```
-## Полный сценарий с нуля
+## Диагностика
 
-Если репозиторий только что склонирован, порядок действий такой:
-
-```text
-1. установить системные инструменты
-2. выполнить bootstrap зависимостей
-3. выполнить cmake configure
-4. выполнить cmake build
-5. инициализировать PostgreSQL
-6. создать базу farm_association
-7. применить generated SQL-схему
-8. запустить сервер
-9. проверить endpoints
-10. запустить тесты
-```
-
-Не стоит начинать с запуска `farm_association_server`, если база еще не создана. Программа создаст объект подключения к PostgreSQL, а первый persistence-сценарий упрется в отсутствие базы или таблицы.
-
-## Configure, build и test
-
-У CMake-проекта есть три разных этапа:
-
-```text
-configure
-  CMake читает CMakeLists.txt, ищет зависимости, создает build files
-
-build
-  Ninja/компилятор собирают исходники в executable и библиотеки
-
-test
-  CTest запускает уже собранные test executables
-```
-
-Команды:
-
-```bash
-cmake -S server -B server/build -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug
-cmake --build server/build
-ctest --test-dir server/build --output-on-failure
-```
-
-Если поменялся только `.cpp` или `.hpp`, обычно достаточно:
-
-```bash
-cmake --build server/build
-```
-
-Если поменялся `CMakeLists.txt`, лучше снова выполнить configure, а потом build.
-
-## Как читать вывод сборки
-
-Ninja печатает строки вида:
-
-```text
-[1/17] Generating ODB mapping for persistence/User.hpp
-[2/17] Building CXX object ...
-[17/17] Linking CXX executable farm_association_server.exe
-```
-
-Расшифровка:
-
-```text
-[1/17]
-  номер текущего шага и общее количество шагов
-
-Generating
-  выполняется custom command, например ODB compiler
-
-Building CXX object
-  компилируется .cpp в object file
-
-Linking CXX executable
-  linker собирает final executable
-```
-
-Компиляция и линковка отличаются:
-
-```text
-compile error
-  ошибка в C++ коде, include, типах, синтаксисе
-
-link error
-  object files собраны, но linker не нашел символ или библиотеку
-```
-
-Пример compile error:
-
-```text
-fatal error: 'controllers/app/Users.hpp' file not found
-```
-
-Означает, что include path или имя файла не совпадают.
-
-Пример link error:
-
-```text
-unresolved external symbol
-```
-
-Означает, что объявление функции видно, но реализации нет в linked objects/libraries.
-
-## Debug и Release
-
-Debug:
-
-```bash
--DCMAKE_BUILD_TYPE=Debug
-```
-
-Обычно включает отладочную информацию и отключает агрессивные оптимизации. Такой режим удобен для разработки.
-
-Release:
-
-```bash
--DCMAKE_BUILD_TYPE=Release
-```
-
-Обычно включает оптимизации. Такой режим нужен для измерения производительности и финальной сборки.
-
-Для Ninja `CMAKE_BUILD_TYPE` задается на configure stage. Если нужно переключить Debug на Release, лучше создать отдельный build directory:
-
-```bash
-cmake -S server -B server/build-release -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release
-cmake --build server/build-release
-```
-
-## PostgreSQL на Windows подробнее
-
-Если используется PostgreSQL из `server/third_party/postgresql`, можно создать локальный dev-кластер:
-
-```powershell
-$pg = "$PWD\server\third_party\postgresql"
-& "$pg\bin\initdb.exe" -D "$pg\data" -U postgres -A trust
-```
-
-Синтаксис:
-
-```text
-$pg = "..."
-  создать PowerShell переменную
-
-&
-  call operator; запускает путь, который хранится в строке
-
-initdb.exe
-  создает новый PostgreSQL data directory
-
--D "$pg\data"
-  путь, где хранить database cluster
-
--U postgres
-  имя superuser
-
--A trust
-  local development auth без пароля
-```
-
-Запуск PostgreSQL:
-
-```powershell
-& "$pg\bin\pg_ctl.exe" -D "$pg\data" -l "$pg\postgres.log" start
-```
-
-Создание базы:
-
-```powershell
-& "$pg\bin\createdb.exe" -h localhost -p 5432 -U postgres farm_association
-```
-
-Если база уже существует, `createdb` сообщит об ошибке. Это не значит, что сервер сломан.
-
-## PostgreSQL на Manjaro подробнее
-
-Обычно PostgreSQL работает как systemd service:
-
-```bash
-sudo -iu postgres initdb -D /var/lib/postgres/data
-sudo systemctl enable --now postgresql
-```
-
-Синтаксис:
-
-```text
-sudo -iu postgres
-  выполнить команду от имени системного пользователя postgres
-
-systemctl enable --now postgresql
-  включить автозапуск сервиса и сразу запустить его
-```
-
-Создание пароля и базы:
-
-```bash
-sudo -iu postgres psql -c "ALTER USER postgres WITH PASSWORD 'password';"
-sudo -iu postgres createdb farm_association
-```
-
-`psql -c` выполняет одну SQL-команду и завершает работу.
-
-## Проверка работы базы
-
-Проверить подключение:
-
-```bash
-psql -h localhost -p 5432 -U postgres -d farm_association -c "select 1;"
-```
-
-Проверить таблицы:
-
-```bash
-psql -h localhost -p 5432 -U postgres -d farm_association -c "\dt"
-```
-
-Если таблицы нет, применить схему:
-
-```bash
-psql -h localhost -p 5432 -U postgres -d farm_association -f server/build/generated/persistence/user.sql
-```
-
-## Диагностика запуска сервера
-
-### Порт занят
-
-Симптом:
-
-```text
-address already in use
-```
-
-Windows:
+Порт занят:
 
 ```powershell
 netstat -ano | findstr :8080
 ```
 
-Manjaro:
-
 ```bash
 ss -ltnp | grep :8080
 ```
 
-### Ошибка подключения к PostgreSQL
+PostgreSQL недоступен:
 
-Проверь:
+```bash
+pg_isready -h localhost -p 5432
+```
+
+Если сервер падает на старте из-за БД, проверь:
 
 ```text
 1. PostgreSQL запущен
-2. база farm_association создана
-3. FARM_DB_* переменные совпадают с реальными настройками
-4. SQL-схема применена
+2. FARM_DB_USER/FARM_DB_PASSWORD совпадают с реальным пользователем
+3. FARM_DB_HOST/FARM_DB_PORT указывают на доступный сервер PostgreSQL
+4. FARM_DB_MAINTENANCE_NAME отличается от FARM_DB_NAME
+5. SQL-файлы существуют, если FARM_DB_SCHEMA_SQL или FARM_DB_USER_SQL переопределены
 ```
 
-### `POST /users` возвращает 500
-
-Router превращает исключения handler-а в HTTP 500:
-
-```json
-{"error":"..."}
-```
-
-Если body:
-
-```json
-{"name":""}
-```
-
-то бизнес-логика вернет:
-
-```text
-User name is required
-```
-
-Если body невалидный JSON, ошибку выбросит `nlohmann::json`.
-
-## Как добавлять новый endpoint
-
-Путь по слоям:
-
-```text
-1. DTO или command в controllers/dto
-2. View в views
-3. from_json/to_json в marshalling
-4. application method в controllers/app
-5. HTTP method в controllers/http
-6. handler в handling
-7. route registration в main.cpp
-8. unit tests
-9. integration endpoint/business tests
-```
-
-Для `GET /users/{id}` нужно будет решить, как router поддерживает path parameters. Сейчас `AppRouter` ищет точное совпадение строки `METHOD path`, поэтому динамические пути пока не поддерживаются.
-
-## Как понимать результаты CTest
-
-Пример:
-
-```text
-1/13 Test #1: farm_association_server_version ... Passed
-10/13 Test #10: integration.UsersBusinessProcessTests... Passed
-```
-
-Название теста состоит из:
-
-```text
-prefix от gtest_discover_tests
-test suite
-test case
-```
-
-Например:
-
-```text
-integration.UsersBusinessProcessTests.PostUsersWithEmptyNameReturnsBusinessErrorThroughHttpPipeline
-```
-
-Расшифровка:
-
-```text
-integration
-  тест относится к integration target
-
-UsersBusinessProcessTests
-  группа тестов
-
-PostUsersWithEmptyNameReturnsBusinessErrorThroughHttpPipeline
-  конкретный сценарий
-```
+Windows error `0xc0000135` обычно означает, что рядом с executable нет нужной DLL. Пересобери проект: CMake копирует PostgreSQL runtime DLL после build.

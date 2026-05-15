@@ -1,12 +1,12 @@
-# 01. Установка зависимостей сервера
+# 01. Установка Зависимостей Сервера
 
-Документ объясняет, какие зависимости нужны серверу, почему они нужны, где они должны лежать и как подготовить окружение на Windows и Manjaro.
+Документ описывает зависимости C++ сервера и текущий способ подготовки окружения на Windows и Manjaro.
 
-## Главная идея
+## Общая Идея
 
-В репозитории не должны храниться большие внешние библиотеки. Поэтому каталог `server/third_party` считается локальным состоянием машины разработчика.
+Большие внешние библиотеки не хранятся в Git. Репозиторий содержит только скрипты подготовки и `server/third_party/.gitkeep`, а локальная машина разработчика восстанавливает зависимости командой bootstrap.
 
-В Git хранится:
+В Git должны быть:
 
 ```text
 server/third_party/.gitkeep
@@ -15,59 +15,38 @@ tools/bootstrap-deps.sh
 server/cmake/FarmLocalDependencies.cmake
 ```
 
-Не хранится в Git:
+В Git не должны попадать:
 
 ```text
 server/third_party/boost
 server/third_party/nlohmann_json
 server/third_party/odb
 server/third_party/postgresql
+server/third_party/openssl
+server/third_party/libodb-*
+server/third_party/libodb-pgsql-*
 server/third_party/_sources
 server/third_party/_downloads
 server/third_party/_build
 ```
 
-Смысл такой: исходный код проекта остается маленьким, а внешние библиотеки можно восстановить командой bootstrap.
-
-## Какие зависимости нужны
-
-Сервер использует:
+## Что Нужно Проекту
 
 ```text
-Boost.Asio       сетевой ввод-вывод
-Boost.Beast      HTTP parsing/writing поверх Asio
-nlohmann/json    JSON marshalling/unmarshalling
-fmt              форматирование строк
-ODB compiler     генерация persistence mapping
-libodb           runtime ODB
-libodb-pgsql     PostgreSQL backend для ODB
-PostgreSQL libpq клиентская библиотека PostgreSQL
-OpenSSL        криптография для JWT и PostgreSQL-клиента
-GoogleTest       unit/integration tests
+Boost.Asio/Beast  HTTP server
+nlohmann/json     JSON marshalling
+fmt               formatting
+ODB compiler      generation of persistence mapping
+libodb            ODB runtime
+libodb-pgsql      ODB PostgreSQL driver
+PostgreSQL libpq  PostgreSQL client library
+OpenSSL/libcrypto JWT/password/security dependencies
+GoogleTest        unit/integration tests
 ```
 
-Здесь важно различать два типа зависимостей:
-
-```text
-headers only
-  Boost headers
-  nlohmann/json
-
-compiled/runtime
-  fmt
-  ODB compiler
-  libodb
-  libodb-pgsql
-  libpq
-  libcrypto
-  GoogleTest
-```
-
-Header-only зависимости достаточно положить в include path. Компилируемые зависимости должны либо собраться CMake-ом, либо быть доступны как готовые библиотеки.
+Boost и nlohmann/json используются как headers. fmt и GoogleTest подключаются из исходников через CMake. ODB compiler скачивается bootstrap-ом, а `libodb`/`libodb-pgsql` собираются CMake-ом при первом build.
 
 ## Windows
-
-### Системные инструменты
 
 Перед bootstrap нужны:
 
@@ -88,219 +67,67 @@ ninja --version
 clang++ --version
 ```
 
-Синтаксис:
-
-```powershell
-program --version
-```
-
-Это запускает программу `program` и передает ей аргумент `--version`. Если команда не найдена, значит программа не установлена или не добавлена в `PATH`.
-
-### Bootstrap
-
-Из корня репозитория:
+Bootstrap из корня репозитория:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File tools\bootstrap-deps.ps1
 ```
 
-Что означает команда:
+Принудительное обновление:
 
-```text
-powershell
-  запускает PowerShell
-
--ExecutionPolicy Bypass
-  разрешает выполнить локальный скрипт в рамках этой команды
-
--File tools\bootstrap-deps.ps1
-  указывает файл скрипта, который нужно выполнить
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\bootstrap-deps.ps1 -Force
 ```
 
-Скрипт скачивает архивы в:
+После bootstrap ожидаются:
 
 ```text
-server/third_party/_downloads
+server/third_party/boost/include/boost/version.hpp
+server/third_party/nlohmann_json/include/nlohmann/json.hpp
+server/third_party/_sources/fmt-12.1.0/CMakeLists.txt
+server/third_party/_sources/googletest-1.17.0/CMakeLists.txt
+server/third_party/odb/bin/odb.exe
+server/third_party/postgresql/include/libpq-fe.h
+server/third_party/postgresql/include/openssl/evp.h
+server/third_party/postgresql/lib/libpq.lib
+server/third_party/postgresql/lib/libcrypto.lib
 ```
 
-Распаковывает исходники в:
+`libodb` и `libodb-pgsql` появятся после `cmake --build`:
 
 ```text
-server/third_party/_sources
+server/third_party/libodb-Debug
+server/third_party/libodb-pgsql-Debug
+server/third_party/libodb-Release
+server/third_party/libodb-pgsql-Release
 ```
 
-И подготавливает рабочие каталоги:
-
-```text
-server/third_party/boost
-server/third_party/nlohmann_json
-server/third_party/odb
-server/third_party/postgresql
-```
-
-GoogleTest остается в:
-
-```text
-server/third_party/_sources/googletest-1.17.0
-```
-
-CMake подключает его через `add_subdirectory`, поэтому отдельно устанавливать GoogleTest в систему не нужно.
+Разделение по конфигурациям важно на Windows: Debug и Release используют разные runtime-настройки компилятора, поэтому один общий `.lib` может привести к ошибкам линковки.
 
 ## Manjaro
 
-### Системные пакеты
+Установи системные пакеты:
 
 ```bash
-sudo pacman -S --needed base-devel cmake ninja clang curl unzip postgresql postgresql-libs openssl
+sudo pacman -S --needed base-devel cmake ninja clang curl unzip tar openssl postgresql postgresql-libs
 ```
 
-Синтаксис:
-
-```text
-sudo
-  выполнить команду с правами администратора
-
-pacman
-  пакетный менеджер Arch/Manjaro
-
--S
-  установить пакеты
-
---needed
-  не переустанавливать уже установленные пакеты
-```
-
-Пакеты:
-
-```text
-base-devel       компиляторные и build-инструменты
-cmake            генератор build-системы
-ninja            быстрая build-система
-clang            C/C++ компилятор
-curl             скачивание файлов
-unzip            распаковка zip
-postgresql       сервер PostgreSQL и утилиты
-postgresql-libs  libpq и заголовки клиента PostgreSQL
-openssl          libcrypto и заголовки OpenSSL
-```
-
-### Bootstrap
+Bootstrap:
 
 ```bash
 chmod +x tools/bootstrap-deps.sh
 ./tools/bootstrap-deps.sh
 ```
 
-Синтаксис:
-
-```text
-chmod +x file
-  добавить файлу право на запуск
-
-./tools/bootstrap-deps.sh
-  выполнить shell-скрипт из текущего репозитория
-```
-
-Linux-скрипт скачивает Boost, nlohmann/json, fmt, ODB compiler, libodb, libodb-pgsql и GoogleTest. Для PostgreSQL и OpenSSL он использует системные пакеты, а потом копирует `libpq` и `libcrypto` в `server/third_party`.
-
-## Проверка результата
-
-После bootstrap должны существовать:
+Принудительное обновление:
 
 ```bash
-ls server/third_party
-ls server/third_party/_sources
+FORCE=1 ./tools/bootstrap-deps.sh
 ```
 
-На Windows:
+Linux-скрипт скачивает Boost, nlohmann/json, fmt, ODB compiler и GoogleTest. PostgreSQL/libpq и OpenSSL берутся из системных пакетов и копируются в локальное дерево `server/third_party`.
 
-```powershell
-Get-ChildItem server\third_party
-Get-ChildItem server\third_party\_sources
-```
-
-Если CMake сообщает, что не найден `GoogleTest sources`, `odb`, `libpq-fe.h` или `boost/version.hpp`, значит bootstrap не был выполнен или завершился неуспешно.
-Если CMake сообщает, что не найден `openssl/evp.h` или `libcrypto`, значит на Manjaro не установлен `openssl` или bootstrap не был выполнен заново.
-
-## Git-контроль
-
-Перед push:
-
-```bash
-git ls-files server/third_party
-```
-
-Ожидаемый результат:
-
-```text
-server/third_party/.gitkeep
-```
-
-Если появились другие файлы:
-
-```bash
-git rm -r --cached server/third_party
-git add server/third_party/.gitkeep
-```
-
-`--cached` означает: убрать файл из Git-индекса, но оставить его на диске.
-## Как читать bootstrap-скрипты
-
-Bootstrap-скрипт - это не магия, а обычная автоматизация повторяющихся действий:
-
-```text
-1. создать каталоги
-2. скачать архивы
-3. распаковать архивы
-4. переложить нужные include/bin/lib файлы в ожидаемые места
-5. оставить исходники там, где CMake сможет их подключить
-```
-
-В PowerShell-скрипте важны функции:
-
-```powershell
-function Ensure-Directory($Path) { ... }
-function Download-File($Url, $Output) { ... }
-function Expand-Zip($Archive, $Destination) { ... }
-function Copy-Directory($From, $To) { ... }
-```
-
-Синтаксис PowerShell function:
-
-```powershell
-function Name($arg1, $arg2) {
-    # commands
-}
-```
-
-Переменная в PowerShell начинается с `$`:
-
-```powershell
-$Deps = Join-Path $Root "server\third_party"
-```
-
-`Join-Path` нужен, чтобы собрать путь корректно для Windows. Это лучше, чем вручную склеивать строки через `\`.
-
-В bash-скрипте аналогичные задачи решаются функциями:
-
-```bash
-need_cmd() { ... }
-download() { ... }
-extract_zip() { ... }
-extract_tar_bz2() { ... }
-```
-
-Переменная читается через `$NAME`:
-
-```bash
-DEPS="$ROOT/server/third_party"
-```
-
-Кавычки важны. Без кавычек путь с пробелами может развалиться на несколько аргументов.
-
-## Почему зависимости лежат именно так
-
-CMake ожидает конкретную структуру:
+После bootstrap ожидаются:
 
 ```text
 server/third_party/boost/include/boost/version.hpp
@@ -309,165 +136,14 @@ server/third_party/_sources/fmt-12.1.0/CMakeLists.txt
 server/third_party/_sources/googletest-1.17.0/CMakeLists.txt
 server/third_party/odb/bin/odb
 server/third_party/postgresql/include/libpq-fe.h
+server/third_party/postgresql/lib/libpq.so
 server/third_party/openssl/include/openssl/evp.h
 server/third_party/openssl/lib/libcrypto.so
 ```
 
-На Windows ODB compiler обычно лежит как:
+`libodb` и `libodb-pgsql` также собираются CMake-ом при первом build. На Linux итоговые каталоги имеют конфигурационное имя только если это нужно текущему генератору и toolchain; проект не требует ручной установки ODB runtime в систему.
 
-```text
-server/third_party/odb/bin/odb.exe
-```
-
-На Manjaro:
-
-```text
-server/third_party/odb/bin/odb
-```
-
-PostgreSQL runtime на Windows включает DLL из:
-
-```text
-server/third_party/postgresql/bin
-```
-
-Если `.exe` запускается без нужной DLL, Windows может завершить процесс с ошибкой `0xc0000135`.
-
-## Как CMake проверяет зависимости
-
-В `server/cmake/FarmLocalDependencies.cmake` есть функция:
-
-```cmake
-function(farm_require_path path description)
-    if(NOT EXISTS "${path}")
-        message(FATAL_ERROR
-            "Missing local dependency path: ${path}\n"
-            "Expected: ${description}\n"
-            "Install the dependency inside server/third_party; system packages are intentionally not used.")
-    endif()
-endfunction()
-```
-
-Разбор:
-
-```text
-function(...)
-  объявление функции CMake
-
-if(NOT EXISTS "${path}")
-  проверить существование файла или каталога
-
-message(FATAL_ERROR ...)
-  остановить конфигурацию CMake с ошибкой
-
-${path}
-  подстановка значения переменной
-```
-
-Такой подход полезен: ошибка появляется рано, на этапе configure, и сразу говорит, какой путь отсутствует.
-
-## Типовые ошибки Windows
-
-### PowerShell запрещает запуск скрипта
-
-Симптом:
-
-```text
-running scripts is disabled on this system
-```
-
-Решение для одного запуска:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File tools\bootstrap-deps.ps1
-```
-
-### clang++ не найден
-
-Проверка:
-
-```powershell
-where.exe clang++
-clang++ --version
-```
-
-`where.exe` ищет executable в `PATH`.
-
-### Ninja не найден
-
-Проверка:
-
-```powershell
-where.exe ninja
-ninja --version
-```
-
-Если Ninja не найден, CMake с `-G Ninja` не сможет создать build files.
-
-### Ошибка `0xc0000135`
-
-Чаще всего рядом с executable нет нужной DLL. Проверь:
-
-```powershell
-Get-ChildItem server\build -Filter *.dll
-Get-ChildItem server\build\tests -Filter *.dll
-```
-
-## Типовые ошибки Manjaro
-
-### `libpq-fe.h` не найден
-
-Решение:
-
-```bash
-sudo pacman -S --needed postgresql-libs openssl
-./tools/bootstrap-deps.sh
-```
-
-### `permission denied` при запуске bootstrap
-
-Решение:
-
-```bash
-chmod +x tools/bootstrap-deps.sh
-```
-
-`+x` добавляет execute bit.
-
-### Нужно принудительно скачать зависимости заново
-
-Windows:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File tools\bootstrap-deps.ps1 -Force
-```
-
-Manjaro:
-
-```bash
-FORCE=1 ./tools/bootstrap-deps.sh
-```
-
-`FORCE=1` задает переменную окружения только для одного запуска команды.
-
-## Контрольный список после установки
-
-Проверь:
-
-```text
-1. cmake --version работает
-2. ninja --version работает
-3. clang++ --version работает
-4. boost/version.hpp существует
-5. nlohmann/json.hpp существует
-6. fmt CMakeLists.txt существует
-7. googletest CMakeLists.txt существует
-8. odb или odb.exe существует
-9. libpq-fe.h существует
-10. openssl/evp.h существует
-11. libcrypto.so или libcrypto.lib существует
-12. git ls-files server/third_party показывает только .gitkeep
-```
+## Проверка
 
 Windows:
 
@@ -476,10 +152,11 @@ Test-Path server\third_party\boost\include\boost\version.hpp
 Test-Path server\third_party\nlohmann_json\include\nlohmann\json.hpp
 Test-Path server\third_party\_sources\fmt-12.1.0\CMakeLists.txt
 Test-Path server\third_party\_sources\googletest-1.17.0\CMakeLists.txt
+Test-Path server\third_party\odb\bin\odb.exe
 Test-Path server\third_party\postgresql\include\libpq-fe.h
-Test-Path server\third_party\openssl\include\openssl\evp.h
-Test-Path server\third_party\openssl\lib\libcrypto.so
-git ls-files server/third_party
+Test-Path server\third_party\postgresql\include\openssl\evp.h
+Test-Path server\third_party\postgresql\lib\libpq.lib
+Test-Path server\third_party\postgresql\lib\libcrypto.lib
 ```
 
 Manjaro:
@@ -489,8 +166,45 @@ test -f server/third_party/boost/include/boost/version.hpp
 test -f server/third_party/nlohmann_json/include/nlohmann/json.hpp
 test -f server/third_party/_sources/fmt-12.1.0/CMakeLists.txt
 test -f server/third_party/_sources/googletest-1.17.0/CMakeLists.txt
+test -x server/third_party/odb/bin/odb
 test -f server/third_party/postgresql/include/libpq-fe.h
+test -f server/third_party/postgresql/lib/libpq.so
 test -f server/third_party/openssl/include/openssl/evp.h
 test -f server/third_party/openssl/lib/libcrypto.so
+```
+
+Git-проверка:
+
+```bash
 git ls-files server/third_party
 ```
+
+Ожидаемый вывод:
+
+```text
+server/third_party/.gitkeep
+```
+
+Если появились другие tracked-файлы из `third_party`, убери их из индекса:
+
+```bash
+git rm -r --cached server/third_party
+git add server/third_party/.gitkeep
+```
+
+## Частые Ошибки
+
+`Missing local dependency path`
+: bootstrap не был выполнен или завершился неуспешно.
+
+`odb` не найден
+: проверь `server/third_party/odb/bin/odb` или `server/third_party/odb/bin/odb.exe`.
+
+`openssl/evp.h` или `libcrypto` не найдены на Manjaro
+: установи `openssl` и повтори `FORCE=1 ./tools/bootstrap-deps.sh`.
+
+`libpq-fe.h` или `libpq` не найдены на Manjaro
+: установи `postgresql-libs` и повтори bootstrap.
+
+Windows error `0xc0000135`
+: рядом с executable нет нужной DLL. Пересобери проект: CMake копирует PostgreSQL runtime DLL рядом с сервером и тестами после build.

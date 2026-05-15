@@ -13,8 +13,12 @@ set(THIRD_PARTY_DIR
 set(LIBODB_SOURCE_DIR "${THIRD_PARTY_DIR}/_sources/libodb-2.4.0")
 set(LIBODB_PGSQL_SOURCE_DIR "${THIRD_PARTY_DIR}/_sources/libodb-pgsql-2.4.0")
 set(POSTGRESQL_DIR "${THIRD_PARTY_DIR}/postgresql")
-set(LIBODB_INSTALL_DIR "${THIRD_PARTY_DIR}/libodb")
-set(LIBODB_PGSQL_INSTALL_DIR "${THIRD_PARTY_DIR}/libodb-pgsql")
+set(LIBODB_INSTALL_DIR
+    "${THIRD_PARTY_DIR}/libodb"
+    CACHE PATH "Local libodb install directory")
+set(LIBODB_PGSQL_INSTALL_DIR
+    "${THIRD_PARTY_DIR}/libodb-pgsql"
+    CACHE PATH "Local libodb-pgsql install directory")
 
 file(MAKE_DIRECTORY
     "${LIBODB_INSTALL_DIR}/include"

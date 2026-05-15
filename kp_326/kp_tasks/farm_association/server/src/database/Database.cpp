@@ -1,4 +1,5 @@
 #include <database/Database.hpp>
+#include <database/Bootstrap.hpp>
 
 #include <libpq-fe.h>
 
@@ -17,22 +18,6 @@
 #include <vector>
 
 namespace {
-
-std::string envOr(const char* name, const char* fallback) {
-  if (const char* value = std::getenv(name)) {
-    return value;
-  }
-
-  return fallback;
-}
-
-unsigned int envPortOr(const char* name, unsigned int fallback) {
-  if (const char* value = std::getenv(name)) {
-    return static_cast<unsigned int>(std::stoul(value));
-  }
-
-  return fallback;
-}
 
 std::vector<const char*> parameterPointers(
     const std::vector<fasc::server::database::SqlParameter>& values) {
@@ -164,10 +149,13 @@ void Transaction::rollback() {
 Database::Database(std::unique_ptr<odb::database> database) : underlying(std::move(database)) {}
 
 Database Database::createFromEnv() {
+  return create(connectionSettingsFromEnv(compiledRuntimeDefaults().databaseName));
+}
+
+Database Database::create(ConnectionSettings settings) {
   return Database{std::make_unique<odb::pgsql::database>(
-      envOr("FARM_DB_USER", "postgres"), envOr("FARM_DB_PASSWORD", "password"),
-      envOr("FARM_DB_NAME", "farm_association"), envOr("FARM_DB_HOST", "localhost"),
-      envPortOr("FARM_DB_PORT", 5432))};
+      std::move(settings.user), std::move(settings.password), std::move(settings.databaseName),
+      std::move(settings.host), settings.port)};
 }
 
 Transaction Database::makeTransaction() {
