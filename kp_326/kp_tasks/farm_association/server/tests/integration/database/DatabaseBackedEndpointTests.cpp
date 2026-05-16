@@ -15,7 +15,6 @@
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
-#include <cstdint>
 #include <filesystem>
 #include <string>
 #include <utility>
@@ -85,7 +84,7 @@ BeastResponse dispatchAuthRequest(Database& database,
   fasc::server::security::JwtService jwtService{"integration-test-secret"};
   UserController userController{database, passwordHasher, jwtService};
   UserHttpController userHttpController{userController};
-  UserHandler userHandler{userHttpController};
+  UserHandler userHandler{userHttpController, jwtService};
 
   fasc::server::core::AppRouter router;
   router.post("/auth/register",
@@ -115,23 +114,23 @@ TEST(DatabaseBackedEndpointTests, FarmListReadsSeedDataFromFascTest) {
 
 TEST(DatabaseBackedEndpointTests, AuthRegisterAndLoginRoundTripThroughFascTest) {
   auto database = createResetIntegrationDatabase();
-  const std::string credentials = R"({"name":"db_integration_user","password":"password123"})";
+  const std::string credentials = R"({"login":"db_integration_user","password":"password123"})";
 
   const BeastResponse registerResponse =
       dispatchAuthRequest(database, http::verb::post, "/auth/register", credentials);
   ASSERT_EQ(registerResponse.result(), http::status::created) << registerResponse.body();
   const auto registerBody = nlohmann::json::parse(registerResponse.body());
   EXPECT_EQ(registerBody.at("token_type"), "Bearer");
-  EXPECT_EQ(registerBody.at("user").at("name"), "db_integration_user");
-  EXPECT_GE(registerBody.at("user").at("id").get<std::uint64_t>(), 1U);
+  EXPECT_EQ(registerBody.at("user").at("login"), "db_integration_user");
+  EXPECT_EQ(registerBody.at("user").at("role"), "farm_worker");
 
   const BeastResponse loginResponse =
       dispatchAuthRequest(database, http::verb::post, "/auth/login", credentials);
   ASSERT_EQ(loginResponse.result(), http::status::ok) << loginResponse.body();
   const auto loginBody = nlohmann::json::parse(loginResponse.body());
   EXPECT_EQ(loginBody.at("token_type"), "Bearer");
-  EXPECT_EQ(loginBody.at("user").at("name"), "db_integration_user");
-  EXPECT_EQ(loginBody.at("user").at("id"), registerBody.at("user").at("id"));
+  EXPECT_EQ(loginBody.at("user").at("login"), "db_integration_user");
+  EXPECT_EQ(loginBody.at("user").at("role"), registerBody.at("user").at("role"));
   const auto token = loginBody.at("token").get<std::string>();
   EXPECT_EQ(std::count(token.begin(), token.end(), '.'), 2);
 }

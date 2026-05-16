@@ -96,4 +96,16 @@ std::string base64UrlEncode(std::string_view data) {
   return base64UrlEncode(reinterpret_cast<const unsigned char*>(data.data()), data.size());
 }
 
+std::string base64UrlDecode(std::string_view encoded) {
+  std::string normalized{encoded};
+  for (char& symbol : normalized) {
+    if (symbol == '-') {
+      symbol = '+';
+    } else if (symbol == '_') {
+      symbol = '/';
+    }
+  }
+  return base64Decode(restoreBase64Padding(std::move(normalized)));
+}
+
 } // namespace fasc::server::security

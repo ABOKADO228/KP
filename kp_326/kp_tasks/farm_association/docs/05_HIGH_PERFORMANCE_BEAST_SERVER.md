@@ -157,7 +157,8 @@ CTest уже включает DB-backed integration tests, поэтому Postgr
 ```bash
 curl http://localhost:8080/health
 curl http://localhost:8080/health?verbose=true
-curl -X POST http://localhost:8080/auth/register -H "Content-Type: application/json" -d '{"name":"Alex","password":"password123"}'
+curl -X POST http://localhost:8080/auth/register -H "Content-Type: application/json" -d '{"login":"alex","password":"password123"}'
+curl http://localhost:8080/api/farm/item?id=1
 ```
 
 ## Следующие Улучшения

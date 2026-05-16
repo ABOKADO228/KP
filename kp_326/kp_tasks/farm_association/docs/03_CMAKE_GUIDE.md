@@ -91,6 +91,8 @@ ODB читает:
 server/include/persistence/User.hpp
 ```
 
+На текущей ревизии ODB generation включен только для пользовательской модели. Предметные CRUD-сущности из SQL-дампа имеют persistence-структуры в `server/include/persistence`, но работают через универсальные SQL-методы `Database` без отдельных generated `*-odb.*` файлов.
+
 И генерирует:
 
 ```text

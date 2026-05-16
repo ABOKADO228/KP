@@ -77,8 +77,8 @@ src/controllers/http
 src/handling
   Endpoint handlers и регистрация CRUD routes.
 
-src/marshalling
-  JSON serialization/deserialization.
+include/marshalling
+  Header-only JSON serialization/deserialization.
 
 src/database
   Database wrapper и startup bootstrap PostgreSQL.
@@ -94,6 +94,8 @@ src/server/core
 ```text
 server/include/persistence/User.hpp
 ```
+
+`User` содержит `login` как primary key, `password_hash` и серверную роль `role`. Остальные persistence-структуры предметной области зеркалят таблицы SQL-дампа и используются CRUD-контроллерами через универсальные SQL-методы `Database`; отдельная ODB-генерация сейчас выполняется только для `User`.
 
 На build этапе ODB генерирует:
 
@@ -149,6 +151,41 @@ FARM_DB_USER_SQL
 View-слой отделен от persistence. JSON endpoints работают со структурами из `include/views`, а не напрямую с ODB-классами. Это позволяет менять схему хранения без обязательного изменения внешнего API и держать маршаллинг независимым.
 
 Ключи сущностей используют `std::uint64_t`. Поля, которые имеют фиксированный набор значений, должны быть enum-типами во view/domain-слое и маршаллиться как ожидаемые JSON значения.
+
+Пользовательские маршруты:
+
+```text
+POST /auth/register
+POST /auth/login
+POST /users
+```
+
+`/auth/register` и `/auth/login` принимают `{ "login": "...", "password": "..." }`. `/auth/register` создает пользователя с ролью `farm_worker`; `/users` дополнительно принимает `role` и требует `Authorization: Bearer <token>` пользователя с ролью `agriculture_admin`. Auth-ответ содержит JWT и пользователя:
+
+```json
+{
+  "token": "<jwt>",
+  "token_type": "Bearer",
+  "user": {
+    "login": "alex",
+    "role": "farm_worker"
+  }
+}
+```
+
+Старт сервера обеспечивает встроенного администратора `admin` / `admin12345` с ролью `agriculture_admin`. Значения переопределяются через `FARM_ADMIN_LOGIN` и `FARM_ADMIN_PASSWORD`, создание отключается через `FARM_ADMIN_ENABLED=0`.
+
+Предметные CRUD endpoints зарегистрированы для таблиц из `FarmEntityRoutes` по схеме:
+
+```text
+GET    /api/<resource>
+POST   /api/<resource>
+GET    /api/<resource>/item?<key>
+PUT    /api/<resource>/item?<key>
+DELETE /api/<resource>/item?<key>
+```
+
+Списки возвращают `{ "resource": "<resource>", "rows": [...] }`, одиночная строка - `{ "resource": "<resource>", "data": { ... } }`, мутации - `{ "resource": "<resource>", "affectedRows": <number> }`.
 
 ## Тестирование
 

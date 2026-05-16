@@ -4,6 +4,7 @@
 
 namespace fasc::server::controllers::dto {
 
+inline constexpr const char* kAdministratorUserRole = "agriculture_admin";
 inline constexpr const char* kDefaultUserRole = "farm_worker";
 
 /// Command for creating a user account from application code.

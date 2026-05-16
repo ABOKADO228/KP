@@ -1,5 +1,5 @@
 import type { AuthenticatedUser } from "../api/farmApi";
-import { isKnownRole, type UserRole } from "../domain/roles";
+import { isKnownRole } from "../domain/roles";
 
 const storageKey = "farm-association-client.session";
 
@@ -20,7 +20,7 @@ export function loadSession(): ClientSession | null {
     if (
       typeof parsed.token === "string" &&
       typeof parsed.tokenType === "string" &&
-      typeof parsed.user?.name === "string" &&
+      typeof parsed.user?.login === "string" &&
       isKnownRole(parsed.user.role)
     ) {
       return parsed;
@@ -44,16 +44,11 @@ export function clearSession(): void {
 export function createSession(
   token: string,
   tokenType: string,
-  user: { id: string | number; name: string },
-  role: UserRole,
+  user: AuthenticatedUser,
 ): ClientSession {
   return {
     token,
     tokenType,
-    user: {
-      id: user.id,
-      name: user.name,
-      role,
-    },
+    user,
   };
 }

@@ -1,8 +1,16 @@
 #include <handling/Users.hpp>
 
+#include <controllers/dto/User.hpp>
 #include <marshalling/User.hpp>
 
 #include <nlohmann/json.hpp>
+
+#include <algorithm>
+#include <cctype>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <utility>
 
 namespace fasc::server::handling {
 
@@ -40,11 +48,68 @@ HttpResponse responseFrom(const ResultType& result, unsigned success_status) {
                       nlohmann::json(result.success()).dump()};
 }
 
+HttpResponse errorResponse(unsigned status, std::string message) {
+  return HttpResponse{status, "application/json",
+                      nlohmann::json(fasc::server::views::ErrorView{
+                                         fasc::server::views::ErrorViewCode::Unauthorized,
+                                         std::move(message)})
+                          .dump()};
+}
+
+bool equalsIgnoreCase(std::string_view left, std::string_view right) {
+  return left.size() == right.size() &&
+         std::equal(left.begin(), left.end(), right.begin(), [](char a, char b) {
+           return std::tolower(static_cast<unsigned char>(a)) ==
+                  std::tolower(static_cast<unsigned char>(b));
+         });
+}
+
+std::optional<std::string> headerValue(const HttpRequest& request, std::string_view name) {
+  for (const auto& [header_name, header_value] : request.headers) {
+    if (equalsIgnoreCase(header_name, name)) {
+      return header_value;
+    }
+  }
+
+  return std::nullopt;
+}
+
+std::optional<std::string> bearerTokenFrom(const HttpRequest& request) {
+  const auto authorization = headerValue(request, "Authorization");
+  if (!authorization.has_value()) {
+    return std::nullopt;
+  }
+
+  constexpr std::string_view prefix = "Bearer ";
+  if (authorization->size() <= prefix.size() ||
+      !equalsIgnoreCase(std::string_view{authorization->data(), prefix.size()}, prefix)) {
+    return std::nullopt;
+  }
+
+  return authorization->substr(prefix.size());
+}
+
 } // namespace
 
-UserHandler::UserHandler(UserHttpController& users) : users_(users) {}
+UserHandler::UserHandler(UserHttpController& users,
+                         fasc::server::security::JwtService& jwt_service)
+    : users_(users), jwt_service_(jwt_service) {}
 
 HttpResponse UserHandler::createUser(const HttpRequest& request) {
+  const auto token = bearerTokenFrom(request);
+  if (!token.has_value()) {
+    return errorResponse(401, "Authorization Bearer token is required");
+  }
+
+  const auto user = jwt_service_.verify(*token);
+  if (!user.has_value()) {
+    return errorResponse(401, "Authorization token is invalid or expired");
+  }
+
+  if (user->role != fasc::server::controllers::dto::kAdministratorUserRole) {
+    return errorResponse(403, "Administrator role is required");
+  }
+
   return responseFrom(users_.createUser(request.body), 201);
 }
 

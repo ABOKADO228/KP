@@ -75,4 +75,31 @@ TEST(RequestDispatcherIntegrationTests, AddsSecurityHeadersToResponses) {
   EXPECT_EQ(response["X-Content-Type-Options"], "nosniff");
 }
 
+TEST(RequestDispatcherIntegrationTests, AddsCorsHeadersToResponses) {
+  AppRouter router;
+  router.get("/health", [](const HttpRequest&) {
+    return HttpResponse{200, "application/json", R"({"status":"ok"})"};
+  });
+  RequestDispatcher dispatcher{router};
+
+  const BeastResponse response =
+      dispatcher.dispatch(makeBeastRequest(http::verb::get, "/health"));
+
+  EXPECT_EQ(response["Access-Control-Allow-Origin"], "*");
+  EXPECT_EQ(response["Access-Control-Allow-Methods"], "GET, POST, PUT, DELETE, OPTIONS");
+  EXPECT_EQ(response["Access-Control-Allow-Headers"], "Content-Type, Authorization");
+}
+
+TEST(RequestDispatcherIntegrationTests, HandlesCorsPreflightBeforeRouting) {
+  AppRouter router;
+  RequestDispatcher dispatcher{router};
+
+  const BeastResponse response =
+      dispatcher.dispatch(makeBeastRequest(http::verb::options, "/auth/login"));
+
+  EXPECT_EQ(response.result(), http::status::no_content);
+  EXPECT_EQ(response["Access-Control-Allow-Origin"], "*");
+  EXPECT_EQ(response.body(), "");
+}
+
 } // namespace

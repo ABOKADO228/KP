@@ -27,4 +27,6 @@ std::string base64UrlEncode(const unsigned char* data, std::size_t size);
 ///@returns URL-safe Base64-строка.
 std::string base64UrlEncode(std::string_view data);
 
+std::string base64UrlDecode(std::string_view encoded);
+
 } // namespace fasc::server::security

@@ -11,6 +11,8 @@
 
 #include <fmt/core.h>
 
+#include <algorithm>
+#include <cctype>
 #include <cstdlib>
 #include <iostream>
 #include <limits>
@@ -44,6 +46,27 @@ std::string envOr(const char* name, std::string fallback) {
   }
 
   return fallback;
+}
+
+bool envBoolOr(const char* name, bool fallback) {
+  const char* raw = std::getenv(name);
+  if (raw == nullptr) {
+    return fallback;
+  }
+
+  std::string value{raw};
+  std::ranges::transform(value, value.begin(), [](unsigned char ch) {
+    return static_cast<char>(std::tolower(ch));
+  });
+
+  if (value == "1" || value == "true" || value == "yes" || value == "on") {
+    return true;
+  }
+  if (value == "0" || value == "false" || value == "no" || value == "off") {
+    return false;
+  }
+
+  throw std::invalid_argument{std::string{name} + " must be a boolean value"};
 }
 
 template <typename Value>
@@ -131,6 +154,30 @@ ServerSettings settingsFromEnvAndCli(int argc, char* argv[]) {
   return settings;
 }
 
+void ensureBuiltinAdministrator(UserController& user_controller) {
+  if (!envBoolOr("FARM_ADMIN_ENABLED", true)) {
+    return;
+  }
+
+  const std::string login = envOr("FARM_ADMIN_LOGIN", "admin");
+  const std::string password = envOr("FARM_ADMIN_PASSWORD", "admin12345");
+  const auto result = user_controller.createUser(
+      fasc::server::controllers::dto::CreateUserCommand{
+          login, password, fasc::server::controllers::dto::kAdministratorUserRole});
+
+  if (result.hasError()) {
+    if (result.error().code == fasc::server::controllers::app::UserErrorCode::Conflict) {
+      std::cout << fmt::format("builtin administrator already exists: {}\n", login);
+      return;
+    }
+
+    throw std::runtime_error{"Failed to ensure builtin administrator: " +
+                             result.error().message};
+  }
+
+  std::cout << fmt::format("builtin administrator created: {}\n", login);
+}
+
 } // namespace
 
 int main(int argc, char* argv[]) {
@@ -149,10 +196,11 @@ int main(int argc, char* argv[]) {
       envOr("FARM_JWT_SECRET", std::string{kDefaultJwtSecret})};
 
   UserController user_controller{database, passwordHasher, jwt_service};
+  ensureBuiltinAdministrator(user_controller);
   UserHttpController user_http_controller{user_controller};
 
   HealthHandler health_handler;
-  UserHandler user_handler{user_http_controller};
+  UserHandler user_handler{user_http_controller, jwt_service};
 
   Server server;
   server.get("/health", [&](const HttpRequest& request) { return health_handler.health(request); });

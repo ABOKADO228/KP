@@ -18,7 +18,7 @@ using fasc::server::persistence::User;
 namespace {
 
 constexpr std::array<std::string_view, 7> kKnownUserRoles{
-    "agriculture_admin",
+    fasc::server::controllers::dto::kAdministratorUserRole,
     "association_director",
     "farm_owner",
     "agronomist",

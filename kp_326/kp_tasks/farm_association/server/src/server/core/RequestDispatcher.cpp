@@ -65,11 +65,27 @@ std::string routeTargetFrom(std::string target) {
   return target.empty() ? "/" : target;
 }
 
+void applyCorsHeaders(BeastResponse& response) {
+  response.set("Access-Control-Allow-Origin", "*");
+  response.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  response.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+}
+
 } // namespace
 
 RequestDispatcher::RequestDispatcher(const AppRouter& router) : router_(router) {}
 
 BeastResponse RequestDispatcher::dispatch(const BeastRequest& request) const {
+  if (request.method() == http::verb::options) {
+    BeastResponse response{http::status::no_content, request.version()};
+    response.set(http::field::server, "farm-association-server");
+    response.set("X-Content-Type-Options", "nosniff");
+    applyCorsHeaders(response);
+    response.keep_alive(request.keep_alive());
+    response.prepare_payload();
+    return response;
+  }
+
   HttpRequest app_request;
   app_request.method = std::string(request.method_string());
   const std::string raw_target{request.target()};
@@ -88,6 +104,7 @@ BeastResponse RequestDispatcher::dispatch(const BeastRequest& request) const {
   response.set(http::field::server, "farm-association-server");
   response.set(http::field::content_type, app_response.content_type);
   response.set("X-Content-Type-Options", "nosniff");
+  applyCorsHeaders(response);
   response.keep_alive(request.keep_alive());
   response.body() = app_response.body;
   response.prepare_payload();

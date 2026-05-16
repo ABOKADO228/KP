@@ -23,32 +23,32 @@
 namespace {
 
 using fasc::server::tests::utils::expectJsonStringField;
-using fasc::server::tests::utils::expectJsonUnsignedLongField;
 using fasc::server::controllers::dto::CreateUserCommand;
 using fasc::server::views::UserView;
 
 TEST(UserMarshallingTests, ReadsCreateUserCommandFromJson) {
-  const auto json = nlohmann::json{{"name", "Alex"}, {"password", "password123"}};
+  const auto json = nlohmann::json{{"login", "alex"}, {"password", "password123"}};
 
   const CreateUserCommand command = json.get<CreateUserCommand>();
 
-  EXPECT_EQ(command.name, "Alex");
+  EXPECT_EQ(command.login, "alex");
   EXPECT_EQ(command.password, "password123");
+  EXPECT_EQ(command.role, fasc::server::controllers::dto::kDefaultUserRole);
 }
 
-TEST(UserMarshallingTests, ThrowsWhenRequiredNameFieldIsMissing) {
+TEST(UserMarshallingTests, ThrowsWhenRequiredLoginFieldIsMissing) {
   const auto json = nlohmann::json::object();
 
   EXPECT_THROW((void)json.get<CreateUserCommand>(), nlohmann::json::exception);
 }
 
 TEST(UserMarshallingTests, WritesUserViewToJson) {
-  const UserView view{42, "Alex"};
+  const UserView view{"alex", "farm_worker"};
 
   const std::string body = nlohmann::json(view).dump();
 
-  expectJsonUnsignedLongField(body, "id", 42);
-  expectJsonStringField(body, "name", "Alex");
+  expectJsonStringField(body, "login", "alex");
+  expectJsonStringField(body, "role", "farm_worker");
 }
 
 TEST(UserMarshallingTests, MapsFarmRoleEntityToRowView) {

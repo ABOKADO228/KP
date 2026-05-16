@@ -179,6 +179,10 @@ FARM_SERVER_THREADS
 FARM_SERVER_BODY_LIMIT
 FARM_SERVER_TIMEOUT_SECONDS
 FARM_SERVER_LISTEN_BACKLOG
+FARM_JWT_SECRET
+FARM_ADMIN_ENABLED
+FARM_ADMIN_LOGIN
+FARM_ADMIN_PASSWORD
 ```
 
 ## Проверка Endpoints
@@ -192,17 +196,23 @@ curl http://localhost:8080/health
 Регистрация и логин:
 
 ```bash
-curl -X POST http://localhost:8080/auth/register -H "Content-Type: application/json" -d '{"name":"Alex","password":"password123"}'
-curl -X POST http://localhost:8080/auth/login -H "Content-Type: application/json" -d '{"name":"Alex","password":"password123"}'
+curl -X POST http://localhost:8080/auth/register -H "Content-Type: application/json" -d '{"login":"alex","password":"password123"}'
+curl -X POST http://localhost:8080/auth/login -H "Content-Type: application/json" -d '{"login":"alex","password":"password123"}'
+curl -X POST http://localhost:8080/auth/login -H "Content-Type: application/json" -d '{"login":"admin","password":"admin12345"}'
+curl -X POST http://localhost:8080/users -H "Content-Type: application/json" -H "Authorization: Bearer <admin-jwt>" -d '{"login":"owner","password":"password123","role":"farm_owner"}'
 ```
+
+`/auth/register` создает пользователя с ролью `farm_worker`. Сервер при старте создает встроенного администратора `admin` / `admin12345` с ролью `agriculture_admin`; значения задаются через `FARM_ADMIN_LOGIN` и `FARM_ADMIN_PASSWORD`, создание отключается через `FARM_ADMIN_ENABLED=0`. Успешный ответ `/auth/register` и `/auth/login` содержит `token`, `token_type` и `user.login`/`user.role`. `POST /users` принимает явную роль только с JWT администратора.
 
 Пример чтения предметной сущности:
 
 ```bash
 curl http://localhost:8080/api/farm
+curl http://localhost:8080/api/farm/item?id=1
+curl -X PUT "http://localhost:8080/api/farm/item?id=1" -H "Content-Type: application/json" -d '{"status":"active"}'
 ```
 
-Все `/api/*` endpoints ожидают и возвращают JSON с типами view-слоя, а не persistence-структуры.
+Все `/api/*` endpoints ожидают и возвращают JSON с типами view-слоя, а не persistence-структуры. Схема маршрутов: `GET/POST /api/<resource>` и `GET/PUT/DELETE /api/<resource>/item?<key>`.
 
 ## Тесты
 
@@ -229,7 +239,7 @@ fixtures
 utils
 ```
 
-На текущей ревизии ожидается полное прохождение набора CTest при запущенном PostgreSQL. В последней проверке Debug и Release проходили `113/113` тестов.
+На текущей ревизии ожидается полное прохождение набора CTest при запущенном PostgreSQL. Последняя проверка Debug прошла `113/113` тестов. Если число тестов изменилось после добавления новых сценариев, ориентируйся на фактический вывод `ctest`.
 
 ## Диагностика
 

@@ -2,7 +2,6 @@ import { KeyRound, Leaf, UserPlus } from "lucide-react";
 import { FormEvent, useState } from "react";
 
 import type { FarmApiClient } from "../api/farmApi";
-import { roleDefinitions, type UserRole } from "../domain/roles";
 import { createSession, type ClientSession } from "../state/session";
 import { errorMessage } from "../utils/errors";
 
@@ -13,9 +12,8 @@ interface AuthScreenProps {
 
 export function AuthScreen({ api, onAuthenticated }: AuthScreenProps) {
   const [mode, setMode] = useState<"login" | "register">("login");
-  const [name, setName] = useState("");
+  const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<UserRole>("agriculture_admin");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -27,10 +25,10 @@ export function AuthScreen({ api, onAuthenticated }: AuthScreenProps) {
     try {
       const auth =
         mode === "login"
-          ? await api.login({ name, password })
-          : await api.register({ name, password });
+          ? await api.login({ login, password })
+          : await api.register({ login, password });
 
-      onAuthenticated(createSession(auth.token, auth.token_type, auth.user, role));
+      onAuthenticated(createSession(auth.token, auth.token_type, auth.user));
     } catch (caught) {
       setError(errorMessage(caught));
     } finally {
@@ -51,13 +49,13 @@ export function AuthScreen({ api, onAuthenticated }: AuthScreenProps) {
 
         <form className="auth-form" onSubmit={handleSubmit}>
           <label>
-            <span>Пользователь</span>
+            <span>Логин</span>
             <input
               autoComplete="username"
-              name="name"
-              onChange={(event) => setName(event.target.value)}
+              name="login"
+              onChange={(event) => setLogin(event.target.value)}
               required
-              value={name}
+              value={login}
             />
           </label>
 
@@ -72,20 +70,6 @@ export function AuthScreen({ api, onAuthenticated }: AuthScreenProps) {
               type="password"
               value={password}
             />
-          </label>
-
-          <label>
-            <span>Роль</span>
-            <select
-              onChange={(event) => setRole(event.target.value as UserRole)}
-              value={role}
-            >
-              {roleDefinitions.map((definition) => (
-                <option key={definition.id} value={definition.id}>
-                  {definition.title}
-                </option>
-              ))}
-            </select>
           </label>
 
           {error ? <p className="form-error">{error}</p> : null}

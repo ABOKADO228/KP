@@ -50,9 +50,10 @@ public:
   AuthResult loginUser(LoginUserCommand command);
 
 private:
-  ///Создает пользователя после общей проверки имени и пароля.
-  ///@param name имя пользователя.
+  ///Создает пользователя после общей проверки логина, пароля и роли.
+  ///@param login логин пользователя.
   ///@param password пароль в открытом виде.
+  ///@param role роль пользователя.
   ///@returns результат с DTO созданного пользователя или предметной ошибкой.
   CreateUserResult createUserWithPassword(std::string login,
                                           std::string password,

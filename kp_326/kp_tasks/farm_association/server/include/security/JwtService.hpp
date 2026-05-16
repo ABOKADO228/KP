@@ -3,7 +3,9 @@
 #include <controllers/dto/User.hpp>
 
 #include <chrono>
+#include <optional>
 #include <string>
+#include <string_view>
 
 namespace fasc::server::security {
 
@@ -24,6 +26,8 @@ public:
   ///@param user пользователь application layer.
   ///@returns строка JWT.
   std::string issue(const fasc::server::controllers::dto::UserDto& user) const;
+
+  std::optional<fasc::server::controllers::dto::UserDto> verify(std::string_view token) const;
 
 private:
   ///Секрет подписи JWT.

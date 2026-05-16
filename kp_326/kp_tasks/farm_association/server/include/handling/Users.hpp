@@ -1,6 +1,7 @@
 #pragma once
 
 #include <controllers/http/Users.hpp>
+#include <security/JwtService.hpp>
 #include <server/core/HttpTypes.hpp>
 
 namespace fasc::server::handling {
@@ -15,7 +16,7 @@ class UserHandler {
 public:
   ///Создает handler поверх HTTP controller-а пользователей.
   ///@param users HTTP controller пользовательских маршрутов.
-  explicit UserHandler(UserHttpController& users);
+  UserHandler(UserHttpController& users, fasc::server::security::JwtService& jwt_service);
 
   ///Формирует HTTP-ответ на запрос создания пользователя.
   ///@param request HTTP-запрос создания пользователя.
@@ -35,6 +36,7 @@ public:
 private:
   ///HTTP controller пользовательских маршрутов.
   UserHttpController& users_;
+  fasc::server::security::JwtService& jwt_service_;
 };
 
 } // namespace fasc::server::handling

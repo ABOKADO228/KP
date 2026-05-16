@@ -1,4 +1,11 @@
-import { ClipboardList, Database, Leaf, LogOut, ShieldCheck } from "lucide-react";
+import {
+  ClipboardList,
+  Database,
+  Leaf,
+  LogOut,
+  ShieldCheck,
+  UserCog,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import type { FarmApiClient } from "../api/farmApi";
@@ -11,6 +18,7 @@ import type { ClientSession } from "../state/session";
 import { Metric } from "./Metric";
 import { moduleIcons } from "./moduleIcons";
 import { ResourcePanel } from "./ResourcePanel";
+import { UserAdministrationPanel } from "./UserAdministrationPanel";
 
 interface WorkspaceProps {
   api: FarmApiClient;
@@ -23,16 +31,32 @@ export function Workspace({ api, session, onLogout }: WorkspaceProps) {
     () => getAccessibleModules(session.user.role),
     [session.user.role],
   );
-  const [selectedModuleId, setSelectedModuleId] = useState(modules[0]?.id ?? "");
+  const navigationItems = useMemo(
+    () => [
+      ...(session.user.role === "agriculture_admin"
+        ? [{ id: "user-administration", title: "Пользователи", Icon: UserCog }]
+        : []),
+      ...modules.map((module) => ({
+        id: module.id,
+        title: module.title,
+        Icon: moduleIcons[module.icon],
+      })),
+    ],
+    [modules, session.user.role],
+  );
+  const [selectedModuleId, setSelectedModuleId] = useState(
+    navigationItems[0]?.id ?? "",
+  );
 
   useEffect(() => {
-    if (!modules.some((module) => module.id === selectedModuleId)) {
-      setSelectedModuleId(modules[0]?.id ?? "");
+    if (!navigationItems.some((item) => item.id === selectedModuleId)) {
+      setSelectedModuleId(navigationItems[0]?.id ?? "");
     }
-  }, [modules, selectedModuleId]);
+  }, [navigationItems, selectedModuleId]);
 
   const selectedModule =
     modules.find((module) => module.id === selectedModuleId) ?? modules[0];
+  const isUserAdministrationSelected = selectedModuleId === "user-administration";
 
   return (
     <main className="app-shell">
@@ -43,20 +67,19 @@ export function Workspace({ api, session, onLogout }: WorkspaceProps) {
         </div>
 
         <nav className="module-nav">
-          {modules.map((module) => {
-            const Icon = moduleIcons[module.icon];
-            const isActive = module.id === selectedModule?.id;
+          {navigationItems.map(({ id, title, Icon }) => {
+            const isActive = id === selectedModuleId;
 
             return (
               <button
                 aria-current={isActive ? "page" : undefined}
                 className={isActive ? "module-link active" : "module-link"}
-                key={module.id}
-                onClick={() => setSelectedModuleId(module.id)}
+                key={id}
+                onClick={() => setSelectedModuleId(id)}
                 type="button"
               >
                 <Icon aria-hidden="true" size={18} />
-                <span>{module.title}</span>
+                <span>{title}</span>
               </button>
             );
           })}
@@ -67,7 +90,7 @@ export function Workspace({ api, session, onLogout }: WorkspaceProps) {
         <header className="topbar">
           <div>
             <p className="eyebrow">{getRoleTitle(session.user.role)}</p>
-            <h1>{session.user.name}</h1>
+            <h1>{session.user.login}</h1>
           </div>
           <button className="icon-button text-button" onClick={onLogout} type="button">
             <LogOut aria-hidden="true" size={18} />
@@ -76,7 +99,12 @@ export function Workspace({ api, session, onLogout }: WorkspaceProps) {
         </header>
 
         <section className="metric-grid" aria-label="Сводка">
-          <Metric icon={Database} label="Разделы" value={modules.length} tone="blue" />
+          <Metric
+            icon={Database}
+            label="Разделы"
+            value={navigationItems.length}
+            tone="blue"
+          />
           <Metric
             icon={ShieldCheck}
             label="Запись"
@@ -95,7 +123,9 @@ export function Workspace({ api, session, onLogout }: WorkspaceProps) {
           />
         </section>
 
-        {selectedModule ? (
+        {isUserAdministrationSelected ? (
+          <UserAdministrationPanel api={api} />
+        ) : selectedModule ? (
           <ResourcePanel
             api={api}
             module={selectedModule}

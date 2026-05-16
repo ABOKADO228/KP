@@ -62,6 +62,28 @@ FARM_DB_BOOTSTRAP
 FARM_DB_RESET_ON_START
 FARM_SERVER_ADDRESS
 FARM_SERVER_PORT
+FARM_JWT_SECRET
+FARM_ADMIN_ENABLED
+FARM_ADMIN_LOGIN
+FARM_ADMIN_PASSWORD
 ```
+
+Основные маршруты:
+
+```text
+GET  /health
+POST /auth/register   body: {"login":"alex","password":"password123"}
+POST /auth/login      body: {"login":"alex","password":"password123"}
+POST /users           Authorization: Bearer <admin-jwt>, body: {"login":"owner","password":"password123","role":"farm_owner"}
+GET  /api/<resource>
+POST /api/<resource>
+GET  /api/<resource>/item?<key>
+PUT  /api/<resource>/item?<key>
+DELETE /api/<resource>/item?<key>
+```
+
+Auth-ответ содержит `token`, `token_type` и пользователя в форме `{ "login": "...", "role": "..." }`. Регистрация через `/auth/register` выдает роль `farm_worker`; `/users` предназначен для административного создания пользователя с явной ролью и требует JWT роли `agriculture_admin`.
+
+При старте сервер создает встроенного администратора `admin` / `admin12345` с ролью `agriculture_admin`, если `FARM_ADMIN_ENABLED` не выключен. Логин и пароль переопределяются через `FARM_ADMIN_LOGIN` и `FARM_ADMIN_PASSWORD`.
 
 Подробное руководство находится в корневом [README.md](../README.md) и в `docs/02_BUILD_RUN_TEST.md`.

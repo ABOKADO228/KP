@@ -1,6 +1,6 @@
 # Farm Association
 
-C++20 HTTP-сервер для системы фермерской ассоциации. Сервер использует Boost.Asio/Beast, nlohmann/json, fmt, ODB, PostgreSQL/libpq и OpenSSL. Поддерживаемый сценарий сборки: Windows и Manjaro через CMake + Ninja + clang++.
+Проект системы фермерской ассоциации: C++20 HTTP-сервер и React + TypeScript клиент. Сервер использует Boost.Asio/Beast, nlohmann/json, fmt, ODB, PostgreSQL/libpq и OpenSSL. Клиент обращается к серверному JSON API напрямую; сервер отдает CORS/preflight-заголовки для dev-режима. Поддерживаемый сценарий сборки сервера: Windows и Manjaro через CMake + Ninja + clang++.
 
 Внешние библиотеки не хранятся в Git. Каталог `server/third_party` является локальным состоянием машины разработчика и восстанавливается bootstrap-скриптами. В репозитории должен оставаться только `server/third_party/.gitkeep`.
 
@@ -151,13 +151,28 @@ Manjaro:
 
 По умолчанию сервер слушает `0.0.0.0:8080`. Параметры HTTP-сервера можно переопределить через `FARM_SERVER_ADDRESS`, `FARM_SERVER_PORT`, `FARM_SERVER_THREADS`, `FARM_SERVER_BODY_LIMIT`, `FARM_SERVER_TIMEOUT_SECONDS`, `FARM_SERVER_LISTEN_BACKLOG`.
 
+При старте сервер создает встроенного администратора, если он еще не существует:
+
+```text
+login:    admin
+password: admin12345
+role:     agriculture_admin
+```
+
+Учетку можно отключить или переопределить через `FARM_ADMIN_ENABLED`, `FARM_ADMIN_LOGIN` и `FARM_ADMIN_PASSWORD`. Пароль должен содержать минимум 8 символов.
+
 Проверка после запуска:
 
 ```bash
 curl http://localhost:8080/health
-curl -X POST http://localhost:8080/auth/register -H "Content-Type: application/json" -d '{"name":"Alex","password":"password123"}'
+curl -X POST http://localhost:8080/auth/login -H "Content-Type: application/json" -d '{"login":"admin","password":"admin12345"}'
+curl -X POST http://localhost:8080/auth/register -H "Content-Type: application/json" -d '{"login":"alex","password":"password123"}'
+curl -X POST http://localhost:8080/auth/login -H "Content-Type: application/json" -d '{"login":"alex","password":"password123"}'
+curl -X POST http://localhost:8080/users -H "Content-Type: application/json" -H "Authorization: Bearer <admin-jwt>" -d '{"login":"owner","password":"password123","role":"farm_owner"}'
 curl http://localhost:8080/api/farm
 ```
+
+Основные пользовательские маршруты: `POST /auth/register`, `POST /auth/login`, `POST /users`. Регистрация через `/auth/register` создает пользователя с ролью `farm_worker`; административное создание через `/users` принимает поле `role` и требует `Authorization: Bearer <token>` пользователя с ролью `agriculture_admin`. Успешная авторизация возвращает JWT и пользователя в виде `{ "login": "...", "role": "..." }`.
 
 ## Документация
 
@@ -170,7 +185,7 @@ curl http://localhost:8080/api/farm
 
 ## Client
 
-В каталоге `client` инициализирован React + TypeScript проект для role-based интерфейса фермерской ассоциации.
+В каталоге `client` находится React + TypeScript проект для role-based интерфейса фермерской ассоциации. Клиент показывает доступные бизнес-модули по роли из серверного auth-ответа, дает администратору экран создания пользователей с выбором роли, загружает таблицы через `GET /api/<resource>`, создает записи через `POST /api/<resource>`, обновляет и удаляет записи через `/api/<resource>/item?<key>`.
 
 ```powershell
 cd client
@@ -178,7 +193,7 @@ npm install
 npm run dev
 ```
 
-По умолчанию Vite проксирует `/server-api/*` в C++ сервер `http://127.0.0.1:8080`. Переопределить backend можно через `FARM_SERVER_URL` или `VITE_FARM_SERVER_URL`.
+По умолчанию клиент обращается к C++ серверу напрямую по `http://127.0.0.1:8080`. Переопределить backend можно через `VITE_FARM_SERVER_URL` или `VITE_API_BASE_URL`.
 
 ```powershell
 npm run typecheck

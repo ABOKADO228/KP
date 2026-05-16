@@ -15,8 +15,9 @@
 - JSON через `nlohmann/json`.
 - PostgreSQL/ODB слой через `fasc::server::database::Database`.
 - Обертка транзакций `fasc::server::database::Transaction`.
-- Контроллеры, handlers, views, marshalling и тесты на примере пользовательских маршрутов.
-- JWT и хеширование паролей в `fasc::server::security`.
+- Пользовательские маршруты `POST /auth/register`, `POST /auth/login`, `POST /users`.
+- CRUD-контроллеры, handlers, views и marshalling для таблиц предметной области из SQL-дампа.
+- JWT с claim `sub` и `role`, хеширование паролей в `fasc::server::security`.
 
 Текущий маршрут запроса:
 
@@ -198,9 +199,11 @@ server/src/handling/<group>/...
 
 Если существующая сборка потребует более плоской структуры, допустимо сохранить текущий стиль каталогов, но namespace policy остается обязательной.
 
+Текущая реализация использует плоскую структуру файлов по слоям: `server/include/persistence/Farm.hpp`, `server/include/views/Farm.hpp`, `server/src/controllers/app/Farm.cpp` и так далее. Группы выше остаются логической моделью предметной области, а не обязательной вложенностью каталогов.
+
 ## Persistence layer
 
-Persistence-классы описывают таблицы из дампа и предназначены для ODB.
+Persistence-классы описывают таблицы из дампа. Для пользователя `server/include/persistence/User.hpp` используется полноценная ODB-генерация `user-odb.*` и `user.sql`. Для предметных CRUD-сущностей persistence-структуры зеркалят SQL-колонки и используются application layer вместе с универсальными методами `Database::selectRows`, `insertRow`, `updateRows`, `deleteRows`; отдельные ODB-generated файлы для каждой таблицы сейчас не собираются.
 
 Требования:
 
@@ -247,25 +250,50 @@ Handlers отвечают за:
 
 ## API baseline
 
-Минимальный набор маршрутов для каждой основной сущности:
+Реализованные служебные и пользовательские маршруты:
 
 ```text
-GET    /<resources>
-GET    /<resources>/<id>
-POST   /<resources>
-PUT    /<resources>/<id>
-DELETE /<resources>/<id>
+GET  /health
+POST /auth/register
+POST /auth/login
+POST /users
 ```
 
-Для составных ключей используются вложенные маршруты или query parameters. Например:
+Auth-запросы используют JSON с `login` и `password`. `/auth/register` создает пользователя с ролью `farm_worker`; `/users` дополнительно принимает `role` и доступен только с `Authorization: Bearer <token>` администратора `agriculture_admin`. Успешный auth-ответ:
+
+```json
+{
+  "token": "<jwt>",
+  "token_type": "Bearer",
+  "user": {
+    "login": "alex",
+    "role": "farm_worker"
+  }
+}
+```
+
+При старте сервер обеспечивает встроенного администратора `admin` / `admin12345` с ролью `agriculture_admin`. Значения можно переопределить через `FARM_ADMIN_LOGIN` и `FARM_ADMIN_PASSWORD`, а создание отключить через `FARM_ADMIN_ENABLED=0`.
+
+Для каждой предметной таблицы зарегистрирован набор маршрутов:
 
 ```text
-GET    /farms/<farm_id>/plots
-POST   /farms/<farm_id>/plots/<plot_id>
-DELETE /farms/<farm_id>/plots/<plot_id>
+GET    /api/<resource>
+POST   /api/<resource>
+GET    /api/<resource>/item?<key>
+PUT    /api/<resource>/item?<key>
+DELETE /api/<resource>/item?<key>
 ```
 
-Точные маршруты фиксируются перед реализацией каждой группы таблиц.
+Для простых ключей `<key>` обычно равен `id=<id>`. Для составных ключей используются query parameters всех колонок ключа:
+
+```text
+association_farms: farm_id=<id>&association_id=<id>
+farm_plot_assignment: farm_id=<id>&farm_plot_id=<id>
+farm_plot_consumption_product: product_id=<id>&farm_plot_id=<id>
+farm_plot_production_product: product_id=<id>&farm_plot_id=<id>
+```
+
+Списки возвращаются как `{ "resource": "<resource>", "rows": [...] }`, одиночная строка как `{ "resource": "<resource>", "data": { ... } }`, результат записи как `{ "resource": "<resource>", "affectedRows": <number> }`.
 
 ## Ошибки API
 
@@ -281,6 +309,7 @@ DELETE /farms/<farm_id>/plots/<plot_id>
 
 - `400 Bad Request` - неверный JSON, неверные типы, validation error.
 - `401 Unauthorized` - ошибка авторизации.
+- `403 Forbidden` - JWT валиден, но роль не имеет права на операцию.
 - `404 Not Found` - сущность или маршрут не найдены.
 - `409 Conflict` - конфликт уникальности или состояния.
 - `500 Internal Server Error` - непредвиденная ошибка сервера.
@@ -318,15 +347,12 @@ ctest --test-dir server\build --output-on-failure
 
 ## Порядок реализации
 
-1. Привести существующие server core-типы и пользовательские классы к namespace policy, не меняя поведение.
-2. Зафиксировать общий каркас для CRUD-группы: persistence, view, marshalling, app controller, http controller, handler, routes, tests.
-3. Реализовать справочники, от которых зависят остальные таблицы: `unit`, `employment_status`, `farm_role`, `association_role`, `identity_document_type`, `product_type`, `farm_plot_type`.
-4. Реализовать базовые сущности: `person`, `farm_association`, `farm`, `supplier`, `product`.
-5. Реализовать связанные сущности людей и хозяйств: documents, owners, ownership, employees, members, association farms.
-6. Реализовать участки и закрепления.
-7. Реализовать production/consumption таблицы.
-8. Реализовать закупки, продажи, договоры и заказы.
-9. Провести финальную сверку API, сборки и тестов.
+Текущий этап уже содержит общий CRUD-каркас и маршруты для всех таблиц предметной области из дампа. Клиентский auth-контракт синхронизирован с серверным `login`/`role`, а административное создание пользователей защищено JWT администратора. Дальнейший порядок работ:
+
+1. Добавить проверку `Authorization: Bearer <token>` и server-side RBAC для предметных `/api/*` маршрутов.
+2. Добавить endpoint `/auth/me` для восстановления сессии по JWT.
+3. Расширить бизнес-сценарии поверх базового CRUD: отчеты, согласования, фильтры и связанные операции.
+4. Поддерживать тесты и документацию при изменении API, сборки или схемы БД.
 
 ## Критерии готовности
 

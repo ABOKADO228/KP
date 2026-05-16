@@ -1,28 +1,30 @@
 import type { UserRole } from "../domain/roles";
 
-const defaultApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "/server-api";
+const defaultApiBaseUrl =
+  import.meta.env.VITE_API_BASE_URL ??
+  import.meta.env.VITE_FARM_SERVER_URL ??
+  "http://127.0.0.1:8080";
 
-export type Identifier = number | string;
 export type ResourceRow = Record<string, unknown>;
 
 export interface AuthenticatedUser {
-  id: Identifier;
-  name: string;
+  login: string;
   role: UserRole;
 }
 
 export interface AuthResponse {
   token: string;
   token_type: string;
-  user: {
-    id: Identifier;
-    name: string;
-  };
+  user: AuthenticatedUser;
 }
 
 export interface Credentials {
-  name: string;
+  login: string;
   password: string;
+}
+
+export interface CreateUserRequest extends Credentials {
+  role: UserRole;
 }
 
 export interface ResourceListResponse<T extends ResourceRow = ResourceRow> {
@@ -60,6 +62,10 @@ export class FarmApiClient {
 
   register(credentials: Credentials): Promise<AuthResponse> {
     return this.post<AuthResponse>("/auth/register", credentials);
+  }
+
+  createUser(user: CreateUserRequest): Promise<AuthenticatedUser> {
+    return this.post<AuthenticatedUser>("/users", user);
   }
 
   listResource<T extends ResourceRow = ResourceRow>(
