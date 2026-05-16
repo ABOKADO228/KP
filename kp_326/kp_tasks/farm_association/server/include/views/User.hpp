@@ -1,14 +1,13 @@
 #pragma once
 
-#include <cstdint>
-
 #include <string>
 
 namespace fasc::server::views {
 
+/// Public user representation returned through HTTP.
 struct UserView {
-  std::uint64_t id{};
-  std::string name{};
+  std::string login{};
+  std::string role{};
 };
 
 } // namespace fasc::server::views

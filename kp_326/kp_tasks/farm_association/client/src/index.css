@@ -21,6 +21,7 @@ body {
 
 button,
 input,
+textarea,
 select {
   font: inherit;
 }
@@ -103,6 +104,7 @@ label {
 }
 
 input,
+textarea,
 select {
   width: 100%;
   min-height: 44px;
@@ -114,9 +116,14 @@ select {
 }
 
 input:focus,
+textarea:focus,
 select:focus {
   border-color: #2f7d57;
   outline: 3px solid rgba(47, 125, 87, 0.18);
+}
+
+textarea {
+  resize: vertical;
 }
 
 .auth-actions,
@@ -146,6 +153,11 @@ select:focus {
   color: #ffffff;
 }
 
+.primary-button.danger {
+  border-color: #9f2f22;
+  background: #b43a2d;
+}
+
 .ghost-button,
 .icon-button {
   border: 1px solid #cbd6ce;
@@ -162,13 +174,25 @@ select:focus {
   height: 42px;
 }
 
+.icon-button.compact {
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+}
+
+.icon-button.danger {
+  border-color: #efc1bb;
+  color: #a33428;
+}
+
 .text-button {
   width: auto;
   padding: 0 14px;
 }
 
 .form-error,
-.error-banner {
+.error-banner,
+.notice-banner {
   margin: 0;
   border: 1px solid #f2b8ac;
   border-radius: 8px;
@@ -180,8 +204,15 @@ select:focus {
   padding: 10px 12px;
 }
 
-.error-banner {
+.error-banner,
+.notice-banner {
   padding: 12px 14px;
+}
+
+.notice-banner {
+  border-color: #b8d7bd;
+  background: #eef8ef;
+  color: #246645;
 }
 
 .app-shell {
@@ -321,6 +352,69 @@ select:focus {
   padding: 20px;
 }
 
+.resource-form {
+  display: grid;
+  gap: 16px;
+  border: 1px solid #d8e1da;
+  border-radius: 8px;
+  background: #fbfdfb;
+  padding: 16px;
+}
+
+.delete-confirmation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid #efc1bb;
+  border-radius: 8px;
+  background: #fff7f5;
+  padding: 16px;
+}
+
+.delete-confirmation h3,
+.delete-confirmation p {
+  margin: 0;
+}
+
+.delete-confirmation h3 {
+  color: #8f2a20;
+  font-size: 1.05rem;
+}
+
+.delete-confirmation p:last-child {
+  margin-top: 6px;
+  color: #6f4a45;
+}
+
+.resource-form-header,
+.form-footer {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.resource-form-header h3 {
+  margin: 0;
+  color: #17211d;
+  font-size: 1.05rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.field-label {
+  min-width: 0;
+}
+
+.form-footer {
+  justify-content: flex-start;
+}
+
 .panel-header {
   display: flex;
   align-items: flex-start;
@@ -395,6 +489,12 @@ tbody tr:last-child td {
   border-bottom: 0;
 }
 
+.row-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .empty-state {
   display: grid;
   min-height: 180px;
@@ -437,7 +537,9 @@ tbody tr:last-child td {
   }
 
   .topbar,
-  .panel-header {
+  .panel-header,
+  .resource-form-header,
+  .delete-confirmation {
     align-items: stretch;
     flex-direction: column;
   }

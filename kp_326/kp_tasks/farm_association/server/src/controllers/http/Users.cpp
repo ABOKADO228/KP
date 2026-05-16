@@ -35,7 +35,7 @@ UserViewResult UserHttpController::createUser(std::string_view body) {
     }
 
     const UserDto& user = result.success();
-    return UserViewResult::success(UserView{user.id, user.name});
+    return UserViewResult::success(UserView{user.login, user.role});
   } catch (const std::exception& exception) {
     return UserViewResult::failure(ErrorView{ErrorViewCode::BadRequest, exception.what()});
   }
@@ -54,7 +54,7 @@ AuthViewResult UserHttpController::registerUser(std::string_view body) {
 
     const auto& auth = result.success();
     return AuthViewResult::success(
-        AuthView{auth.token, auth.token_type, UserView{auth.user.id, auth.user.name}});
+        AuthView{auth.token, auth.token_type, UserView{auth.user.login, auth.user.role}});
   } catch (const std::exception& exception) {
     return AuthViewResult::failure(ErrorView{ErrorViewCode::BadRequest, exception.what()});
   }
@@ -73,7 +73,7 @@ AuthViewResult UserHttpController::loginUser(std::string_view body) {
 
     const auto& auth = result.success();
     return AuthViewResult::success(
-        AuthView{auth.token, auth.token_type, UserView{auth.user.id, auth.user.name}});
+        AuthView{auth.token, auth.token_type, UserView{auth.user.login, auth.user.role}});
   } catch (const std::exception& exception) {
     return AuthViewResult::failure(ErrorView{ErrorViewCode::BadRequest, exception.what()});
   }

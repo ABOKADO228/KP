@@ -54,8 +54,8 @@ std::string JwtService::issue(const UserDto& user) const {
 
   const nlohmann::json payload = {
       {"iss", issuer_},
-      {"sub", std::to_string(user.id)},
-      {"name", user.name},
+      {"sub", user.login},
+      {"role", user.role},
       {"iat", issued_at},
       {"exp", expires_at},
   };

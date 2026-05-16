@@ -54,7 +54,9 @@ private:
   ///@param name имя пользователя.
   ///@param password пароль в открытом виде.
   ///@returns результат с DTO созданного пользователя или предметной ошибкой.
-  CreateUserResult createUserWithPassword(std::string name, std::string password);
+  CreateUserResult createUserWithPassword(std::string login,
+                                          std::string password,
+                                          std::string role);
 
   /// База данных для persistence-операций.
   fasc::server::database::Database& db_;

@@ -3,20 +3,51 @@
 #include <persistence/User.hpp>
 #include <persistence/user-odb.hxx>
 
+#include <array>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 namespace fasc::server::controllers::app {
 
+using fasc::server::controllers::dto::kDefaultUserRole;
 using fasc::server::persistence::User;
 
 namespace {
 
-UserError validateName(const std::string& name) {
-  if (name.empty()) {
-    return UserError{UserErrorCode::InvalidInput, "User name is required"};
+constexpr std::array<std::string_view, 7> kKnownUserRoles{
+    "agriculture_admin",
+    "association_director",
+    "farm_owner",
+    "agronomist",
+    "procurement_manager",
+    "sales_manager",
+    "farm_worker",
+};
+
+bool isKnownUserRole(std::string_view role) {
+  for (std::string_view knownRole : kKnownUserRoles) {
+    if (role == knownRole) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+std::string normalizeRole(std::string role) {
+  if (role.empty()) {
+    return std::string{kDefaultUserRole};
+  }
+
+  return role;
+}
+
+UserError validateLogin(const std::string& login) {
+  if (login.empty()) {
+    return UserError{UserErrorCode::InvalidInput, "User login is required"};
   }
 
   return UserError{};
@@ -31,6 +62,14 @@ UserError validatePassword(const std::string& password) {
   return UserError{};
 }
 
+UserError validateRole(const std::string& role) {
+  if (!isKnownUserRole(role)) {
+    return UserError{UserErrorCode::InvalidInput, "User role is invalid"};
+  }
+
+  return UserError{};
+}
+
 } // namespace
 
 UserController::UserController(fasc::server::database::Database& db,
@@ -39,26 +78,28 @@ UserController::UserController(fasc::server::database::Database& db,
     : db_(db), passwordHasher_(passwordHasher), jwt_service_(jwt_service) {}
 
 CreateUserResult UserController::createUser(CreateUserCommand command) {
-  return createUserWithPassword(std::move(command.name), std::move(command.password));
+  return createUserWithPassword(std::move(command.login),
+                                std::move(command.password),
+                                std::move(command.role));
 }
 
 AuthResult UserController::registerUser(RegisterUserCommand command) {
-  // Сначала создаем пользователя.
-  const CreateUserResult user_result =
-      createUserWithPassword(std::move(command.name), std::move(command.password));
-  if (user_result.hasError()) {
-    return AuthResult::failure(user_result.error());
+  const CreateUserResult userResult =
+      createUserWithPassword(std::move(command.login),
+                             std::move(command.password),
+                             std::string{kDefaultUserRole});
+  if (userResult.hasError()) {
+    return AuthResult::failure(userResult.error());
   }
 
   AuthResultDto result;
-  result.user = user_result.success();
+  result.user = userResult.success();
   result.token = jwt_service_.issue(result.user);
   return AuthResult::success(std::move(result));
 }
 
 AuthResult UserController::loginUser(LoginUserCommand command) {
-  // Проверяем входные данные до БД.
-  if (const UserError error = validateName(command.name); !error.message.empty()) {
+  if (const UserError error = validateLogin(command.login); !error.message.empty()) {
     return AuthResult::failure(error);
   }
 
@@ -67,29 +108,28 @@ AuthResult UserController::loginUser(LoginUserCommand command) {
   }
 
   try {
-    // Ищем пользователя в одной транзакции.
     AuthResultDto result = db_.invokeTransactionally([&] {
-    using query = odb::query<User>;
+      using query = odb::query<User>;
 
-    std::vector<User> users = db_.query<User>(query::name == command.name);
-    if (users.empty()) {
-      return AuthResultDto{};
-    }
+      std::vector<User> users = db_.query<User>(query::login == command.login);
+      if (users.empty()) {
+        return AuthResultDto{};
+      }
 
-    const User& user = users.front();
-    if (!passwordHasher_.verify(command.password, user.passwordHash())) {
-      return AuthResultDto{};
-    }
+      const User& user = users.front();
+      if (!passwordHasher_.verify(command.password, user.passwordHash())) {
+        return AuthResultDto{};
+      }
 
-    AuthResultDto result;
-    result.user = UserDto{user.id(), user.name()};
-    result.token = jwt_service_.issue(result.user);
-    return result;
-  });
+      AuthResultDto authResult;
+      authResult.user = UserDto{user.login(), user.role()};
+      authResult.token = jwt_service_.issue(authResult.user);
+      return authResult;
+    });
 
     if (result.token.empty()) {
       return AuthResult::failure(
-          UserError{UserErrorCode::Unauthorized, "Invalid user name or password"});
+          UserError{UserErrorCode::Unauthorized, "Invalid user login or password"});
     }
 
     return AuthResult::success(std::move(result));
@@ -98,10 +138,12 @@ AuthResult UserController::loginUser(LoginUserCommand command) {
   }
 }
 
-CreateUserResult UserController::createUserWithPassword(std::string name,
-                                                           std::string password) {
-  // Проверяем входные данные до БД.
-  if (const UserError error = validateName(name); !error.message.empty()) {
+CreateUserResult UserController::createUserWithPassword(std::string login,
+                                                        std::string password,
+                                                        std::string role) {
+  role = normalizeRole(std::move(role));
+
+  if (const UserError error = validateLogin(login); !error.message.empty()) {
     return CreateUserResult::failure(error);
   }
 
@@ -109,28 +151,31 @@ CreateUserResult UserController::createUserWithPassword(std::string name,
     return CreateUserResult::failure(error);
   }
 
+  if (const UserError error = validateRole(role); !error.message.empty()) {
+    return CreateUserResult::failure(error);
+  }
+
   try {
-    // Создаем запись в одной транзакции.
-    UserDto user_dto = db_.invokeTransactionally([&] {
-    using query = odb::query<User>;
+    UserDto userDto = db_.invokeTransactionally([&] {
+      using query = odb::query<User>;
 
-    std::vector<User> existing = db_.query<User>(query::name == name);
-    if (!existing.empty()) {
-      return UserDto{};
-    }
+      std::vector<User> existing = db_.query<User>(query::login == login);
+      if (!existing.empty()) {
+        return UserDto{};
+      }
 
-    User user{std::move(name), passwordHasher_.hash(password)};
-    db_.persist(user);
+      User user{std::move(login), passwordHasher_.hash(password), std::move(role)};
+      db_.persist(user);
 
-    return UserDto{user.id(), user.name()};
-  });
+      return UserDto{user.login(), user.role()};
+    });
 
-    if (user_dto.name.empty()) {
+    if (userDto.login.empty()) {
       return CreateUserResult::failure(
-          UserError{UserErrorCode::Conflict, "User name is already registered"});
+          UserError{UserErrorCode::Conflict, "User login is already registered"});
     }
 
-    return CreateUserResult::success(std::move(user_dto));
+    return CreateUserResult::success(std::move(userDto));
   } catch (const std::exception& exception) {
     return CreateUserResult::failure(
         UserError{UserErrorCode::PersistenceFailure, exception.what()});

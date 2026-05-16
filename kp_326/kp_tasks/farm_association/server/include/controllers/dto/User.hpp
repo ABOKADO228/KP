@@ -1,60 +1,59 @@
 #pragma once
 
-#include <cstdint>
-
 #include <string>
 
 namespace fasc::server::controllers::dto {
 
-///Команда создания пользователя.
-///@note Используется внутри application layer и не является публичным JSON-контрактом.
+inline constexpr const char* kDefaultUserRole = "farm_worker";
+
+/// Command for creating a user account from application code.
 struct CreateUserCommand {
-  ///Имя пользователя.
-  std::string name;
+  /// Login. It is also the primary key in persistence.
+  std::string login;
 
-  ///Пароль пользователя в открытом виде из входного запроса.
+  /// Plain password from the incoming request.
   std::string password;
+
+  /// Server-side access role code.
+  std::string role{kDefaultUserRole};
 };
 
-///Команда регистрации пользователя.
-///@note После обработки пароль не сохраняется в открытом виде.
+/// Public self-registration command.
 struct RegisterUserCommand {
-  ///Имя пользователя.
-  std::string name;
+  /// Login. It is also the primary key in persistence.
+  std::string login;
 
-  ///Пароль пользователя в открытом виде из входного запроса.
+  /// Plain password from the incoming request.
   std::string password;
 };
 
-///Команда авторизации пользователя.
+/// Login command.
 struct LoginUserCommand {
-  ///Имя пользователя.
-  std::string name;
+  /// Login. It is also the primary key in persistence.
+  std::string login;
 
-  ///Пароль пользователя в открытом виде из входного запроса.
+  /// Plain password from the incoming request.
   std::string password;
 };
 
-///Внутреннее представление пользователя для application layer.
-///@note Для HTTP-ответов преобразуется в @c UserView перед сериализацией.
+/// Application-layer user representation.
 struct UserDto {
-  ///Идентификатор пользователя.
-  std::uint64_t id{};
+  /// Login. It is also the primary key in persistence.
+  std::string login;
 
-  ///Публичное имя пользователя.
-  std::string name;
+  /// Server-side access role code.
+  std::string role{kDefaultUserRole};
 };
 
-///Результат успешной регистрации или авторизации.
-///@note Содержит application DTO и токен, но наружу отдается через view/json boundary.
+/// Successful registration or login result.
 struct AuthResultDto {
-  ///Пользователь, для которого выпущен токен.
+  /// User for whom the token was issued.
   UserDto user;
 
-  ///JWT access token.
+  /// JWT access token.
   std::string token;
 
-  ///Тип токена для HTTP-клиентов.
+  /// Token type for HTTP clients.
   std::string token_type{"Bearer"};
 };
 

@@ -12,9 +12,11 @@ export type AccessLevel = "read" | "write" | "approve" | "admin";
 export type BusinessArea =
   | "associations"
   | "farms"
+  | "people"
   | "plots"
   | "products"
   | "procurement"
+  | "references"
   | "sales"
   | "suppliers";
 
@@ -42,6 +44,8 @@ export interface BusinessModule {
   icon: ModuleIcon;
   process: string;
   defaultColumns: string[];
+  keyColumns?: readonly string[];
+  formColumns?: readonly string[];
   visibleBy: readonly UserRole[];
   writableBy: readonly UserRole[];
 }
@@ -130,7 +134,7 @@ export const businessModules: readonly BusinessModule[] = [
     area: "associations",
     icon: "member",
     process: "Учет членства в ассоциации",
-    defaultColumns: ["id", "association_id", "person_id", "joined_at", "status"],
+    defaultColumns: ["id", "association_id", "person_id", "membership_number", "joined_date", "status", "notes"],
     visibleBy: associationRoles,
     writableBy: ["association_director"],
   },
@@ -141,7 +145,7 @@ export const businessModules: readonly BusinessModule[] = [
     area: "associations",
     icon: "member",
     process: "Назначение сотрудников ассоциации",
-    defaultColumns: ["id", "association_id", "person_id", "role_id", "status"],
+    defaultColumns: ["id", "person_id", "association_id", "role_id", "employment_status_id", "hire_date", "dismissal_date", "salary", "contract_number"],
     visibleBy: associationRoles,
     writableBy: ["association_director"],
   },
@@ -152,7 +156,8 @@ export const businessModules: readonly BusinessModule[] = [
     area: "associations",
     icon: "farm",
     process: "Привязка хозяйств к ассоциациям",
-    defaultColumns: ["farm_id", "association_id", "joined_at", "status"],
+    defaultColumns: ["farm_id", "association_id", "join_date", "status", "notes"],
+    keyColumns: ["farm_id", "association_id"],
     visibleBy: associationRoles,
     writableBy: ["association_director"],
   },
@@ -174,7 +179,7 @@ export const businessModules: readonly BusinessModule[] = [
     area: "farms",
     icon: "member",
     process: "Учет владельцев хозяйств",
-    defaultColumns: ["id", "person_id", "status"],
+    defaultColumns: ["id", "person_id"],
     visibleBy: ["association_director", "farm_owner"],
     writableBy: ["association_director", "farm_owner"],
   },
@@ -185,7 +190,7 @@ export const businessModules: readonly BusinessModule[] = [
     area: "farms",
     icon: "member",
     process: "Сотрудники, роли и статусы занятости",
-    defaultColumns: ["id", "farm_id", "person_id", "role_id", "status_id"],
+    defaultColumns: ["id", "person_id", "farm_id", "role_id", "employment_status_id", "hire_date", "dismissal_date", "salary", "employment_contract_number", "is_primary_workplace"],
     visibleBy: ["association_director", "farm_owner"],
     writableBy: ["association_director", "farm_owner"],
   },
@@ -208,6 +213,7 @@ export const businessModules: readonly BusinessModule[] = [
     icon: "field",
     process: "Закрепление участков за хозяйствами",
     defaultColumns: ["farm_id", "farm_plot_id", "status", "notes"],
+    keyColumns: ["farm_id", "farm_plot_id"],
     visibleBy: farmRoles,
     writableBy: ["farm_owner", "agronomist"],
   },
@@ -218,7 +224,7 @@ export const businessModules: readonly BusinessModule[] = [
     area: "plots",
     icon: "field",
     process: "Закрепление сотрудников за участками",
-    defaultColumns: ["id", "farm_employee_id", "farm_plot_id", "started_at", "status"],
+    defaultColumns: ["id", "farm_employee_id", "farm_plot_id", "assignment_type", "assigned_at", "unassigned_at", "notes"],
     visibleBy: farmRoles,
     writableBy: ["farm_owner", "agronomist"],
   },
@@ -230,6 +236,7 @@ export const businessModules: readonly BusinessModule[] = [
     icon: "product",
     process: "Выход продукции на участках",
     defaultColumns: ["product_id", "farm_plot_id", "quantity", "production_now"],
+    keyColumns: ["product_id", "farm_plot_id"],
     visibleBy: ["farm_owner", "agronomist", "farm_worker"],
     writableBy: ["agronomist", "farm_worker"],
   },
@@ -241,6 +248,7 @@ export const businessModules: readonly BusinessModule[] = [
     icon: "product",
     process: "Расход ресурсов на участках",
     defaultColumns: ["product_id", "farm_plot_id", "quantity", "consumption_now"],
+    keyColumns: ["product_id", "farm_plot_id"],
     visibleBy: ["farm_owner", "agronomist", "farm_worker"],
     writableBy: ["agronomist", "farm_worker"],
   },
@@ -251,7 +259,7 @@ export const businessModules: readonly BusinessModule[] = [
     area: "products",
     icon: "product",
     process: "Каталог продукции",
-    defaultColumns: ["id", "product_type_id", "name", "unit_id", "status"],
+    defaultColumns: ["id", "type_id", "name", "unit_id"],
     visibleBy: productRoles,
     writableBy: ["association_director", "procurement_manager"],
   },
@@ -262,7 +270,7 @@ export const businessModules: readonly BusinessModule[] = [
     area: "suppliers",
     icon: "supplier",
     process: "Реестр поставщиков",
-    defaultColumns: ["id", "name", "inn", "ogrn", "status"],
+    defaultColumns: ["id", "name", "legal_address", "status"],
     visibleBy: procurementRoles,
     writableBy: ["procurement_manager"],
   },
@@ -273,7 +281,7 @@ export const businessModules: readonly BusinessModule[] = [
     area: "suppliers",
     icon: "supplier",
     process: "Цены поставщиков на продукцию",
-    defaultColumns: ["id", "supplier_id", "product_id", "price", "valid_from"],
+    defaultColumns: ["id", "supplier_id", "product_id", "purchase_price", "valid_from", "valid_until"],
     visibleBy: procurementRoles,
     writableBy: ["procurement_manager"],
   },
@@ -322,7 +330,7 @@ export const businessModules: readonly BusinessModule[] = [
     area: "procurement",
     icon: "order",
     process: "Состав заказов поставщикам",
-    defaultColumns: ["id", "purchase_order_id", "product_id", "quantity", "price_per_unit"],
+    defaultColumns: ["id", "purchase_order_id", "product_id", "quantity", "unit_price", "vat_rate", "currency"],
     visibleBy: procurementRoles,
     writableBy: ["procurement_manager"],
   },

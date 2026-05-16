@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cstdint>
-
 #include <odb/core.hxx>
 
 #include <string>
@@ -11,53 +9,50 @@ namespace fasc {
 namespace server {
 namespace persistence {
 
-///Persistence-сущность пользователя сервера.
-///@note Используется ODB для хранения учетных данных приложения.
+/// Persistence entity for an application user.
 class User {
 public:
-  ///Создает пустую сущность для ODB materialization.
+  /// Creates an empty entity for ODB materialization.
   User() = default;
 
-  ///Создает нового пользователя с уже подготовленным хешем пароля.
-  ///@param name          имя пользователя.
-  ///@param passwordHash хеш пароля в формате @c PasswordHasher.
-  User(std::string name, std::string passwordHash)
-      : name_(std::move(name)), passwordHash_(std::move(passwordHash)) {}
+  /// Creates a new user with a prepared password hash and an access role.
+  User(std::string login, std::string passwordHash, std::string role)
+      : login_(std::move(login)),
+        passwordHash_(std::move(passwordHash)),
+        role_(std::move(role)) {}
 
-  ///Возвращает идентификатор пользователя.
-  ///@returns primary key пользователя.
-  std::uint64_t id() const {
-    return id_;
+  /// Returns the user login. The login is the primary key.
+  const std::string& login() const {
+    return login_;
   }
 
-  ///Возвращает имя пользователя.
-  ///@returns строка имени пользователя.
-  const std::string& name() const {
-    return name_;
-  }
-
-  ///Возвращает хеш пароля.
-  ///@returns строка хеша пароля.
+  /// Returns the password hash.
   const std::string& passwordHash() const {
     return passwordHash_;
+  }
+
+  /// Returns the server-owned access role.
+  const std::string& role() const {
+    return role_;
   }
 
 private:
   friend class odb::access;
 
-  ///Primary key пользователя.
-  std::uint64_t id_{};
+  /// Primary key and public account login.
+  std::string login_;
 
-  ///Уникальное имя пользователя.
-  std::string name_;
-
-  ///Хеш пароля пользователя.
+  /// User password hash.
   std::string passwordHash_;
+
+  /// Role code used by the backend and returned to clients.
+  std::string role_;
 };
 
 #pragma db object(User)
-#pragma db member(User::id_) id auto
-#pragma db member(User::name_) unique
+#pragma db member(User::login_) id column("login")
+#pragma db member(User::passwordHash_) column("password_hash")
+#pragma db member(User::role_) column("role")
 
 } // namespace persistence
 } // namespace server

@@ -13,7 +13,7 @@ namespace {
 using fasc::server::controllers::app::UserController;
 using fasc::server::controllers::dto::CreateUserCommand;
 
-TEST(UserControllerTests, RejectsEmptyUserNameBeforePersistence) {
+TEST(UserControllerTests, RejectsEmptyLoginBeforePersistence) {
   fasc::server::database::Database database{nullptr};
   fasc::server::security::PasswordHasher passwordHasher;
   fasc::server::security::JwtService jwt_service{"test-secret"};
@@ -23,7 +23,7 @@ TEST(UserControllerTests, RejectsEmptyUserNameBeforePersistence) {
 
   ASSERT_TRUE(result.hasError());
   EXPECT_EQ(result.error().code, fasc::server::controllers::app::UserErrorCode::InvalidInput);
-  EXPECT_EQ(result.error().message, "User name is required");
+  EXPECT_EQ(result.error().message, "User login is required");
 }
 
 TEST(UserControllerTests, RejectsShortPasswordBeforePersistence) {
@@ -32,7 +32,7 @@ TEST(UserControllerTests, RejectsShortPasswordBeforePersistence) {
   fasc::server::security::JwtService jwt_service{"test-secret"};
   UserController controller{database, passwordHasher, jwt_service};
 
-  const auto result = controller.createUser(CreateUserCommand{"Alex", "short"});
+  const auto result = controller.createUser(CreateUserCommand{"alex", "short"});
 
   ASSERT_TRUE(result.hasError());
   EXPECT_EQ(result.error().code, fasc::server::controllers::app::UserErrorCode::InvalidInput);

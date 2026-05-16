@@ -30,6 +30,11 @@ export interface ResourceListResponse<T extends ResourceRow = ResourceRow> {
   rows: T[];
 }
 
+export interface ResourceMutationResponse {
+  resource: string;
+  affectedRows: number;
+}
+
 export class ApiRequestError extends Error {
   readonly status: number;
 
@@ -61,6 +66,39 @@ export class FarmApiClient {
     endpoint: string,
   ): Promise<ResourceListResponse<T>> {
     return this.request<ResourceListResponse<T>>(endpoint);
+  }
+
+  createResource(
+    endpoint: string,
+    payload: ResourceRow,
+  ): Promise<ResourceMutationResponse> {
+    return this.post<ResourceMutationResponse>(endpoint, payload);
+  }
+
+  updateResource(
+    endpoint: string,
+    key: ResourceRow,
+    payload: ResourceRow,
+  ): Promise<ResourceMutationResponse> {
+    return this.request<ResourceMutationResponse>(
+      `${endpoint}/item?${queryStringFrom(key)}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      },
+    );
+  }
+
+  deleteResource(
+    endpoint: string,
+    key: ResourceRow,
+  ): Promise<ResourceMutationResponse> {
+    return this.request<ResourceMutationResponse>(
+      `${endpoint}/item?${queryStringFrom(key)}`,
+      {
+        method: "DELETE",
+      },
+    );
   }
 
   private post<TResponse>(path: string, body: unknown): Promise<TResponse> {
@@ -99,6 +137,16 @@ function joinUrl(baseUrl: string, path: string): string {
   const normalizedBase = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   return `${normalizedBase}${normalizedPath}`;
+}
+
+function queryStringFrom(values: ResourceRow): string {
+  const searchParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(values)) {
+    if (value !== null && value !== undefined) {
+      searchParams.set(key, String(value));
+    }
+  }
+  return searchParams.toString();
 }
 
 async function readErrorMessage(response: Response): Promise<string> {
