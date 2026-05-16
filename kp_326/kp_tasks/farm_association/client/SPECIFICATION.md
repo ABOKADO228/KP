@@ -12,22 +12,23 @@
 Browser
   -> React UI
   -> client/src/api/FarmApiClient
+  -> Vite dev proxy или production reverse proxy
   -> server HTTP API
   -> PostgreSQL fasc_db / fasc_test
 ```
 
-В режиме разработки клиент обращается к серверу напрямую с другого origin. Сервер отвечает CORS/preflight-заголовками, поэтому браузер может отправлять JSON и `Authorization` без Vite proxy:
+В режиме разработки браузер обращается к тому же origin Vite, а Vite проксирует API в C++ сервер:
 
 ```text
-http://127.0.0.1:8080/auth/login
-http://127.0.0.1:8080/api/farm
+http://127.0.0.1:5173/auth/login -> http://127.0.0.1:8080/auth/login
+http://127.0.0.1:5173/api/farm    -> http://127.0.0.1:8080/api/farm
 ```
 
-Базовый URL, который использует `FarmApiClient`, можно переопределить через `VITE_FARM_SERVER_URL` или `VITE_API_BASE_URL`; без них клиент ходит в `http://127.0.0.1:8080`.
+Цель dev-прокси можно переопределить через `FARM_SERVER_URL`; без нее Vite проксирует в `http://127.0.0.1:8080`. Для production-сборки с прямым внешним API можно задать `VITE_API_BASE_URL`; без него `FarmApiClient` использует относительные URL.
 
 ```text
+FARM_SERVER_URL
 VITE_API_BASE_URL
-VITE_FARM_SERVER_URL
 ```
 
 ## Текущий контракт сервера
@@ -61,7 +62,7 @@ POST /auth/login
 }
 ```
 
-JWT выпускается с claim `sub=<login>` и `role=<role>`. Регистрация через `/auth/register` всегда создает пользователя с ролью `farm_worker`; административный маршрут `POST /users` принимает `{ "login", "password", "role" }`, проверяет роль на известный список и требует `Authorization: Bearer <token>` пользователя с ролью `agriculture_admin`.
+JWT выпускается с claim `sub=<login>` и `role=<role>`. Регистрация через `/auth/register` всегда создает пользователя с ролью `farm_worker`. Управление пользователями доступно ролям `agriculture_admin` и `association_director`: `POST /users` принимает `{ "login", "password", "role" }`, `GET /users` возвращает `{ "users": [...] }`, `PUT /users/role?login=<login>` принимает `{ "role": "<role>" }`. Сервер проверяет роль на известный список и требует `Authorization: Bearer <token>` для этих маршрутов.
 
 Основные ресурсы доступны по схеме:
 
@@ -92,14 +93,14 @@ DELETE /api/farm_plot_production_product/item?product_id=<id>&farm_plot_id=<id>
 
 Ответ одиночной строки имеет форму `{ "resource": "<resource>", "data": { ... } }`, ответ мутаций - `{ "resource": "<resource>", "affectedRows": 1 }`.
 
-Клиентский `FarmApiClient` отправляет `Credentials.login/password`, хранит JWT, использует `user.login/user.role` из серверного auth-ответа и вызывает защищенный `POST /users` из администраторского экрана.
+Клиентский `FarmApiClient` отправляет `Credentials.login/password`, хранит JWT, использует `user.login/user.role` из серверного auth-ответа и вызывает защищенные `POST /users`, `GET /users`, `PUT /users/role?login=<login>` из экрана управления пользователями.
 
 ## Роли
 
 | Роль | Назначение | Функционал |
 | --- | --- | --- |
 | `agriculture_admin` | Администратор сельского хозяйства | Полный доступ ко всем ресурсам, справочникам, настройкам и отчетам. |
-| `association_director` | Руководитель ассоциации | Ассоциации, участники, хозяйства в ассоциации, сотрудники, договоры, заявки и заказы. |
+| `association_director` | Руководитель ассоциации | Ассоциации, участники, хозяйства в ассоциации, сотрудники, договоры, заявки, заказы и управление пользователями. |
 | `farm_owner` | Владелец хозяйства | Профиль хозяйства, владельцы, сотрудники хозяйства, участки, заявки на закупку и продажу. |
 | `agronomist` | Агроном | Участки, назначения участков, производство и потребление продукции на участках. |
 | `procurement_manager` | Менеджер закупок | Поставщики, цены поставщиков, договоры, заявки на закупку, заказы и позиции заказов. |
@@ -108,11 +109,11 @@ DELETE /api/farm_plot_production_product/item?product_id=<id>&farm_plot_id=<id>
 
 ## Правила доступа
 
-Клиент скрывает недоступные разделы и действия по роли из `ClientSession`. Это улучшает UX, но не является защитой данных. Сервер хранит роль пользователя, возвращает ее в auth-ответе и кладет в JWT; `POST /users` уже проверяет JWT администратора, а предметные CRUD handlers `/api/*` пока не применяют server-side RBAC.
+Клиент скрывает недоступные разделы и действия по роли из `ClientSession`. Это улучшает UX, но не является защитой данных. Сервер хранит роль пользователя, возвращает ее в auth-ответе и кладет в JWT; маршруты `/users` проверяют JWT ролей `agriculture_admin` и `association_director`, а предметные CRUD handlers `/api/*` пока не применяют server-side RBAC.
 
 Текущие ограничения интеграции:
 
-- `FarmApiClient` отправляет `Authorization: Bearer <token>`; `/users` валидирует токен администратора, а серверные `/api/*` handlers пока не валидируют токен;
+- `FarmApiClient` отправляет `Authorization: Bearer <token>`; `/users` валидирует токен управленческой роли, а серверные `/api/*` handlers пока не валидируют токен;
 - endpoint `/auth/me` для восстановления серверной сессии отсутствует.
 
 ## Бизнес-модули
@@ -141,7 +142,7 @@ DELETE /api/farm_plot_production_product/item?product_id=<id>&farm_plot_id=<id>
 
 - экран авторизации и регистрации;
 - рабочее пространство с боковой навигацией;
-- администраторский экран создания пользователей с выбором роли через `POST /users`;
+- экран управления пользователями для `agriculture_admin` и `association_director`: список через `GET /users`, создание через `POST /users`, изменение роли через `PUT /users/role`;
 - сводные показатели доступных модулей;
 - таблицу выбранного ресурса через реальный `GET /api/<resource>`;
 - формы создания и обновления через `POST /api/<resource>` и `PUT /api/<resource>/item?<key>`;
@@ -173,5 +174,5 @@ DELETE /api/farm_plot_production_product/item?product_id=<id>&farm_plot_id=<id>
 - `npm run build` собирает production bundle.
 - При запущенном сервере `npm run dev` позволяет авторизоваться и открыть списки ресурсов.
 - Набор модулей меняется по роли, возвращенной сервером.
-- Администратор `agriculture_admin` видит экран пользователей и может создать учетку с выбранной ролью.
+- `agriculture_admin` и `association_director` видят экран пользователей, могут создать учетку с выбранной ролью и изменить роль существующего пользователя.
 - Формы создания, редактирования и удаления вызывают реальные mutation endpoints выбранного ресурса.

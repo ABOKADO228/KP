@@ -6,6 +6,8 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+find_package(Threads REQUIRED)
+
 set(THIRD_PARTY_DIR
     "${CMAKE_CURRENT_LIST_DIR}/../../third_party"
     CACHE PATH "Farm server third_party directory")
@@ -68,12 +70,17 @@ if(WIN32)
         "${LIBODB_SOURCE_DIR}/odb/details/win32/once.cxx"
         "${LIBODB_SOURCE_DIR}/odb/details/win32/thread.cxx"
         "${LIBODB_SOURCE_DIR}/odb/details/win32/tls.cxx")
+elseif(UNIX)
+    list(APPEND LIBODB_SOURCES
+        "${LIBODB_SOURCE_DIR}/odb/details/posix/exceptions.cxx"
+        "${LIBODB_SOURCE_DIR}/odb/details/posix/thread.cxx")
 endif()
 
 add_library(odb STATIC ${LIBODB_SOURCES})
 add_dependencies(odb odb-local-headers)
 target_compile_definitions(odb PUBLIC LIBODB_STATIC_LIB)
 target_include_directories(odb PUBLIC "${LIBODB_SOURCE_DIR}")
+target_link_libraries(odb PUBLIC Threads::Threads)
 
 set_target_properties(odb PROPERTIES
     OUTPUT_NAME odb

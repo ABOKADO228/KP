@@ -36,6 +36,11 @@ public:
     return role_;
   }
 
+  /// Replaces the server-owned access role.
+  void role(std::string role) {
+    role_ = std::move(role);
+  }
+
 private:
   friend class odb::access;
 

@@ -64,7 +64,8 @@ public:
       : stream_(std::move(socket)), dispatcher_(dispatcher), settings_(settings) {}
 
   void run() {
-    readNextRequest();
+    asio::post(stream_.get_executor(),
+               beast::bind_front_handler(&HttpSession::readNextRequest, shared_from_this()));
   }
 
 private:
@@ -88,7 +89,11 @@ private:
     }
 
     if (error) {
-      writeProtocolError(error);
+      if (error == http::error::body_limit) {
+        writeProtocolError(error);
+      } else {
+        shutdown();
+      }
       return;
     }
 
@@ -118,6 +123,7 @@ private:
     response_.reset();
 
     if (error) {
+      shutdown();
       return;
     }
 
@@ -131,7 +137,8 @@ private:
 
   void shutdown() {
     beast::error_code ignored;
-    stream_.socket().shutdown(tcp::socket::shutdown_send, ignored);
+    stream_.socket().shutdown(tcp::socket::shutdown_both, ignored);
+    stream_.socket().close(ignored);
   }
 
   beast::tcp_stream stream_;
@@ -180,16 +187,16 @@ private:
   }
 
   void onAccept(beast::error_code error, tcp::socket socket) {
+    if (acceptor_.is_open()) {
+      acceptNext();
+    }
+
     if (!error) {
       std::make_shared<HttpSession>(std::move(socket), dispatcher_, settings_)->run();
     }
 
     if (error && error != asio::error::operation_aborted) {
       logInfo(std::string{"accept failed: "} + error.message());
-    }
-
-    if (acceptor_.is_open()) {
-      acceptNext();
     }
   }
 

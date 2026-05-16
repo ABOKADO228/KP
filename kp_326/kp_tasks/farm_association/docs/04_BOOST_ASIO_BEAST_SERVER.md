@@ -182,6 +182,8 @@ GET /health
 POST /auth/register
 POST /auth/login
 POST /users
+GET /users
+PUT /users/role
 GET /api/farm
 POST /api/farm
 GET /api/farm/item
@@ -189,7 +191,7 @@ PUT /api/farm/item
 DELETE /api/farm/item
 ```
 
-`POST /users` проходит через тот же router, но handler дополнительно проверяет `Authorization: Bearer <token>` и допускает только роль `agriculture_admin`.
+Маршруты `/users` проходят через тот же router, но handler дополнительно проверяет `Authorization: Bearer <token>` и допускает только роли `agriculture_admin` и `association_director`.
 
 Query string не входит в ключ маршрута: `GET /api/farm/item?id=1` ищется как `GET /api/farm/item`, а `id=1` попадает в `HttpRequest::query_params`.
 

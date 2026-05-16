@@ -1,6 +1,6 @@
 # Farm Association
 
-Проект системы фермерской ассоциации: C++20 HTTP-сервер и React + TypeScript клиент. Сервер использует Boost.Asio/Beast, nlohmann/json, fmt, ODB, PostgreSQL/libpq и OpenSSL. Клиент обращается к серверному JSON API напрямую; сервер отдает CORS/preflight-заголовки для dev-режима. Поддерживаемый сценарий сборки сервера: Windows и Manjaro через CMake + Ninja + clang++.
+Проект системы фермерской ассоциации: C++20 HTTP-сервер и React + TypeScript клиент. Сервер использует Boost.Asio/Beast, nlohmann/json, fmt, ODB, PostgreSQL/libpq и OpenSSL. В dev-режиме Vite проксирует клиентские `/auth`, `/users`, `/api` и `/health` запросы в серверный JSON API; сервер также отдает CORS/preflight-заголовки. Поддерживаемый сценарий сборки сервера: Windows и Manjaro через CMake + Ninja + clang++.
 
 Внешние библиотеки не хранятся в Git. Каталог `server/third_party` является локальным состоянием машины разработчика и восстанавливается bootstrap-скриптами. В репозитории должен оставаться только `server/third_party/.gitkeep`.
 
@@ -168,11 +168,15 @@ curl http://localhost:8080/health
 curl -X POST http://localhost:8080/auth/login -H "Content-Type: application/json" -d '{"login":"admin","password":"admin12345"}'
 curl -X POST http://localhost:8080/auth/register -H "Content-Type: application/json" -d '{"login":"alex","password":"password123"}'
 curl -X POST http://localhost:8080/auth/login -H "Content-Type: application/json" -d '{"login":"alex","password":"password123"}'
-curl -X POST http://localhost:8080/users -H "Content-Type: application/json" -H "Authorization: Bearer <admin-jwt>" -d '{"login":"owner","password":"password123","role":"farm_owner"}'
+curl -X POST http://localhost:8080/users -H "Content-Type: application/json" -H "Authorization: Bearer <manager-jwt>" -d '{"login":"owner","password":"password123","role":"farm_owner"}'
+curl http://localhost:8080/users -H "Authorization: Bearer <admin-or-director-jwt>"
+curl -X PUT "http://localhost:8080/users/role?login=owner" -H "Content-Type: application/json" -H "Authorization: Bearer <admin-or-director-jwt>" -d '{"role":"agronomist"}'
 curl http://localhost:8080/api/farm
 ```
 
-Основные пользовательские маршруты: `POST /auth/register`, `POST /auth/login`, `POST /users`. Регистрация через `/auth/register` создает пользователя с ролью `farm_worker`; административное создание через `/users` принимает поле `role` и требует `Authorization: Bearer <token>` пользователя с ролью `agriculture_admin`. Успешная авторизация возвращает JWT и пользователя в виде `{ "login": "...", "role": "..." }`.
+Основные пользовательские маршруты: `POST /auth/register`, `POST /auth/login`, `POST /users`, `GET /users`, `PUT /users/role?login=<login>`. Регистрация через `/auth/register` создает пользователя с ролью `farm_worker`; управленческие маршруты `/users` принимают/возвращают поле `role` и требуют `Authorization: Bearer <token>` пользователя с ролью `agriculture_admin` или `association_director`. Успешная авторизация возвращает JWT и пользователя в виде `{ "login": "...", "role": "..." }`.
+
+Роль пользователя хранится на сервере в таблице пользователей, возвращается в auth-ответе и записывается в JWT claim `role`. Клиент использует это значение для показа разделов; сервер уже проверяет роль на маршрутах управления пользователями. Сейчас управленческими считаются `agriculture_admin` и `association_director`.
 
 ## Документация
 
@@ -185,7 +189,7 @@ curl http://localhost:8080/api/farm
 
 ## Client
 
-В каталоге `client` находится React + TypeScript проект для role-based интерфейса фермерской ассоциации. Клиент показывает доступные бизнес-модули по роли из серверного auth-ответа, дает администратору экран создания пользователей с выбором роли, загружает таблицы через `GET /api/<resource>`, создает записи через `POST /api/<resource>`, обновляет и удаляет записи через `/api/<resource>/item?<key>`.
+В каталоге `client` находится React + TypeScript проект для role-based интерфейса фермерской ассоциации. Клиент показывает доступные бизнес-модули по роли из серверного auth-ответа, дает `agriculture_admin` и `association_director` экран просмотра пользователей, создания учетных записей и изменения ролей, загружает таблицы через `GET /api/<resource>`, создает записи через `POST /api/<resource>`, обновляет и удаляет записи через `/api/<resource>/item?<key>`.
 
 ```powershell
 cd client
@@ -193,7 +197,7 @@ npm install
 npm run dev
 ```
 
-По умолчанию клиент обращается к C++ серверу напрямую по `http://127.0.0.1:8080`. Переопределить backend можно через `VITE_FARM_SERVER_URL` или `VITE_API_BASE_URL`.
+По умолчанию dev-прокси Vite отправляет API-запросы в C++ сервер `http://127.0.0.1:8080`. Для другого порта сервера перед `npm run dev` задай `FARM_SERVER_URL`, например `$env:FARM_SERVER_URL = "http://127.0.0.1:18081"`. Если нужен прямой backend URL без Vite proxy, можно собрать клиент с `VITE_API_BASE_URL`.
 
 ```powershell
 npm run typecheck

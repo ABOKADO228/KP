@@ -83,6 +83,70 @@ CreateUserResult UserController::createUser(CreateUserCommand command) {
                                 std::move(command.role));
 }
 
+UserListResult UserController::listUsers() {
+  try {
+    UserListDto result = db_.invokeTransactionally([&] {
+      using query = odb::query<User>;
+
+      std::vector<User> users = db_.query<User>(query::login != "");
+      std::sort(users.begin(), users.end(), [](const User& left, const User& right) {
+        return left.login() < right.login();
+      });
+
+      UserListDto list;
+      list.users.reserve(users.size());
+      for (const User& user : users) {
+        list.users.push_back(UserDto{user.login(), user.role()});
+      }
+
+      return list;
+    });
+
+    return UserListResult::success(std::move(result));
+  } catch (const std::exception& exception) {
+    return UserListResult::failure(
+        UserError{UserErrorCode::PersistenceFailure, exception.what()});
+  }
+}
+
+UpdateUserRoleResult UserController::updateUserRole(UpdateUserRoleCommand command) {
+  if (const UserError error = validateLogin(command.login); !error.message.empty()) {
+    return UpdateUserRoleResult::failure(error);
+  }
+
+  command.role = normalizeRole(std::move(command.role));
+  if (const UserError error = validateRole(command.role); !error.message.empty()) {
+    return UpdateUserRoleResult::failure(error);
+  }
+
+  try {
+    UserDto userDto = db_.invokeTransactionally([&] {
+      using query = odb::query<User>;
+
+      std::vector<User> users = db_.query<User>(query::login == command.login);
+      if (users.empty()) {
+        return UserDto{};
+      }
+
+      User user = std::move(users.front());
+      user.role(std::move(command.role));
+      db_.update(user);
+
+      return UserDto{user.login(), user.role()};
+    });
+
+    if (userDto.login.empty()) {
+      return UpdateUserRoleResult::failure(
+          UserError{UserErrorCode::NotFound, "User login is not registered"});
+    }
+
+    return UpdateUserRoleResult::success(std::move(userDto));
+  } catch (const std::exception& exception) {
+    return UpdateUserRoleResult::failure(
+        UserError{UserErrorCode::PersistenceFailure, exception.what()});
+  }
+}
+
 AuthResult UserController::registerUser(RegisterUserCommand command) {
   const CreateUserResult userResult =
       createUserWithPassword(std::move(command.login),

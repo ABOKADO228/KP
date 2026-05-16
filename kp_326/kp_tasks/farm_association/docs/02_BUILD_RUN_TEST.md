@@ -199,10 +199,12 @@ curl http://localhost:8080/health
 curl -X POST http://localhost:8080/auth/register -H "Content-Type: application/json" -d '{"login":"alex","password":"password123"}'
 curl -X POST http://localhost:8080/auth/login -H "Content-Type: application/json" -d '{"login":"alex","password":"password123"}'
 curl -X POST http://localhost:8080/auth/login -H "Content-Type: application/json" -d '{"login":"admin","password":"admin12345"}'
-curl -X POST http://localhost:8080/users -H "Content-Type: application/json" -H "Authorization: Bearer <admin-jwt>" -d '{"login":"owner","password":"password123","role":"farm_owner"}'
+curl -X POST http://localhost:8080/users -H "Content-Type: application/json" -H "Authorization: Bearer <manager-jwt>" -d '{"login":"owner","password":"password123","role":"farm_owner"}'
+curl http://localhost:8080/users -H "Authorization: Bearer <manager-jwt>"
+curl -X PUT "http://localhost:8080/users/role?login=owner" -H "Content-Type: application/json" -H "Authorization: Bearer <manager-jwt>" -d '{"role":"agronomist"}'
 ```
 
-`/auth/register` создает пользователя с ролью `farm_worker`. Сервер при старте создает встроенного администратора `admin` / `admin12345` с ролью `agriculture_admin`; значения задаются через `FARM_ADMIN_LOGIN` и `FARM_ADMIN_PASSWORD`, создание отключается через `FARM_ADMIN_ENABLED=0`. Успешный ответ `/auth/register` и `/auth/login` содержит `token`, `token_type` и `user.login`/`user.role`. `POST /users` принимает явную роль только с JWT администратора.
+`/auth/register` создает пользователя с ролью `farm_worker`. Сервер при старте создает встроенного администратора `admin` / `admin12345` с ролью `agriculture_admin`; значения задаются через `FARM_ADMIN_LOGIN` и `FARM_ADMIN_PASSWORD`, создание отключается через `FARM_ADMIN_ENABLED=0`. Успешный ответ `/auth/register` и `/auth/login` содержит `token`, `token_type` и `user.login`/`user.role`. Управление пользователями через `/users` доступно JWT ролей `agriculture_admin` и `association_director`.
 
 Пример чтения предметной сущности:
 

@@ -23,6 +23,16 @@ public:
   ///@returns HTTP-ответ с JSON-телом.
   HttpResponse createUser(const HttpRequest& request);
 
+  ///Формирует HTTP-ответ на запрос списка пользователей.
+  ///@param request HTTP-запрос списка пользователей.
+  ///@returns HTTP-ответ с JSON-телом.
+  HttpResponse listUsers(const HttpRequest& request);
+
+  ///Формирует HTTP-ответ на запрос изменения роли пользователя.
+  ///@param request HTTP-запрос изменения роли.
+  ///@returns HTTP-ответ с JSON-телом.
+  HttpResponse updateUserRole(const HttpRequest& request);
+
   ///Формирует HTTP-ответ на запрос регистрации пользователя.
   ///@param request HTTP-запрос регистрации.
   ///@returns HTTP-ответ с JSON-телом.

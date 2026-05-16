@@ -99,7 +99,57 @@ TEST(UsersBusinessProcessTests, PostUsersWithNonAdminTokenReturnsForbidden) {
   const BeastResponse response = dispatcher.dispatch(request);
 
   EXPECT_EQ(response.result(), http::status::forbidden);
-  expectJsonStringField(response.body(), "error", "Administrator role is required");
+  expectJsonStringField(response.body(), "error",
+                        "Administrator or association director role is required");
+}
+
+TEST(UsersBusinessProcessTests, GetUsersWithNonManagerTokenReturnsForbidden) {
+  fasc::server::database::Database database{nullptr};
+  fasc::server::security::PasswordHasher passwordHasher;
+  fasc::server::security::JwtService jwt_service{"test-secret"};
+  UserController user_controller{database, passwordHasher, jwt_service};
+  UserHttpController user_http_controller{user_controller};
+  UserHandler user_handler{user_http_controller, jwt_service};
+  AppRouter router;
+  router.get("/users", [&](const HttpRequest& request) {
+    return user_handler.listUsers(request);
+  });
+  RequestDispatcher dispatcher{router};
+
+  auto request = makeBeastRequest(http::verb::get, "/users");
+  request.set(http::field::authorization,
+              "Bearer " + jwt_service.issue(UserDto{"worker", "farm_worker"}));
+
+  const BeastResponse response = dispatcher.dispatch(request);
+
+  EXPECT_EQ(response.result(), http::status::forbidden);
+  expectJsonStringField(response.body(), "error",
+                        "Administrator or association director role is required");
+}
+
+TEST(UsersBusinessProcessTests, PutUserRoleWithoutLoginQueryReturnsBadRequest) {
+  fasc::server::database::Database database{nullptr};
+  fasc::server::security::PasswordHasher passwordHasher;
+  fasc::server::security::JwtService jwt_service{"test-secret"};
+  UserController user_controller{database, passwordHasher, jwt_service};
+  UserHttpController user_http_controller{user_controller};
+  UserHandler user_handler{user_http_controller, jwt_service};
+  AppRouter router;
+  router.put("/users/role", [&](const HttpRequest& request) {
+    return user_handler.updateUserRole(request);
+  });
+  RequestDispatcher dispatcher{router};
+
+  auto request = makeBeastRequest(http::verb::put,
+                                  "/users/role",
+                                  R"({"role":"agronomist"})");
+  request.set(http::field::authorization,
+              "Bearer " + jwt_service.issue(UserDto{"director", "association_director"}));
+
+  const BeastResponse response = dispatcher.dispatch(request);
+
+  EXPECT_EQ(response.result(), http::status::bad_request);
+  expectJsonStringField(response.body(), "error", "User login query parameter is required");
 }
 
 } // namespace

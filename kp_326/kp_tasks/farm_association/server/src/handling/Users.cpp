@@ -50,10 +50,7 @@ HttpResponse responseFrom(const ResultType& result, unsigned success_status) {
 
 HttpResponse errorResponse(unsigned status, std::string message) {
   return HttpResponse{status, "application/json",
-                      nlohmann::json(fasc::server::views::ErrorView{
-                                         fasc::server::views::ErrorViewCode::Unauthorized,
-                                         std::move(message)})
-                          .dump()};
+                      nlohmann::json{{"error", std::move(message)}}.dump()};
 }
 
 bool equalsIgnoreCase(std::string_view left, std::string_view right) {
@@ -89,6 +86,31 @@ std::optional<std::string> bearerTokenFrom(const HttpRequest& request) {
   return authorization->substr(prefix.size());
 }
 
+bool canManageUsers(std::string_view role) {
+  return role == fasc::server::controllers::dto::kAdministratorUserRole ||
+         role == "association_director";
+}
+
+std::optional<HttpResponse> rejectUnlessCanManageUsers(
+    const HttpRequest& request,
+    fasc::server::security::JwtService& jwt_service) {
+  const auto token = bearerTokenFrom(request);
+  if (!token.has_value()) {
+    return errorResponse(401, "Authorization Bearer token is required");
+  }
+
+  const auto user = jwt_service.verify(*token);
+  if (!user.has_value()) {
+    return errorResponse(401, "Authorization token is invalid or expired");
+  }
+
+  if (!canManageUsers(user->role)) {
+    return errorResponse(403, "Administrator or association director role is required");
+  }
+
+  return std::nullopt;
+}
+
 } // namespace
 
 UserHandler::UserHandler(UserHttpController& users,
@@ -96,21 +118,32 @@ UserHandler::UserHandler(UserHttpController& users,
     : users_(users), jwt_service_(jwt_service) {}
 
 HttpResponse UserHandler::createUser(const HttpRequest& request) {
-  const auto token = bearerTokenFrom(request);
-  if (!token.has_value()) {
-    return errorResponse(401, "Authorization Bearer token is required");
-  }
-
-  const auto user = jwt_service_.verify(*token);
-  if (!user.has_value()) {
-    return errorResponse(401, "Authorization token is invalid or expired");
-  }
-
-  if (user->role != fasc::server::controllers::dto::kAdministratorUserRole) {
-    return errorResponse(403, "Administrator role is required");
+  if (auto rejection = rejectUnlessCanManageUsers(request, jwt_service_)) {
+    return *rejection;
   }
 
   return responseFrom(users_.createUser(request.body), 201);
+}
+
+HttpResponse UserHandler::listUsers(const HttpRequest& request) {
+  if (auto rejection = rejectUnlessCanManageUsers(request, jwt_service_)) {
+    return *rejection;
+  }
+
+  return responseFrom(users_.listUsers(), 200);
+}
+
+HttpResponse UserHandler::updateUserRole(const HttpRequest& request) {
+  if (auto rejection = rejectUnlessCanManageUsers(request, jwt_service_)) {
+    return *rejection;
+  }
+
+  const auto login = request.query_params.find("login");
+  if (login == request.query_params.end() || login->second.empty()) {
+    return errorResponse(400, "User login query parameter is required");
+  }
+
+  return responseFrom(users_.updateUserRole(login->second, request.body), 200);
 }
 
 HttpResponse UserHandler::registerUser(const HttpRequest& request) {

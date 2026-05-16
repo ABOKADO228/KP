@@ -363,6 +363,10 @@ export function canMutateModule(role: UserRole, module: BusinessModule): boolean
   return role === "agriculture_admin" || module.writableBy.includes(role);
 }
 
+export function canManageUsers(role: UserRole): boolean {
+  return role === "agriculture_admin" || role === "association_director";
+}
+
 export function getAccessibleModules(role: UserRole): readonly BusinessModule[] {
   return businessModules.filter((module) => canAccessModule(role, module));
 }

@@ -76,7 +76,15 @@ Value parseNumber(std::string_view value, std::string_view setting_name) {
   }
 
   std::size_t parsed = 0;
-  const auto number = std::stoull(std::string{value}, &parsed);
+  unsigned long long number = 0;
+  try {
+    number = std::stoull(std::string{value}, &parsed);
+  } catch (const std::invalid_argument&) {
+    throw std::invalid_argument{std::string{setting_name} + " must be a number"};
+  } catch (const std::out_of_range&) {
+    throw std::out_of_range{std::string{setting_name} + " is out of range"};
+  }
+
   if (parsed != value.size()) {
     throw std::invalid_argument{std::string{setting_name} + " must be a number"};
   }
@@ -178,9 +186,7 @@ void ensureBuiltinAdministrator(UserController& user_controller) {
   std::cout << fmt::format("builtin administrator created: {}\n", login);
 }
 
-} // namespace
-
-int main(int argc, char* argv[]) {
+int runApplication(int argc, char* argv[]) {
   if (argc > 1 && std::string_view{argv[1]} == "--version") {
     printVersion();
     return 0;
@@ -210,8 +216,26 @@ int main(int argc, char* argv[]) {
               [&](const HttpRequest& request) { return user_handler.loginUser(request); });
   server.post("/users",
               [&](const HttpRequest& request) { return user_handler.createUser(request); });
+  server.get("/users",
+             [&](const HttpRequest& request) { return user_handler.listUsers(request); });
+  server.put("/users/role",
+             [&](const HttpRequest& request) { return user_handler.updateUserRole(request); });
   registerFarmEntityRoutes(server, database);
 
   std::cout << fmt::format("{} starting on {}:{}\n", kServerName, settings.address, settings.port);
   return server.run(settings);
+}
+
+} // namespace
+
+int main(int argc, char* argv[]) {
+  try {
+    return runApplication(argc, argv);
+  } catch (const std::exception& exception) {
+    std::cerr << "fatal: " << exception.what() << '\n';
+    return 1;
+  } catch (...) {
+    std::cerr << "fatal: unknown server error\n";
+    return 1;
+  }
 }

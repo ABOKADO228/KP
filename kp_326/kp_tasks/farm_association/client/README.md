@@ -1,6 +1,6 @@
 # Farm Association Client
 
-React + TypeScript клиент для HTTP API сервера из каталога `server`. Текущий интерфейс включает авторизацию/регистрацию, боковую навигацию по доступным бизнес-модулям роли пользователя, администраторский экран создания пользователей с выбором роли, таблицу ресурса, формы создания и редактирования, подтверждение удаления и сохранение сессии в `localStorage`.
+React + TypeScript клиент для HTTP API сервера из каталога `server`. Текущий интерфейс включает авторизацию/регистрацию, боковую навигацию по доступным бизнес-модулям роли пользователя, экран управления пользователями для `agriculture_admin` и `association_director`, таблицу ресурса, формы создания и редактирования, подтверждение удаления и сохранение сессии в `localStorage`.
 
 ## Запуск
 
@@ -10,16 +10,16 @@ npm install
 npm run dev
 ```
 
-По умолчанию Vite открывает приложение на `http://127.0.0.1:5173`, а API-клиент обращается к C++ серверу напрямую по `http://127.0.0.1:8080`. Backend можно переопределить через `VITE_FARM_SERVER_URL` или `VITE_API_BASE_URL`; сервер возвращает CORS/preflight-заголовки для dev-режима.
+По умолчанию Vite открывает приложение на `http://127.0.0.1:5173` и проксирует `/auth`, `/users`, `/api` и `/health` в C++ сервер `http://127.0.0.1:8080`. Backend для dev-прокси можно переопределить через `FARM_SERVER_URL`; сервер также возвращает CORS/preflight-заголовки для прямых клиентов.
 
 Сервер можно переопределить:
 
 ```powershell
-$env:VITE_FARM_SERVER_URL = "http://127.0.0.1:18081"
+$env:FARM_SERVER_URL = "http://127.0.0.1:18081"
 npm run dev
 ```
 
-Серверные запросы выполняются через `FarmApiClient`: `POST /auth/login`, `POST /auth/register`, защищенный `POST /users` для администратора, `GET /api/<resource>`, `POST /api/<resource>`, `PUT /api/<resource>/item?<key>` и `DELETE /api/<resource>/item?<key>`.
+Серверные запросы выполняются через `FarmApiClient`: `POST /auth/login`, `POST /auth/register`, защищенные `POST /users`, `GET /users`, `PUT /users/role?login=<login>` для управленческих ролей, `GET /api/<resource>`, `POST /api/<resource>`, `PUT /api/<resource>/item?<key>` и `DELETE /api/<resource>/item?<key>`.
 
 ## Проверка
 

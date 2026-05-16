@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import type { FarmApiClient } from "../api/farmApi";
 import {
+  canManageUsers,
   canMutateModule,
   getAccessibleModules,
   getRoleTitle,
@@ -33,7 +34,7 @@ export function Workspace({ api, session, onLogout }: WorkspaceProps) {
   );
   const navigationItems = useMemo(
     () => [
-      ...(session.user.role === "agriculture_admin"
+      ...(canManageUsers(session.user.role)
         ? [{ id: "user-administration", title: "Пользователи", Icon: UserCog }]
         : []),
       ...modules.map((module) => ({

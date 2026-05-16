@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 namespace fasc::server::controllers::dto {
 
@@ -17,6 +18,15 @@ struct CreateUserCommand {
 
   /// Server-side access role code.
   std::string role{kDefaultUserRole};
+};
+
+/// Command for changing an existing user's role.
+struct UpdateUserRoleCommand {
+  /// Login of the user whose role should be changed.
+  std::string login;
+
+  /// New server-side access role code.
+  std::string role;
 };
 
 /// Public self-registration command.
@@ -44,6 +54,12 @@ struct UserDto {
 
   /// Server-side access role code.
   std::string role{kDefaultUserRole};
+};
+
+/// Application-layer list of users.
+struct UserListDto {
+  /// Users known to the application.
+  std::vector<UserDto> users;
 };
 
 /// Successful registration or login result.

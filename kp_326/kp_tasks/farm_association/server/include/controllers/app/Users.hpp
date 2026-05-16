@@ -13,11 +13,19 @@ using fasc::server::controllers::dto::AuthResultDto;
 using fasc::server::controllers::dto::CreateUserCommand;
 using fasc::server::controllers::dto::LoginUserCommand;
 using fasc::server::controllers::dto::RegisterUserCommand;
+using fasc::server::controllers::dto::UpdateUserRoleCommand;
 using fasc::server::controllers::dto::UserDto;
+using fasc::server::controllers::dto::UserListDto;
 using fasc::extended::fpp::Result;
 
 ///Результат создания пользователя.
 using CreateUserResult = Result<UserDto, UserError>;
+
+///Результат получения списка пользователей.
+using UserListResult = Result<UserListDto, UserError>;
+
+///Результат изменения роли пользователя.
+using UpdateUserRoleResult = Result<UserDto, UserError>;
 
 ///Результат регистрации или авторизации пользователя.
 using AuthResult = Result<AuthResultDto, UserError>;
@@ -38,6 +46,15 @@ public:
   ///@param command команда с данными нового пользователя.
   ///@returns результат с DTO созданного пользователя или предметной ошибкой.
   CreateUserResult createUser(CreateUserCommand command);
+
+  ///Возвращает всех пользователей.
+  ///@returns результат со списком пользователей или предметной ошибкой.
+  UserListResult listUsers();
+
+  ///Изменяет роль существующего пользователя.
+  ///@param command команда с логином пользователя и новой ролью.
+  ///@returns результат с обновленным DTO пользователя или предметной ошибкой.
+  UpdateUserRoleResult updateUserRole(UpdateUserRoleCommand command);
 
   ///Регистрирует пользователя и выпускает JWT.
   ///@param command команда регистрации.

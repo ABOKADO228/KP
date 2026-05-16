@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 
 import { FarmApiClient } from "./api/farmApi";
 import { AuthScreen } from "./components/AuthScreen";
@@ -14,19 +14,24 @@ function App() {
   const api = useMemo(() => new FarmApiClient(), []);
   const [session, setSession] = useState<ClientSession | null>(() => loadSession());
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     api.setToken(session?.token ?? null);
   }, [api, session]);
 
-  const handleSessionChange = useCallback((nextSession: ClientSession) => {
-    saveSession(nextSession);
-    setSession(nextSession);
-  }, []);
+  const handleSessionChange = useCallback(
+    (nextSession: ClientSession) => {
+      api.setToken(nextSession.token);
+      saveSession(nextSession);
+      setSession(nextSession);
+    },
+    [api],
+  );
 
   const handleLogout = useCallback(() => {
+    api.setToken(null);
     clearSession();
     setSession(null);
-  }, []);
+  }, [api]);
 
   if (!session) {
     return <AuthScreen api={api} onAuthenticated={handleSessionChange} />;

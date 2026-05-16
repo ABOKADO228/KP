@@ -1,9 +1,7 @@
 import type { UserRole } from "../domain/roles";
 
 const defaultApiBaseUrl =
-  import.meta.env.VITE_API_BASE_URL ??
-  import.meta.env.VITE_FARM_SERVER_URL ??
-  "http://127.0.0.1:8080";
+  import.meta.env.VITE_API_BASE_URL ?? "";
 
 export type ResourceRow = Record<string, unknown>;
 
@@ -16,6 +14,10 @@ export interface AuthResponse {
   token: string;
   token_type: string;
   user: AuthenticatedUser;
+}
+
+export interface UserListResponse {
+  users: AuthenticatedUser[];
 }
 
 export interface Credentials {
@@ -66,6 +68,18 @@ export class FarmApiClient {
 
   createUser(user: CreateUserRequest): Promise<AuthenticatedUser> {
     return this.post<AuthenticatedUser>("/users", user);
+  }
+
+  listUsers(): Promise<UserListResponse> {
+    return this.request<UserListResponse>("/users");
+  }
+
+  updateUserRole(login: string, role: UserRole): Promise<AuthenticatedUser> {
+    const searchParams = new URLSearchParams({ login });
+    return this.request<AuthenticatedUser>(`/users/role?${searchParams.toString()}`, {
+      method: "PUT",
+      body: JSON.stringify({ role }),
+    });
   }
 
   listResource<T extends ResourceRow = ResourceRow>(

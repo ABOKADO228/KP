@@ -43,54 +43,92 @@ if(WIN32)
     farm_require_path("${OPENSSL_INCLUDE_DIR}/openssl/evp.h" "OpenSSL headers")
     set(OPENSSL_CRYPTO_LIBRARY "${FARM_SERVER_DEPS_DIR}/postgresql/lib/libcrypto.lib")
     farm_require_path("${OPENSSL_CRYPTO_LIBRARY}" "OpenSSL libcrypto import library")
+    farm_add_imported_library(FarmOpenSSL::Crypto "${OPENSSL_CRYPTO_LIBRARY}" "${OPENSSL_INCLUDE_DIR}")
 else()
-    set(OPENSSL_INCLUDE_DIR "${FARM_SERVER_DEPS_DIR}/openssl/include")
-    farm_require_path("${OPENSSL_INCLUDE_DIR}/openssl/evp.h" "OpenSSL headers")
-    farm_find_local_library(OPENSSL_CRYPTO_LIBRARY "${FARM_SERVER_DEPS_DIR}" "libcrypto"
-        REQUIRED
-        NAMES crypto libcrypto
-        PATHS
-            "${FARM_SERVER_DEPS_DIR}/postgresql/lib"
-            "${FARM_SERVER_DEPS_DIR}/openssl/lib")
+    set(FARM_SERVER_LOCAL_OPENSSL_INCLUDE_DIR "${FARM_SERVER_DEPS_DIR}/openssl/include")
+    if(EXISTS "${FARM_SERVER_LOCAL_OPENSSL_INCLUDE_DIR}/openssl/evp.h")
+        set(OPENSSL_INCLUDE_DIR "${FARM_SERVER_LOCAL_OPENSSL_INCLUDE_DIR}")
+        farm_find_local_library(OPENSSL_CRYPTO_LIBRARY "${FARM_SERVER_DEPS_DIR}" "libcrypto"
+            REQUIRED
+            NAMES crypto libcrypto
+            PATHS
+                "${FARM_SERVER_DEPS_DIR}/postgresql/lib"
+                "${FARM_SERVER_DEPS_DIR}/openssl/lib")
+        farm_add_imported_library(FarmOpenSSL::Crypto "${OPENSSL_CRYPTO_LIBRARY}" "${OPENSSL_INCLUDE_DIR}")
+    else()
+        find_package(OpenSSL REQUIRED COMPONENTS Crypto)
+        add_library(FarmOpenSSL::Crypto INTERFACE IMPORTED)
+        target_link_libraries(FarmOpenSSL::Crypto INTERFACE OpenSSL::Crypto)
+    endif()
 endif()
-farm_add_imported_library(FarmOpenSSL::Crypto "${OPENSSL_CRYPTO_LIBRARY}" "${OPENSSL_INCLUDE_DIR}")
 
-farm_find_local_program(FARM_SERVER_ODB_COMPILER "${FARM_SERVER_DEPS_DIR}" "odb")
 set(FARM_SERVER_USER_MODEL "${CMAKE_CURRENT_SOURCE_DIR}/include/persistence/User.hpp")
-set(FARM_SERVER_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
-set(FARM_SERVER_GENERATED_PERSISTENCE_DIR "${FARM_SERVER_GENERATED_DIR}/persistence")
-set(FARM_SERVER_USER_ODB_CXX "${FARM_SERVER_GENERATED_PERSISTENCE_DIR}/user-odb.cxx")
-set(FARM_SERVER_USER_ODB_HXX "${FARM_SERVER_GENERATED_PERSISTENCE_DIR}/user-odb.hxx")
-set(FARM_SERVER_USER_ODB_IXX "${FARM_SERVER_GENERATED_PERSISTENCE_DIR}/user-odb.ixx")
-set(FARM_SERVER_USER_SQL "${FARM_SERVER_GENERATED_PERSISTENCE_DIR}/user.sql")
+if(WIN32)
+    find_program(FARM_SERVER_ODB_COMPILER
+        NAMES odb.exe odb
+        HINTS
+            "${FARM_SERVER_DEPS_DIR}/odb/bin/${FARM_SERVER_PLATFORM}"
+            "${FARM_SERVER_DEPS_DIR}/odb/bin"
+        NO_DEFAULT_PATH)
+else()
+    find_program(FARM_SERVER_ODB_COMPILER
+        NAMES odb
+        HINTS
+            "${FARM_SERVER_DEPS_DIR}/odb/bin/${FARM_SERVER_PLATFORM}"
+            "${FARM_SERVER_DEPS_DIR}/odb/bin"
+        NO_DEFAULT_PATH)
+endif()
 
-add_custom_command(
-    OUTPUT
+if(FARM_SERVER_ODB_COMPILER)
+    message(STATUS "Farm server ODB compiler: ${FARM_SERVER_ODB_COMPILER}")
+    set(FARM_SERVER_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
+    set(FARM_SERVER_GENERATED_PERSISTENCE_DIR "${FARM_SERVER_GENERATED_DIR}/persistence")
+    set(FARM_SERVER_USER_ODB_CXX "${FARM_SERVER_GENERATED_PERSISTENCE_DIR}/user-odb.cxx")
+    set(FARM_SERVER_USER_ODB_HXX "${FARM_SERVER_GENERATED_PERSISTENCE_DIR}/user-odb.hxx")
+    set(FARM_SERVER_USER_ODB_IXX "${FARM_SERVER_GENERATED_PERSISTENCE_DIR}/user-odb.ixx")
+    set(FARM_SERVER_USER_SQL "${FARM_SERVER_GENERATED_PERSISTENCE_DIR}/user.sql")
+
+    add_custom_command(
+        OUTPUT
+            "${FARM_SERVER_USER_ODB_CXX}"
+            "${FARM_SERVER_USER_ODB_HXX}"
+            "${FARM_SERVER_USER_ODB_IXX}"
+            "${FARM_SERVER_USER_SQL}"
+        COMMAND "${CMAKE_COMMAND}" -E make_directory "${FARM_SERVER_GENERATED_PERSISTENCE_DIR}"
+        COMMAND "${FARM_SERVER_ODB_COMPILER}"
+            --std c++14
+            --database pgsql
+            --generate-query
+            --generate-schema
+            --output-dir "${FARM_SERVER_GENERATED_PERSISTENCE_DIR}"
+            --input-name user
+            "${FARM_SERVER_USER_MODEL}"
+        DEPENDS
+            "${FARM_SERVER_USER_MODEL}"
+            "${FARM_SERVER_ODB_COMPILER}"
+        COMMENT "Generating ODB mapping for persistence/User.hpp"
+        VERBATIM)
+
+    set_source_files_properties(
         "${FARM_SERVER_USER_ODB_CXX}"
         "${FARM_SERVER_USER_ODB_HXX}"
         "${FARM_SERVER_USER_ODB_IXX}"
         "${FARM_SERVER_USER_SQL}"
-    COMMAND "${CMAKE_COMMAND}" -E make_directory "${FARM_SERVER_GENERATED_PERSISTENCE_DIR}"
-    COMMAND "${FARM_SERVER_ODB_COMPILER}"
-        --std c++14
-        --database pgsql
-        --generate-query
-        --generate-schema
-        --output-dir "${FARM_SERVER_GENERATED_PERSISTENCE_DIR}"
-        --input-name user
-        "${FARM_SERVER_USER_MODEL}"
-    DEPENDS
-        "${FARM_SERVER_USER_MODEL}"
-        "${FARM_SERVER_ODB_COMPILER}"
-    COMMENT "Generating ODB mapping for persistence/User.hpp"
-    VERBATIM)
+        PROPERTIES GENERATED TRUE)
+else()
+    message(STATUS "Farm server ODB compiler not found; using checked-in generated persistence files")
+    set(FARM_SERVER_GENERATED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/generated")
+    set(FARM_SERVER_GENERATED_PERSISTENCE_DIR "${FARM_SERVER_GENERATED_DIR}/persistence")
+    set(FARM_SERVER_USER_ODB_CXX "${FARM_SERVER_GENERATED_PERSISTENCE_DIR}/user-odb.cxx")
+    set(FARM_SERVER_USER_ODB_HXX "${FARM_SERVER_GENERATED_PERSISTENCE_DIR}/user-odb.hxx")
+    set(FARM_SERVER_USER_ODB_IXX "${FARM_SERVER_GENERATED_PERSISTENCE_DIR}/user-odb.ixx")
+    set(FARM_SERVER_USER_SQL "${FARM_SERVER_GENERATED_PERSISTENCE_DIR}/user.sql")
 
-set_source_files_properties(
-    "${FARM_SERVER_USER_ODB_CXX}"
-    "${FARM_SERVER_USER_ODB_HXX}"
-    "${FARM_SERVER_USER_ODB_IXX}"
-    "${FARM_SERVER_USER_SQL}"
-    PROPERTIES GENERATED TRUE)
+    farm_require_path("${FARM_SERVER_USER_ODB_CXX}" "checked-in ODB user source")
+    farm_require_path("${FARM_SERVER_USER_ODB_HXX}" "checked-in ODB user header")
+    farm_require_path("${FARM_SERVER_USER_ODB_IXX}" "checked-in ODB user inline header")
+    farm_require_path("${FARM_SERVER_USER_SQL}" "checked-in ODB user SQL schema")
+endif()
 
 set(FARM_SERVER_CORE_SOURCES
         src/controllers/app/Users.cpp
@@ -175,6 +213,23 @@ if(FARM_SERVER_WITH_ODB)
 
     if(WIN32 AND EXISTS "${FARM_SERVER_DEPS_DIR}/postgresql/lib/libpq.lib")
         set(POSTGRESQL_LIBRARY "${FARM_SERVER_DEPS_DIR}/postgresql/lib/libpq.lib")
+        farm_add_imported_library(PostgreSQL::pq "${POSTGRESQL_LIBRARY}" "${POSTGRESQL_INCLUDE_DIR}")
+    elseif(NOT WIN32)
+        farm_find_local_library(POSTGRESQL_LIBRARY "${FARM_SERVER_DEPS_DIR}" "libpq"
+            NAMES pq libpq pq.lib libpq.lib
+            PATHS
+                "${FARM_SERVER_DEPS_DIR}/postgresql/lib"
+                "${FARM_SERVER_DEPS_DIR}/libpq/lib")
+
+        if(POSTGRESQL_LIBRARY)
+            set(POSTGRESQL_INCLUDE_DIR "${FARM_SERVER_DEPS_DIR}/postgresql/include")
+            farm_require_path("${POSTGRESQL_INCLUDE_DIR}/libpq-fe.h" "PostgreSQL libpq headers")
+            farm_add_imported_library(PostgreSQL::pq "${POSTGRESQL_LIBRARY}" "${POSTGRESQL_INCLUDE_DIR}")
+        else()
+            find_package(PostgreSQL REQUIRED)
+            add_library(PostgreSQL::pq INTERFACE IMPORTED)
+            target_link_libraries(PostgreSQL::pq INTERFACE PostgreSQL::PostgreSQL)
+        endif()
     else()
         farm_find_local_library(POSTGRESQL_LIBRARY "${FARM_SERVER_DEPS_DIR}" "libpq"
             REQUIRED
@@ -182,11 +237,11 @@ if(FARM_SERVER_WITH_ODB)
             PATHS
                 "${FARM_SERVER_DEPS_DIR}/postgresql/lib"
                 "${FARM_SERVER_DEPS_DIR}/libpq/lib")
+        farm_add_imported_library(PostgreSQL::pq "${POSTGRESQL_LIBRARY}" "${POSTGRESQL_INCLUDE_DIR}")
     endif()
 
     farm_add_imported_library(ODB::odb "${ODB_LIBRARY}" "${ODB_INCLUDE_DIR}")
     farm_add_imported_library(ODB::pgsql "${ODB_PGSQL_LIBRARY}" "${ODB_PGSQL_INCLUDE_DIR}")
-    farm_add_imported_library(PostgreSQL::pq "${POSTGRESQL_LIBRARY}" "${POSTGRESQL_INCLUDE_DIR}")
 
     if(TARGET farm_odb_local_dependencies)
         add_dependencies(farm_association_server_core farm_odb_local_dependencies)

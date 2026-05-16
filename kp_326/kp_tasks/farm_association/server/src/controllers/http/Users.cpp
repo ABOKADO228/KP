@@ -15,10 +15,12 @@ namespace fasc::server::controllers::http {
 using fasc::server::controllers::dto::CreateUserCommand;
 using fasc::server::controllers::dto::LoginUserCommand;
 using fasc::server::controllers::dto::RegisterUserCommand;
+using fasc::server::controllers::dto::UpdateUserRoleCommand;
 using fasc::server::controllers::dto::UserDto;
 using fasc::server::views::AuthView;
 using fasc::server::views::ErrorView;
 using fasc::server::views::ErrorViewCode;
+using fasc::server::views::UserListView;
 using fasc::server::views::UserView;
 
 UserHttpController::UserHttpController(UserController& users) : users_(users) {}
@@ -30,6 +32,38 @@ UserViewResult UserHttpController::createUser(std::string_view body) {
 
     // Маппим app result в view result.
     const auto result = users_.createUser(std::move(command));
+    if (result.hasError()) {
+      return UserViewResult::failure(errorView(result.error()));
+    }
+
+    const UserDto& user = result.success();
+    return UserViewResult::success(UserView{user.login, user.role});
+  } catch (const std::exception& exception) {
+    return UserViewResult::failure(ErrorView{ErrorViewCode::BadRequest, exception.what()});
+  }
+}
+
+UserListViewResult UserHttpController::listUsers() {
+  const auto result = users_.listUsers();
+  if (result.hasError()) {
+    return UserListViewResult::failure(errorView(result.error()));
+  }
+
+  UserListView view;
+  view.users.reserve(result.success().users.size());
+  for (const UserDto& user : result.success().users) {
+    view.users.push_back(UserView{user.login, user.role});
+  }
+
+  return UserListViewResult::success(std::move(view));
+}
+
+UserViewResult UserHttpController::updateUserRole(std::string login, std::string_view body) {
+  try {
+    auto command = nlohmann::json::parse(body).get<UpdateUserRoleCommand>();
+    command.login = std::move(login);
+
+    const auto result = users_.updateUserRole(std::move(command));
     if (result.hasError()) {
       return UserViewResult::failure(errorView(result.error()));
     }
@@ -85,6 +119,8 @@ ErrorView UserHttpController::errorView(const fasc::server::controllers::app::Us
     return ErrorView{ErrorViewCode::BadRequest, error.message};
   case fasc::server::controllers::app::UserErrorCode::Unauthorized:
     return ErrorView{ErrorViewCode::Unauthorized, error.message};
+  case fasc::server::controllers::app::UserErrorCode::NotFound:
+    return ErrorView{ErrorViewCode::NotFound, error.message};
   case fasc::server::controllers::app::UserErrorCode::Conflict:
     return ErrorView{ErrorViewCode::Conflict, error.message};
   case fasc::server::controllers::app::UserErrorCode::PersistenceFailure:

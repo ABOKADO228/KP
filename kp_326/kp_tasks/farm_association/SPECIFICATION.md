@@ -15,7 +15,7 @@
 - JSON через `nlohmann/json`.
 - PostgreSQL/ODB слой через `fasc::server::database::Database`.
 - Обертка транзакций `fasc::server::database::Transaction`.
-- Пользовательские маршруты `POST /auth/register`, `POST /auth/login`, `POST /users`.
+- Пользовательские маршруты `POST /auth/register`, `POST /auth/login`, `POST /users`, `GET /users`, `PUT /users/role`.
 - CRUD-контроллеры, handlers, views и marshalling для таблиц предметной области из SQL-дампа.
 - JWT с claim `sub` и `role`, хеширование паролей в `fasc::server::security`.
 
@@ -257,9 +257,11 @@ GET  /health
 POST /auth/register
 POST /auth/login
 POST /users
+GET  /users
+PUT  /users/role?login=<login>
 ```
 
-Auth-запросы используют JSON с `login` и `password`. `/auth/register` создает пользователя с ролью `farm_worker`; `/users` дополнительно принимает `role` и доступен только с `Authorization: Bearer <token>` администратора `agriculture_admin`. Успешный auth-ответ:
+Auth-запросы используют JSON с `login` и `password`. `/auth/register` создает пользователя с ролью `farm_worker`. Управление пользователями доступно ролям `agriculture_admin` и `association_director`: `POST /users` принимает `{ "login", "password", "role" }`, `GET /users` возвращает `{ "users": [...] }`, `PUT /users/role?login=<login>` принимает `{ "role": "<role>" }`. Все управленческие маршруты требуют `Authorization: Bearer <token>`. Успешный auth-ответ:
 
 ```json
 {
@@ -347,7 +349,7 @@ ctest --test-dir server\build --output-on-failure
 
 ## Порядок реализации
 
-Текущий этап уже содержит общий CRUD-каркас и маршруты для всех таблиц предметной области из дампа. Клиентский auth-контракт синхронизирован с серверным `login`/`role`, а административное создание пользователей защищено JWT администратора. Дальнейший порядок работ:
+Текущий этап уже содержит общий CRUD-каркас и маршруты для всех таблиц предметной области из дампа. Клиентский auth-контракт синхронизирован с серверным `login`/`role`, а управление пользователями защищено JWT ролей `agriculture_admin` и `association_director`. Дальнейший порядок работ:
 
 1. Добавить проверку `Authorization: Bearer <token>` и server-side RBAC для предметных `/api/*` маршрутов.
 2. Добавить endpoint `/auth/me` для восстановления сессии по JWT.

@@ -74,7 +74,9 @@ FARM_ADMIN_PASSWORD
 GET  /health
 POST /auth/register   body: {"login":"alex","password":"password123"}
 POST /auth/login      body: {"login":"alex","password":"password123"}
-POST /users           Authorization: Bearer <admin-jwt>, body: {"login":"owner","password":"password123","role":"farm_owner"}
+POST /users           Authorization: Bearer <manager-jwt>, body: {"login":"owner","password":"password123","role":"farm_owner"}
+GET  /users           Authorization: Bearer <manager-jwt>
+PUT  /users/role?login=owner  Authorization: Bearer <manager-jwt>, body: {"role":"agronomist"}
 GET  /api/<resource>
 POST /api/<resource>
 GET  /api/<resource>/item?<key>
@@ -82,7 +84,7 @@ PUT  /api/<resource>/item?<key>
 DELETE /api/<resource>/item?<key>
 ```
 
-Auth-ответ содержит `token`, `token_type` и пользователя в форме `{ "login": "...", "role": "..." }`. Регистрация через `/auth/register` выдает роль `farm_worker`; `/users` предназначен для административного создания пользователя с явной ролью и требует JWT роли `agriculture_admin`.
+Auth-ответ содержит `token`, `token_type` и пользователя в форме `{ "login": "...", "role": "..." }`. Регистрация через `/auth/register` выдает роль `farm_worker`; `/users` предназначен для просмотра пользователей, создания пользователя с явной ролью и изменения ролей. Эти маршруты требуют JWT роли `agriculture_admin` или `association_director`.
 
 При старте сервер создает встроенного администратора `admin` / `admin12345` с ролью `agriculture_admin`, если `FARM_ADMIN_ENABLED` не выключен. Логин и пароль переопределяются через `FARM_ADMIN_LOGIN` и `FARM_ADMIN_PASSWORD`.
 

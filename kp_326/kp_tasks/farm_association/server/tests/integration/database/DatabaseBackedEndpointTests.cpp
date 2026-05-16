@@ -33,6 +33,8 @@ namespace {
 namespace http = boost::beast::http;
 
 using fasc::server::controllers::app::UserController;
+using fasc::server::controllers::dto::CreateUserCommand;
+using fasc::server::controllers::dto::UserDto;
 using fasc::server::controllers::http::UserHttpController;
 using fasc::server::core::BeastResponse;
 using fasc::server::core::HttpRequest;
@@ -96,6 +98,28 @@ BeastResponse dispatchAuthRequest(Database& database,
       makeBeastRequest(method, std::move(target), std::move(body)));
 }
 
+BeastResponse dispatchUserManagementRequest(Database& database,
+                                            fasc::server::security::JwtService& jwtService,
+                                            http::verb method,
+                                            std::string target,
+                                            std::string body,
+                                            UserDto actor) {
+  fasc::server::security::PasswordHasher passwordHasher;
+  UserController userController{database, passwordHasher, jwtService};
+  UserHttpController userHttpController{userController};
+  UserHandler userHandler{userHttpController, jwtService};
+
+  fasc::server::core::AppRouter router;
+  router.get("/users", [&](const HttpRequest& request) { return userHandler.listUsers(request); });
+  router.put("/users/role",
+             [&](const HttpRequest& request) { return userHandler.updateUserRole(request); });
+
+  auto request = makeBeastRequest(method, std::move(target), std::move(body));
+  request.set(http::field::authorization, "Bearer " + jwtService.issue(std::move(actor)));
+
+  return RequestDispatcher{router}.dispatch(request);
+}
+
 } // namespace
 
 TEST(DatabaseBackedEndpointTests, FarmListReadsSeedDataFromFascTest) {
@@ -133,4 +157,58 @@ TEST(DatabaseBackedEndpointTests, AuthRegisterAndLoginRoundTripThroughFascTest) 
   EXPECT_EQ(loginBody.at("user").at("role"), registerBody.at("user").at("role"));
   const auto token = loginBody.at("token").get<std::string>();
   EXPECT_EQ(std::count(token.begin(), token.end(), '.'), 2);
+}
+
+TEST(DatabaseBackedEndpointTests, UserManagerCanListUsersAndChangeRoles) {
+  auto database = createResetIntegrationDatabase();
+  fasc::server::security::PasswordHasher passwordHasher;
+  fasc::server::security::JwtService jwtService{"integration-test-secret"};
+  UserController userController{database, passwordHasher, jwtService};
+
+  ASSERT_FALSE(userController
+                   .createUser(CreateUserCommand{
+                       "director_user",
+                       "password123",
+                       "association_director",
+                   })
+                   .hasError());
+  ASSERT_FALSE(userController
+                   .createUser(CreateUserCommand{
+                       "managed_worker",
+                       "password123",
+                       "farm_worker",
+                   })
+                   .hasError());
+
+  const UserDto director{"director_user", "association_director"};
+  const BeastResponse listResponse =
+      dispatchUserManagementRequest(database,
+                                    jwtService,
+                                    http::verb::get,
+                                    "/users",
+                                    {},
+                                    director);
+  ASSERT_EQ(listResponse.result(), http::status::ok) << listResponse.body();
+  const auto listBody = nlohmann::json::parse(listResponse.body());
+  ASSERT_TRUE(listBody.at("users").is_array());
+  const auto listed = listBody.at("users");
+  EXPECT_NE(std::find_if(listed.begin(),
+                         listed.end(),
+                         [](const nlohmann::json& user) {
+                           return user.at("login") == "managed_worker" &&
+                                  user.at("role") == "farm_worker";
+                         }),
+            listed.end());
+
+  const BeastResponse updateResponse =
+      dispatchUserManagementRequest(database,
+                                    jwtService,
+                                    http::verb::put,
+                                    "/users/role?login=managed_worker",
+                                    R"({"role":"agronomist"})",
+                                    director);
+  ASSERT_EQ(updateResponse.result(), http::status::ok) << updateResponse.body();
+  const auto updateBody = nlohmann::json::parse(updateResponse.body());
+  EXPECT_EQ(updateBody.at("login"), "managed_worker");
+  EXPECT_EQ(updateBody.at("role"), "agronomist");
 }

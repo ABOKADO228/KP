@@ -18,6 +18,11 @@ inline void from_json(const nlohmann::json& json, CreateUserCommand& command) {
   command.role = json.value("role", std::string{kDefaultUserRole});
 }
 
+/// Converts a JSON request to an update-role command.
+inline void from_json(const nlohmann::json& json, UpdateUserRoleCommand& command) {
+  command.role = json.at("role").get<std::string>();
+}
+
 /// Converts a JSON request to a self-registration command.
 inline void from_json(const nlohmann::json& json, RegisterUserCommand& command) {
   command.login = json.at("login").get<std::string>();
@@ -45,6 +50,11 @@ inline void to_json(nlohmann::json& json, const UserView& view) {
       {"login", view.login},
       {"role", view.role},
   };
+}
+
+/// Converts a public user-list view to JSON.
+inline void to_json(nlohmann::json& json, const UserListView& view) {
+  json = nlohmann::json{{"users", view.users}};
 }
 
 /// Converts a public auth view to JSON.

@@ -19,11 +19,14 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace {
 
 using fasc::server::tests::utils::expectJsonStringField;
 using fasc::server::controllers::dto::CreateUserCommand;
+using fasc::server::controllers::dto::UpdateUserRoleCommand;
+using fasc::server::views::UserListView;
 using fasc::server::views::UserView;
 
 TEST(UserMarshallingTests, ReadsCreateUserCommandFromJson) {
@@ -49,6 +52,28 @@ TEST(UserMarshallingTests, WritesUserViewToJson) {
 
   expectJsonStringField(body, "login", "alex");
   expectJsonStringField(body, "role", "farm_worker");
+}
+
+TEST(UserMarshallingTests, ReadsUpdateUserRoleCommandFromJson) {
+  const auto json = nlohmann::json{{"role", "agronomist"}};
+
+  const UpdateUserRoleCommand command = json.get<UpdateUserRoleCommand>();
+
+  EXPECT_EQ(command.role, "agronomist");
+}
+
+TEST(UserMarshallingTests, WritesUserListViewToJson) {
+  const UserListView view{std::vector{
+      UserView{"admin", "agriculture_admin"},
+      UserView{"worker", "farm_worker"},
+  }};
+
+  const auto json = nlohmann::json::parse(nlohmann::json(view).dump());
+
+  ASSERT_TRUE(json.at("users").is_array());
+  ASSERT_EQ(json.at("users").size(), 2U);
+  EXPECT_EQ(json.at("users").at(0).at("login"), "admin");
+  EXPECT_EQ(json.at("users").at(1).at("role"), "farm_worker");
 }
 
 TEST(UserMarshallingTests, MapsFarmRoleEntityToRowView) {

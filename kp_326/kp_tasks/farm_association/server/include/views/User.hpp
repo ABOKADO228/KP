@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 namespace fasc::server::views {
 
@@ -8,6 +9,11 @@ namespace fasc::server::views {
 struct UserView {
   std::string login{};
   std::string role{};
+};
+
+/// Public list of application users.
+struct UserListView {
+  std::vector<UserView> users;
 };
 
 } // namespace fasc::server::views

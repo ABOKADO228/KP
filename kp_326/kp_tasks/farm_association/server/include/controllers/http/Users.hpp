@@ -14,10 +14,14 @@ using fasc::server::controllers::app::UserController;
 using fasc::extended::fpp::Result;
 using fasc::server::views::AuthView;
 using fasc::server::views::ErrorView;
+using fasc::server::views::UserListView;
 using fasc::server::views::UserView;
 
 ///Результат подготовки view для создания пользователя.
 using UserViewResult = Result<UserView, ErrorView>;
+
+///Результат подготовки view со списком пользователей.
+using UserListViewResult = Result<UserListView, ErrorView>;
 
 ///Результат подготовки view для регистрации или авторизации.
 using AuthViewResult = Result<AuthView, ErrorView>;
@@ -34,6 +38,16 @@ public:
   ///@param body JSON-тело запроса.
   ///@returns результат с публичным view пользователя или error view.
   UserViewResult createUser(std::string_view body);
+
+  ///Возвращает пользователей.
+  ///@returns результат с публичным списком пользователей или error view.
+  UserListViewResult listUsers();
+
+  ///Изменяет роль пользователя.
+  ///@param login логин пользователя из query string.
+  ///@param body JSON-тело с новой ролью.
+  ///@returns результат с публичным view пользователя или error view.
+  UserViewResult updateUserRole(std::string login, std::string_view body);
 
   ///Регистрирует пользователя по JSON-телу запроса.
   ///@param body JSON-тело запроса.

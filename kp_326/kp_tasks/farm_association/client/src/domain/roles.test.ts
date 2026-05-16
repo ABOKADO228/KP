@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   businessModules,
   canAccessModule,
+  canManageUsers,
   canMutateModule,
   getAccessibleModules,
 } from "./roles";
@@ -41,5 +42,11 @@ describe("role access map", () => {
 
     expect(associationModule).toBeDefined();
     expect(canAccessModule("farm_worker", associationModule!)).toBe(false);
+  });
+
+  it("allows senior roles to manage application users", () => {
+    expect(canManageUsers("agriculture_admin")).toBe(true);
+    expect(canManageUsers("association_director")).toBe(true);
+    expect(canManageUsers("farm_worker")).toBe(false);
   });
 });
