@@ -151,6 +151,15 @@ Manjaro:
 ./server/build/farm_association_server
 ```
 
+Сборка и запуск сервера на Manjaro, если зависимости и PostgreSQL уже подготовлены:
+
+```bash
+sudo systemctl enable --now postgresql
+cmake -S server -B server/build -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug
+cmake --build server/build --parallel
+./server/build/farm_association_server
+```
+
 По умолчанию сервер слушает `0.0.0.0:8080`. Параметры HTTP-сервера можно переопределить через `FARM_SERVER_ADDRESS`, `FARM_SERVER_PORT`, `FARM_SERVER_THREADS`, `FARM_SERVER_BODY_LIMIT`, `FARM_SERVER_TIMEOUT_SECONDS`, `FARM_SERVER_LISTEN_BACKLOG`.
 
 При старте сервер создает встроенного администратора, если он еще не существует:
