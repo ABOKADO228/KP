@@ -24,7 +24,36 @@ download() {
   fi
 
   echo "download $url"
-  curl -L "$url" -o "$output"
+  local partial="${output}.part"
+  rm -f "$partial"
+  curl --fail --location --retry 3 --retry-delay 2 "$url" -o "$partial"
+  mv "$partial" "$output"
+}
+
+ensure_zip() {
+  local url="$1"
+  local archive="$2"
+
+  download "$url" "$archive"
+  if ! unzip -tq "$archive" >/dev/null; then
+    echo "archive is corrupted, downloading again: $archive" >&2
+    rm -f "$archive"
+    download "$url" "$archive"
+    unzip -tq "$archive" >/dev/null
+  fi
+}
+
+ensure_tar_bz2() {
+  local url="$1"
+  local archive="$2"
+
+  download "$url" "$archive"
+  if ! tar -tjf "$archive" >/dev/null; then
+    echo "archive is corrupted, downloading again: $archive" >&2
+    rm -f "$archive"
+    download "$url" "$archive"
+    tar -tjf "$archive" >/dev/null
+  fi
 }
 
 extract_zip() {
@@ -77,25 +106,25 @@ if command -v pacman >/dev/null 2>&1; then
   fi
 fi
 
-download "https://archives.boost.io/release/1.90.0/source/boost_1_90_0.zip" "$DOWNLOADS/boost_1_90_0.zip"
+ensure_zip "https://archives.boost.io/release/1.90.0/source/boost_1_90_0.zip" "$DOWNLOADS/boost_1_90_0.zip"
 extract_zip "$DOWNLOADS/boost_1_90_0.zip" "$SOURCES/boost_1_90_0"
 
-download "https://github.com/nlohmann/json/archive/refs/tags/v3.12.0.zip" "$DOWNLOADS/nlohmann-json-3.12.0.zip"
+ensure_zip "https://github.com/nlohmann/json/archive/refs/tags/v3.12.0.zip" "$DOWNLOADS/nlohmann-json-3.12.0.zip"
 extract_zip "$DOWNLOADS/nlohmann-json-3.12.0.zip" "$SOURCES/json-3.12.0"
 
-download "https://github.com/fmtlib/fmt/archive/refs/tags/12.1.0.zip" "$DOWNLOADS/fmt-12.1.0.zip"
+ensure_zip "https://github.com/fmtlib/fmt/archive/refs/tags/12.1.0.zip" "$DOWNLOADS/fmt-12.1.0.zip"
 extract_zip "$DOWNLOADS/fmt-12.1.0.zip" "$SOURCES/fmt-12.1.0"
 
-download "https://github.com/google/googletest/archive/refs/tags/v1.17.0.zip" "$DOWNLOADS/googletest-1.17.0.zip"
+ensure_zip "https://github.com/google/googletest/archive/refs/tags/v1.17.0.zip" "$DOWNLOADS/googletest-1.17.0.zip"
 extract_zip "$DOWNLOADS/googletest-1.17.0.zip" "$SOURCES/googletest-1.17.0"
 
-download "https://www.codesynthesis.com/download/odb/2.4/odb-2.4.0-x86_64-linux-gnu.tar.bz2" "$DOWNLOADS/odb-2.4.0-x86_64-linux-gnu.tar.bz2"
+ensure_tar_bz2 "https://www.codesynthesis.com/download/odb/2.4/odb-2.4.0-x86_64-linux-gnu.tar.bz2" "$DOWNLOADS/odb-2.4.0-x86_64-linux-gnu.tar.bz2"
 extract_tar_bz2 "$DOWNLOADS/odb-2.4.0-x86_64-linux-gnu.tar.bz2" "$SOURCES/odb-2.4.0-x86_64-linux-gnu"
 
-download "https://www.codesynthesis.com/download/odb/2.4/libodb-2.4.0.tar.bz2" "$DOWNLOADS/libodb-2.4.0.tar.bz2"
+ensure_tar_bz2 "https://www.codesynthesis.com/download/odb/2.4/libodb-2.4.0.tar.bz2" "$DOWNLOADS/libodb-2.4.0.tar.bz2"
 extract_tar_bz2 "$DOWNLOADS/libodb-2.4.0.tar.bz2" "$SOURCES/libodb-2.4.0"
 
-download "https://www.codesynthesis.com/download/odb/2.4/libodb-pgsql-2.4.0.tar.bz2" "$DOWNLOADS/libodb-pgsql-2.4.0.tar.bz2"
+ensure_tar_bz2 "https://www.codesynthesis.com/download/odb/2.4/libodb-pgsql-2.4.0.tar.bz2" "$DOWNLOADS/libodb-pgsql-2.4.0.tar.bz2"
 extract_tar_bz2 "$DOWNLOADS/libodb-pgsql-2.4.0.tar.bz2" "$SOURCES/libodb-pgsql-2.4.0"
 
 rm -rf "$DEPS/boost" "$DEPS/nlohmann_json" "$DEPS/odb" "$DEPS/openssl" "$DEPS/postgresql"
