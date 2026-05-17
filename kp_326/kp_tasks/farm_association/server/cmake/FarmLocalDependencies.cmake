@@ -76,7 +76,13 @@ function(farm_add_odb_local_build target deps_dir)
     farm_require_path("${local_build_project}/CMakeLists.txt" "local ODB dependency build project")
     farm_require_path("${odb_source_dir}/odb/database.hxx" "libodb sources")
     farm_require_path("${odb_pgsql_source_dir}/odb/pgsql/database.hxx" "libodb-pgsql sources")
-    farm_require_path("${postgresql_dir}/include/libpq-fe.h" "PostgreSQL libpq headers")
+    if(WIN32)
+        set(postgresql_include_dir "${postgresql_dir}/include")
+        farm_require_path("${postgresql_include_dir}/libpq-fe.h" "PostgreSQL libpq headers")
+    else()
+        find_package(PostgreSQL REQUIRED)
+        list(GET PostgreSQL_INCLUDE_DIRS 0 postgresql_include_dir)
+    endif()
 
     if(CMAKE_CONFIGURATION_TYPES)
         set(odb_config_dir "$<CONFIG>")
@@ -111,6 +117,7 @@ function(farm_add_odb_local_build target deps_dir)
         "-DTHIRD_PARTY_DIR=${deps_dir}"
         "-DLIBODB_INSTALL_DIR=${odb_install_dir}"
         "-DLIBODB_PGSQL_INSTALL_DIR=${odb_pgsql_install_dir}"
+        "-DPOSTGRESQL_INCLUDE_DIR=${postgresql_include_dir}"
         "-DCMAKE_CXX_STANDARD=14")
 
     if(CMAKE_CXX_COMPILER)
@@ -154,7 +161,7 @@ function(farm_add_odb_local_build target deps_dir)
     set(${target}_ODB_PGSQL_LIBRARY "${odb_pgsql_library}" PARENT_SCOPE)
     set(${target}_ODB_INCLUDE_DIR "${odb_install_dir}/include" PARENT_SCOPE)
     set(${target}_ODB_PGSQL_INCLUDE_DIR "${odb_pgsql_install_dir}/include" PARENT_SCOPE)
-    set(${target}_POSTGRESQL_INCLUDE_DIR "${postgresql_dir}/include" PARENT_SCOPE)
+    set(${target}_POSTGRESQL_INCLUDE_DIR "${postgresql_include_dir}" PARENT_SCOPE)
 endfunction()
 
 function(farm_add_runtime_paths target)

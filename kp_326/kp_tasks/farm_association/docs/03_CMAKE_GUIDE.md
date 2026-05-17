@@ -102,7 +102,9 @@ server/build/generated/persistence/user-odb.ixx
 server/build/generated/persistence/user.sql
 ```
 
-Генерация описана через `add_custom_command`. Generated header подключается через include path `server/build/generated`, поэтому код может писать:
+Если локальный ODB compiler недоступен для текущей платформы, CMake использует проверенную копию этих файлов из `server/generated/persistence`. Это нужно для Linux/Manjaro-сборки в окружении, где в `server/third_party/odb/bin` есть только Windows `odb.exe`.
+
+Генерация описана через `add_custom_command`. Generated header подключается через include path `server/build/generated` или fallback path `server/generated`, поэтому код может писать:
 
 ```cpp
 #include <persistence/user-odb.hxx>
@@ -121,7 +123,7 @@ server/third_party/libodb-Release
 server/third_party/libodb-pgsql-Release
 ```
 
-Это защищает от смешивания Debug и Release runtime-библиотек. На Linux CMake использует локальные библиотеки из того же механизма, но без ручной установки ODB runtime в систему.
+Это защищает от смешивания Debug и Release runtime-библиотек. На Linux CMake использует локальные ODB-библиотеки из того же механизма, но PostgreSQL/libpq берет из системного пакета `postgresql-libs`, чтобы не смешивать Linux-сборку с Windows-бандлом PostgreSQL.
 
 ## Compile Definitions
 

@@ -61,7 +61,7 @@ server/third_party/postgresql/include/openssl/evp.h
 server/third_party/postgresql/lib/libcrypto.lib
 ```
 
-На Manjaro bootstrap копирует системные OpenSSL/libpq файлы в локальное дерево:
+На Manjaro CMake использует системные OpenSSL/libpq из пакетов `openssl` и `postgresql-libs`; bootstrap также может подготовить локальную копию OpenSSL/libpq, но Linux-сборка не подмешивает Windows-бандл PostgreSQL в include path:
 
 ```text
 server/third_party/openssl/include/openssl/evp.h
@@ -105,6 +105,8 @@ Release
   mode: create/initialize when missing
   data: существующие данные не очищаются
 ```
+
+Сервер открывает libpq/ODB-подключения с `client_encoding=UTF8`. Новые базы, которые создает bootstrap, создаются как UTF-8 (`template0`, `LC_COLLATE=C`, `LC_CTYPE=C`), а для уже существующих баз PostgreSQL выполняет конвертацию результата в UTF-8 на уровне клиента. Это важно на Windows-кластерах с русской локалью `WIN1251`: JSON API остается валидным UTF-8, и `/api/farm` не падает на русских сидовых данных.
 
 Сервер использует параметры подключения:
 
@@ -180,16 +182,18 @@ curl http://localhost:8080/api/farm
 
 ## Документация
 
+- `docs/00_DOCUMENTATION_MAP.md` - полный список документов проекта и маршруты чтения под разные задачи.
 - `docs/01_DEPENDENCIES_SETUP.md` - установка зависимостей на Windows и Manjaro.
 - `docs/02_BUILD_RUN_TEST.md` - сборка, запуск, PostgreSQL и тесты.
 - `docs/03_CMAKE_GUIDE.md` - устройство CMake и targets.
 - `docs/04_BOOST_ASIO_BEAST_SERVER.md` - HTTP-сервер на Boost.Asio/Beast.
 - `docs/05_HIGH_PERFORMANCE_BEAST_SERVER.md` - заметки по высокопроизводительному Beast server.
+- `docs/06_SYSTEM_AND_SYNTAX_GUIDE.md` - как работает сервер, клиент, API, роли, таблицы, а также используемый синтаксис backend/frontend.
 - `server/docs/module-spec.md` - спецификация серверного модуля.
 
 ## Client
 
-В каталоге `client` находится React + TypeScript проект для role-based интерфейса фермерской ассоциации. Клиент показывает доступные бизнес-модули по роли из серверного auth-ответа, дает `agriculture_admin` и `association_director` экран просмотра пользователей, создания учетных записей и изменения ролей, загружает таблицы через `GET /api/<resource>`, создает записи через `POST /api/<resource>`, обновляет и удаляет записи через `/api/<resource>/item?<key>`.
+В каталоге `client` находится React + TypeScript проект для role-based интерфейса фермерской ассоциации. Клиент показывает доступные бизнес-модули по роли из серверного auth-ответа, дает `agriculture_admin` и `association_director` экран просмотра пользователей, создания учетных записей и изменения ролей, загружает таблицы через `GET /api/<resource>`, фильтрует и ищет строки на клиенте, создает записи через `POST /api/<resource>`, обновляет и удаляет записи через `/api/<resource>/item?<key>`.
 
 ```powershell
 cd client

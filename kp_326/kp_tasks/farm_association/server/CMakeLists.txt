@@ -215,21 +215,9 @@ if(FARM_SERVER_WITH_ODB)
         set(POSTGRESQL_LIBRARY "${FARM_SERVER_DEPS_DIR}/postgresql/lib/libpq.lib")
         farm_add_imported_library(PostgreSQL::pq "${POSTGRESQL_LIBRARY}" "${POSTGRESQL_INCLUDE_DIR}")
     elseif(NOT WIN32)
-        farm_find_local_library(POSTGRESQL_LIBRARY "${FARM_SERVER_DEPS_DIR}" "libpq"
-            NAMES pq libpq pq.lib libpq.lib
-            PATHS
-                "${FARM_SERVER_DEPS_DIR}/postgresql/lib"
-                "${FARM_SERVER_DEPS_DIR}/libpq/lib")
-
-        if(POSTGRESQL_LIBRARY)
-            set(POSTGRESQL_INCLUDE_DIR "${FARM_SERVER_DEPS_DIR}/postgresql/include")
-            farm_require_path("${POSTGRESQL_INCLUDE_DIR}/libpq-fe.h" "PostgreSQL libpq headers")
-            farm_add_imported_library(PostgreSQL::pq "${POSTGRESQL_LIBRARY}" "${POSTGRESQL_INCLUDE_DIR}")
-        else()
-            find_package(PostgreSQL REQUIRED)
-            add_library(PostgreSQL::pq INTERFACE IMPORTED)
-            target_link_libraries(PostgreSQL::pq INTERFACE PostgreSQL::PostgreSQL)
-        endif()
+        find_package(PostgreSQL REQUIRED)
+        add_library(PostgreSQL::pq INTERFACE IMPORTED)
+        target_link_libraries(PostgreSQL::pq INTERFACE PostgreSQL::PostgreSQL)
     else()
         farm_find_local_library(POSTGRESQL_LIBRARY "${FARM_SERVER_DEPS_DIR}" "libpq"
             REQUIRED
@@ -258,7 +246,7 @@ if(FARM_SERVER_WITH_ODB)
                 _CRT_SECURE_NO_WARNINGS)
     endif()
 
-    target_link_libraries(farm_association_server_core PUBLIC ODB::odb ODB::pgsql PostgreSQL::pq)
+    target_link_libraries(farm_association_server_core PUBLIC ODB::pgsql ODB::odb PostgreSQL::pq)
 
     farm_add_runtime_paths(farm_association_server_core
         "${FARM_SERVER_DEPS_DIR}/odb/bin"

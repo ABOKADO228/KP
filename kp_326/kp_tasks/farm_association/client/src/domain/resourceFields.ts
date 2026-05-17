@@ -2,9 +2,13 @@ import type { ResourceRow } from "../api/farmApi";
 import type { BusinessModule } from "./roles";
 
 export function columnsFor(module: BusinessModule, rows: ResourceRow[]): string[] {
+  return allColumnsFor(module, rows).slice(0, 10);
+}
+
+export function allColumnsFor(module: BusinessModule, rows: ResourceRow[]): string[] {
   const rowColumns = rows.flatMap((row) => Object.keys(row));
   const uniqueColumns = new Set([...module.defaultColumns, ...rowColumns]);
-  return Array.from(uniqueColumns).slice(0, 10);
+  return Array.from(uniqueColumns);
 }
 
 export function formColumnsFor(

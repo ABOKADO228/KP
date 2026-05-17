@@ -155,7 +155,7 @@ Database Database::createFromEnv() {
 Database Database::create(ConnectionSettings settings) {
   return Database{std::make_unique<odb::pgsql::database>(
       std::move(settings.user), std::move(settings.password), std::move(settings.databaseName),
-      std::move(settings.host), settings.port)};
+      std::move(settings.host), settings.port, "client_encoding=UTF8")};
 }
 
 Transaction Database::makeTransaction() {

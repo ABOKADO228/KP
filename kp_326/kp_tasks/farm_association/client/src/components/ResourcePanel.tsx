@@ -1,8 +1,9 @@
-import { Plus, RefreshCw } from "lucide-react";
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { Plus, RefreshCw, Search, SlidersHorizontal, X } from "lucide-react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 import type { FarmApiClient, ResourceRow } from "../api/farmApi";
 import {
+  allColumnsFor,
   columnsFor,
   createEmptyFormValues,
   createFormValuesFromRow,
@@ -11,6 +12,14 @@ import {
   keyFromRow,
   payloadFromForm,
 } from "../domain/resourceFields";
+import {
+  filterRequiresValue,
+  filterResourceRows,
+  resourceFilterOperators,
+  titleForFilterOperator,
+  type ResourceFilter,
+  type ResourceFilterOperator,
+} from "../domain/resourceFilters";
 import { canMutateModule, type BusinessModule, type UserRole } from "../domain/roles";
 import { errorMessage } from "../utils/errors";
 import { DataTable } from "./DataTable";
@@ -34,6 +43,12 @@ export function ResourcePanel({ api, module, role }: ResourcePanelProps) {
   const [editingRow, setEditingRow] = useState<ResourceRow | null>(null);
   const [pendingDeleteRow, setPendingDeleteRow] = useState<ResourceRow | null>(null);
   const [formValues, setFormValues] = useState<Record<string, string>>({});
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filters, setFilters] = useState<ResourceFilter[]>([]);
+  const [filterColumn, setFilterColumn] = useState("");
+  const [filterOperator, setFilterOperator] =
+    useState<ResourceFilterOperator>("contains");
+  const [filterValue, setFilterValue] = useState("");
 
   const loadRows = useCallback(async () => {
     setIsLoading(true);
@@ -61,10 +76,32 @@ export function ResourcePanel({ api, module, role }: ResourcePanelProps) {
     setPendingDeleteRow(null);
     setFormValues({});
     setNotice(null);
+    setSearchQuery("");
+    setFilters([]);
+    setFilterColumn("");
+    setFilterOperator("contains");
+    setFilterValue("");
   }, [module.id]);
 
   const writable = canMutateModule(role, module);
   const tableColumns = columnsFor(module, rows);
+  const filterColumns = useMemo(() => allColumnsFor(module, rows), [module, rows]);
+  const filteredRows = useMemo(
+    () => filterResourceRows(rows, filterColumns, searchQuery, filters),
+    [filterColumns, filters, rows, searchQuery],
+  );
+  const isFilterValueRequired = filterRequiresValue(filterOperator);
+
+  useEffect(() => {
+    if (filterColumns.length === 0) {
+      setFilterColumn("");
+      return;
+    }
+
+    setFilterColumn((current) =>
+      current && filterColumns.includes(current) ? current : filterColumns[0],
+    );
+  }, [filterColumns]);
 
   function openCreateForm() {
     setError(null);
@@ -89,6 +126,36 @@ export function ResourcePanel({ api, module, role }: ResourcePanelProps) {
     setEditingRow(null);
     setPendingDeleteRow(null);
     setFormValues({});
+  }
+
+  function addFilter(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const value = filterValue.trim();
+
+    if (!filterColumn || (isFilterValueRequired && !value)) {
+      return;
+    }
+
+    setFilters((current) => [
+      ...current,
+      {
+        column: filterColumn,
+        id: crypto.randomUUID(),
+        operator: filterOperator,
+        value,
+      },
+    ]);
+    setFilterValue("");
+  }
+
+  function removeFilter(id: string) {
+    setFilters((current) => current.filter((filter) => filter.id !== id));
+  }
+
+  function clearTableConditions() {
+    setSearchQuery("");
+    setFilters([]);
+    setFilterValue("");
   }
 
   async function submitForm(event: FormEvent<HTMLFormElement>) {
@@ -210,12 +277,121 @@ export function ResourcePanel({ api, module, role }: ResourcePanelProps) {
         />
       ) : null}
 
+      {rows.length > 0 || searchQuery || filters.length > 0 ? (
+        <div className="table-tools" aria-label="Поиск и фильтрация записей">
+          <label className="field-label table-search">
+            <span>Поиск</span>
+            <span className="input-with-icon">
+              <Search aria-hidden="true" size={18} />
+              <input
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Любое значение"
+                type="search"
+                value={searchQuery}
+              />
+            </span>
+          </label>
+
+          <form className="filter-builder" onSubmit={addFilter}>
+            <label className="field-label">
+              <span>Колонка</span>
+              <select
+                disabled={filterColumns.length === 0}
+                onChange={(event) => setFilterColumn(event.target.value)}
+                value={filterColumn}
+              >
+                {filterColumns.map((column) => (
+                  <option key={column} value={column}>
+                    {column}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="field-label">
+              <span>Условие</span>
+              <select
+                onChange={(event) => {
+                  const nextOperator = event.target.value as ResourceFilterOperator;
+                  setFilterOperator(nextOperator);
+                  if (!filterRequiresValue(nextOperator)) {
+                    setFilterValue("");
+                  }
+                }}
+                value={filterOperator}
+              >
+                {resourceFilterOperators.map((operator) => (
+                  <option key={operator.id} value={operator.id}>
+                    {operator.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="field-label">
+              <span>Значение</span>
+              <input
+                disabled={!isFilterValueRequired}
+                onChange={(event) => setFilterValue(event.target.value)}
+                placeholder={isFilterValueRequired ? "Значение" : "—"}
+                value={filterValue}
+              />
+            </label>
+
+            <div className="filter-actions">
+              <button
+                className="icon-button text-button"
+                disabled={!filterColumn || (isFilterValueRequired && !filterValue.trim())}
+                type="submit"
+              >
+                <SlidersHorizontal aria-hidden="true" size={18} />
+                Добавить
+              </button>
+              {searchQuery || filters.length > 0 ? (
+                <button
+                  className="ghost-button"
+                  onClick={clearTableConditions}
+                  type="button"
+                >
+                  Сбросить
+                </button>
+              ) : null}
+            </div>
+          </form>
+
+          <div className="table-results">
+            <span>
+              {filteredRows.length} / {rows.length}
+            </span>
+            {filters.length > 0 ? (
+              <div className="filter-list">
+                {filters.map((filter) => (
+                  <span className="filter-chip" key={filter.id}>
+                    {filter.column} {titleForFilterOperator(filter.operator)}
+                    {filterRequiresValue(filter.operator) ? ` ${filter.value}` : ""}
+                    <button
+                      className="chip-remove"
+                      onClick={() => removeFilter(filter.id)}
+                      title="Убрать фильтр"
+                      type="button"
+                    >
+                      <X aria-hidden="true" size={14} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
       <DataTable
         columns={tableColumns}
+        emptyLabel={rows.length === 0 ? "Нет данных" : "Нет записей по условиям"}
         isLoading={isLoading}
         onDelete={requestDelete}
         onEdit={openEditForm}
-        rows={rows}
+        rows={filteredRows}
         writable={writable}
       />
 

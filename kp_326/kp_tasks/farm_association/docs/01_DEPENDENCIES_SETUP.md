@@ -125,7 +125,7 @@ chmod +x tools/bootstrap-deps.sh
 FORCE=1 ./tools/bootstrap-deps.sh
 ```
 
-Linux-скрипт скачивает Boost, nlohmann/json, fmt, ODB compiler и GoogleTest. PostgreSQL/libpq и OpenSSL берутся из системных пакетов и копируются в локальное дерево `server/third_party`.
+Linux-скрипт скачивает Boost, nlohmann/json, fmt, ODB compiler и GoogleTest. PostgreSQL/libpq и OpenSSL берутся из системных пакетов; CMake использует их напрямую, а bootstrap может подготовить локальную копию в `server/third_party` без подмешивания Windows-бандла PostgreSQL в Linux include path.
 
 После bootstrap ожидаются:
 

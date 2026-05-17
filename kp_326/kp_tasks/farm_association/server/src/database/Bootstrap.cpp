@@ -40,6 +40,8 @@ namespace {
 using PgConnection = std::unique_ptr<PGconn, decltype(&PQfinish)>;
 using PgResult = std::unique_ptr<PGresult, decltype(&PQclear)>;
 
+constexpr const char* kClientEncoding = "UTF8";
+
 std::string envOr(const char* name, std::string fallback) {
   if (const char* value = std::getenv(name)) {
     return value;
@@ -201,9 +203,11 @@ std::string escapeIdentifier(PGconn* connection, std::string_view identifier) {
 PgConnection connectToPostgres(const fasc::server::database::ConnectionSettings& settings,
                                const std::string& databaseName) {
   const std::string port = std::to_string(settings.port);
-  const char* keywords[] = {"host", "port", "user", "password", "dbname", nullptr};
+  const char* keywords[] = {"host", "port", "user", "password", "dbname", "client_encoding",
+                            nullptr};
   const char* values[] = {settings.host.c_str(), port.c_str(), settings.user.c_str(),
-                          settings.password.c_str(), databaseName.c_str(), nullptr};
+                          settings.password.c_str(), databaseName.c_str(), kClientEncoding,
+                          nullptr};
 
   PgConnection connection{PQconnectdbParams(keywords, values, 0), &PQfinish};
   if (connection == nullptr || PQstatus(connection.get()) != CONNECTION_OK) {
@@ -272,7 +276,9 @@ void dropDatabase(PGconn* connection, const std::string& databaseName) {
 }
 
 void createDatabase(PGconn* connection, const std::string& databaseName) {
-  executeCommand(connection, "CREATE DATABASE " + escapeIdentifier(connection, databaseName));
+  executeCommand(connection, "CREATE DATABASE " + escapeIdentifier(connection, databaseName) +
+                                 " WITH TEMPLATE template0 ENCODING 'UTF8' "
+                                 "LC_COLLATE 'C' LC_CTYPE 'C'");
 }
 
 bool tableExists(PGconn* connection, const std::string& tableName) {

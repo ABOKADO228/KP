@@ -136,6 +136,92 @@ TEST(DatabaseBackedEndpointTests, FarmListReadsSeedDataFromFascTest) {
   EXPECT_TRUE(body.at("rows").front().contains("id"));
 }
 
+TEST(DatabaseBackedEndpointTests, SimpleKeyUpdateAndDeleteRespectRelatedRows) {
+  auto database = createResetIntegrationDatabase();
+
+  const BeastResponse updateResponse =
+      dispatchFarmEntityRequest(database,
+                                http::verb::put,
+                                "/api/farm/item?id=2",
+                                R"({"name":"farm-key-check","status":"active"})");
+  ASSERT_EQ(updateResponse.result(), http::status::ok) << updateResponse.body();
+  EXPECT_EQ(nlohmann::json::parse(updateResponse.body()).at("affectedRows"), 1);
+
+  const BeastResponse updatedFarm =
+      dispatchFarmEntityRequest(database, http::verb::get, "/api/farm/item?id=2");
+  ASSERT_EQ(updatedFarm.result(), http::status::ok) << updatedFarm.body();
+  const auto updatedFarmBody = nlohmann::json::parse(updatedFarm.body());
+  EXPECT_EQ(updatedFarmBody.at("data").at("name"), "farm-key-check");
+  EXPECT_EQ(updatedFarmBody.at("data").at("status"), "active");
+
+  const BeastResponse untouchedFarm =
+      dispatchFarmEntityRequest(database, http::verb::get, "/api/farm/item?id=3");
+  ASSERT_EQ(untouchedFarm.result(), http::status::ok) << untouchedFarm.body();
+  EXPECT_NE(nlohmann::json::parse(untouchedFarm.body()).at("data").at("name"),
+            "farm-key-check");
+
+  const BeastResponse deleteResponse =
+      dispatchFarmEntityRequest(database, http::verb::delete_, "/api/farm/item?id=2");
+  ASSERT_EQ(deleteResponse.result(), http::status::ok) << deleteResponse.body();
+  EXPECT_EQ(nlohmann::json::parse(deleteResponse.body()).at("affectedRows"), 1);
+
+  const BeastResponse deletedFarm =
+      dispatchFarmEntityRequest(database, http::verb::get, "/api/farm/item?id=2");
+  EXPECT_EQ(deletedFarm.result(), http::status::not_found) << deletedFarm.body();
+
+  const BeastResponse deletedAssociationLink = dispatchFarmEntityRequest(
+      database, http::verb::get, "/api/association_farms/item?farm_id=2&association_id=2");
+  EXPECT_EQ(deletedAssociationLink.result(), http::status::not_found)
+      << deletedAssociationLink.body();
+
+  const BeastResponse deletedPlotLink = dispatchFarmEntityRequest(
+      database, http::verb::get, "/api/farm_plot_assignment/item?farm_id=2&farm_plot_id=2");
+  EXPECT_EQ(deletedPlotLink.result(), http::status::not_found) << deletedPlotLink.body();
+
+  const BeastResponse survivingFarm =
+      dispatchFarmEntityRequest(database, http::verb::get, "/api/farm/item?id=3");
+  EXPECT_EQ(survivingFarm.result(), http::status::ok) << survivingFarm.body();
+}
+
+TEST(DatabaseBackedEndpointTests, CompositeKeyUpdateAndDeleteUseFullKey) {
+  auto database = createResetIntegrationDatabase();
+
+  const BeastResponse updateResponse =
+      dispatchFarmEntityRequest(database,
+                                http::verb::put,
+                                "/api/farm_plot_assignment/item?farm_id=1&farm_plot_id=1",
+                                R"({"status":"inactive","notes":"composite-key-check"})");
+  ASSERT_EQ(updateResponse.result(), http::status::ok) << updateResponse.body();
+  EXPECT_EQ(nlohmann::json::parse(updateResponse.body()).at("affectedRows"), 1);
+
+  const BeastResponse updatedLink = dispatchFarmEntityRequest(
+      database, http::verb::get, "/api/farm_plot_assignment/item?farm_id=1&farm_plot_id=1");
+  ASSERT_EQ(updatedLink.result(), http::status::ok) << updatedLink.body();
+  const auto updatedLinkBody = nlohmann::json::parse(updatedLink.body());
+  EXPECT_EQ(updatedLinkBody.at("data").at("status"), "inactive");
+  EXPECT_EQ(updatedLinkBody.at("data").at("notes"), "composite-key-check");
+
+  const BeastResponse sameFarmOtherPlot = dispatchFarmEntityRequest(
+      database, http::verb::get, "/api/farm_plot_assignment/item?farm_id=1&farm_plot_id=61");
+  ASSERT_EQ(sameFarmOtherPlot.result(), http::status::ok) << sameFarmOtherPlot.body();
+  const auto sameFarmOtherPlotBody = nlohmann::json::parse(sameFarmOtherPlot.body());
+  EXPECT_EQ(sameFarmOtherPlotBody.at("data").at("status"), "active");
+  EXPECT_TRUE(sameFarmOtherPlotBody.at("data").at("notes").is_null());
+
+  const BeastResponse deleteResponse = dispatchFarmEntityRequest(
+      database, http::verb::delete_, "/api/farm_plot_assignment/item?farm_id=1&farm_plot_id=1");
+  ASSERT_EQ(deleteResponse.result(), http::status::ok) << deleteResponse.body();
+  EXPECT_EQ(nlohmann::json::parse(deleteResponse.body()).at("affectedRows"), 1);
+
+  const BeastResponse deletedLink = dispatchFarmEntityRequest(
+      database, http::verb::get, "/api/farm_plot_assignment/item?farm_id=1&farm_plot_id=1");
+  EXPECT_EQ(deletedLink.result(), http::status::not_found) << deletedLink.body();
+
+  const BeastResponse survivingLink = dispatchFarmEntityRequest(
+      database, http::verb::get, "/api/farm_plot_assignment/item?farm_id=1&farm_plot_id=61");
+  EXPECT_EQ(survivingLink.result(), http::status::ok) << survivingLink.body();
+}
+
 TEST(DatabaseBackedEndpointTests, AuthRegisterAndLoginRoundTripThroughFascTest) {
   auto database = createResetIntegrationDatabase();
   const std::string credentials = R"({"login":"db_integration_user","password":"password123"})";

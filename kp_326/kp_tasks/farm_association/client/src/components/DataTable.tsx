@@ -5,6 +5,7 @@ import { formatValue, rowKey } from "../domain/resourceFields";
 
 interface DataTableProps {
   columns: string[];
+  emptyLabel?: string;
   isLoading: boolean;
   onDelete: (row: ResourceRow) => void;
   onEdit: (row: ResourceRow) => void;
@@ -14,6 +15,7 @@ interface DataTableProps {
 
 export function DataTable({
   columns,
+  emptyLabel = "Нет данных",
   isLoading,
   onDelete,
   onEdit,
@@ -25,7 +27,7 @@ export function DataTable({
   }
 
   if (rows.length === 0) {
-    return <div className="empty-state">Нет данных</div>;
+    return <div className="empty-state">{emptyLabel}</div>;
   }
 
   return (

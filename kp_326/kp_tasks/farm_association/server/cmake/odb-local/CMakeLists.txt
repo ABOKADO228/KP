@@ -15,6 +15,11 @@ set(THIRD_PARTY_DIR
 set(LIBODB_SOURCE_DIR "${THIRD_PARTY_DIR}/_sources/libodb-2.4.0")
 set(LIBODB_PGSQL_SOURCE_DIR "${THIRD_PARTY_DIR}/_sources/libodb-pgsql-2.4.0")
 set(POSTGRESQL_DIR "${THIRD_PARTY_DIR}/postgresql")
+set(POSTGRESQL_INCLUDE_DIR "" CACHE PATH "PostgreSQL libpq include directory")
+set(GENERATED_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
+set(LIBODB_GENERATED_CONFIG_H "${GENERATED_INCLUDE_DIR}/odb/details/config.h")
+set(LIBODB_PGSQL_GENERATED_CONFIG_H "${GENERATED_INCLUDE_DIR}/odb/pgsql/details/config.h")
+set(LIBODB_PGSQL_GENERATED_PUBLIC_CONFIG_H "${GENERATED_INCLUDE_DIR}/odb/pgsql/config.h")
 set(LIBODB_INSTALL_DIR
     "${THIRD_PARTY_DIR}/libodb"
     CACHE PATH "Local libodb install directory")
@@ -22,11 +27,60 @@ set(LIBODB_PGSQL_INSTALL_DIR
     "${THIRD_PARTY_DIR}/libodb-pgsql"
     CACHE PATH "Local libodb-pgsql install directory")
 
+if(NOT POSTGRESQL_INCLUDE_DIR)
+    if(WIN32)
+        set(POSTGRESQL_INCLUDE_DIR "${POSTGRESQL_DIR}/include")
+    else()
+        find_package(PostgreSQL REQUIRED)
+        list(GET PostgreSQL_INCLUDE_DIRS 0 POSTGRESQL_INCLUDE_DIR)
+    endif()
+endif()
+
+if(NOT EXISTS "${POSTGRESQL_INCLUDE_DIR}/libpq-fe.h")
+    message(FATAL_ERROR "Missing PostgreSQL libpq headers: ${POSTGRESQL_INCLUDE_DIR}/libpq-fe.h")
+endif()
+
 file(MAKE_DIRECTORY
+    "${GENERATED_INCLUDE_DIR}/odb/details"
+    "${GENERATED_INCLUDE_DIR}/odb/pgsql/details"
     "${LIBODB_INSTALL_DIR}/include"
     "${LIBODB_INSTALL_DIR}/lib"
     "${LIBODB_PGSQL_INSTALL_DIR}/include"
     "${LIBODB_PGSQL_INSTALL_DIR}/lib")
+
+if(WIN32)
+    file(WRITE "${LIBODB_GENERATED_CONFIG_H}"
+"#ifndef ODB_DETAILS_CONFIG_H
+#define ODB_DETAILS_CONFIG_H
+#define ODB_THREADS_WIN32
+#define ODB_THREADS_TLS_DECLSPEC
+#define LIBODB_STATIC_LIB
+#endif
+")
+else()
+    file(WRITE "${LIBODB_GENERATED_CONFIG_H}"
+"#ifndef ODB_DETAILS_CONFIG_H
+#define ODB_DETAILS_CONFIG_H
+#define ODB_THREADS_POSIX
+#define ODB_THREADS_TLS_KEYWORD
+#define LIBODB_STATIC_LIB
+#endif
+")
+endif()
+
+file(WRITE "${LIBODB_PGSQL_GENERATED_CONFIG_H}"
+"#ifndef ODB_PGSQL_DETAILS_CONFIG_H
+#define ODB_PGSQL_DETAILS_CONFIG_H
+#define LIBODB_PGSQL_STATIC_LIB
+#endif
+")
+
+file(WRITE "${LIBODB_PGSQL_GENERATED_PUBLIC_CONFIG_H}"
+"#ifndef ODB_PGSQL_CONFIG_H
+#define ODB_PGSQL_CONFIG_H
+#define LIBODB_PGSQL_STATIC_LIB
+#endif
+")
 
 add_custom_target(odb-local-headers
     COMMAND "${CMAKE_COMMAND}" -E copy_directory
@@ -35,6 +89,15 @@ add_custom_target(odb-local-headers
     COMMAND "${CMAKE_COMMAND}" -E copy_directory
         "${LIBODB_PGSQL_SOURCE_DIR}/odb"
         "${LIBODB_PGSQL_INSTALL_DIR}/include/odb"
+    COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+        "${LIBODB_GENERATED_CONFIG_H}"
+        "${LIBODB_INSTALL_DIR}/include/odb/details/config.h"
+    COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+        "${LIBODB_PGSQL_GENERATED_CONFIG_H}"
+        "${LIBODB_PGSQL_INSTALL_DIR}/include/odb/pgsql/details/config.h"
+    COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+        "${LIBODB_PGSQL_GENERATED_PUBLIC_CONFIG_H}"
+        "${LIBODB_PGSQL_INSTALL_DIR}/include/odb/pgsql/config.h"
     COMMENT "Copying local ODB headers"
     VERBATIM)
 
@@ -79,7 +142,7 @@ endif()
 add_library(odb STATIC ${LIBODB_SOURCES})
 add_dependencies(odb odb-local-headers)
 target_compile_definitions(odb PUBLIC LIBODB_STATIC_LIB)
-target_include_directories(odb PUBLIC "${LIBODB_SOURCE_DIR}")
+target_include_directories(odb PUBLIC "${GENERATED_INCLUDE_DIR}" "${LIBODB_SOURCE_DIR}")
 target_link_libraries(odb PUBLIC Threads::Threads)
 
 set_target_properties(odb PROPERTIES
@@ -117,9 +180,10 @@ add_dependencies(odb-pgsql odb-local-headers)
 target_compile_definitions(odb-pgsql PUBLIC LIBODB_PGSQL_STATIC_LIB LIBODB_STATIC_LIB)
 target_include_directories(odb-pgsql
     PUBLIC
+        "${GENERATED_INCLUDE_DIR}"
         "${LIBODB_SOURCE_DIR}"
         "${LIBODB_PGSQL_SOURCE_DIR}"
-        "${POSTGRESQL_DIR}/include")
+        "${POSTGRESQL_INCLUDE_DIR}")
 target_link_libraries(odb-pgsql PUBLIC odb)
 
 set_target_properties(odb-pgsql PROPERTIES
