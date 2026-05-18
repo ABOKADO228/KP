@@ -19,7 +19,24 @@ chmod +x tools/bootstrap-deps.sh
 ./tools/bootstrap-deps.sh
 ```
 
-Debug:
+На Manjaro для полного проекта нужны также Node.js/npm для клиента:
+
+```bash
+sudo pacman -S --needed base-devel cmake ninja clang curl unzip tar openssl postgresql postgresql-libs nodejs npm git
+```
+
+Manjaro Debug:
+
+```bash
+cmake -S server -B server/build -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DFARM_SERVER_USE_CHECKED_IN_ODB=ON
+cmake --build server/build --parallel
+sudo test -f /var/lib/postgres/data/PG_VERSION || sudo -iu postgres initdb -D /var/lib/postgres/data
+sudo systemctl enable --now postgresql
+sudo -iu postgres psql -c "ALTER USER postgres WITH PASSWORD 'password';"
+ctest --test-dir server/build --output-on-failure
+```
+
+Windows Debug:
 
 ```powershell
 cmake -S server -B server\build -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug
@@ -31,7 +48,7 @@ if ($LASTEXITCODE -ne 0) { & "$pg\bin\pg_ctl.exe" -D "$pg\data" -l "$pg\postgres
 ctest --test-dir server\build -C Debug --output-on-failure
 ```
 
-Release:
+Windows Release:
 
 ```powershell
 cmake -S server -B server\build-release -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release
@@ -76,9 +93,9 @@ FARM_ADMIN_PASSWORD
 GET  /health
 POST /auth/register   body: {"login":"alex","password":"password123"}
 POST /auth/login      body: {"login":"alex","password":"password123"}
-POST /users           Authorization: Bearer <manager-jwt>, body: {"login":"owner","password":"password123","role":"farm_owner"}
-GET  /users           Authorization: Bearer <manager-jwt>
-PUT  /users/role?login=owner  Authorization: Bearer <manager-jwt>, body: {"role":"agronomist"}
+POST /users           Authorization: Bearer <admin-or-director-jwt>, body: {"login":"owner","password":"password123","role":"farm_owner"}
+GET  /users           Authorization: Bearer <admin-or-director-jwt>
+PUT  /users/role?login=owner  Authorization: Bearer <admin-or-director-jwt>, body: {"role":"agronomist"}
 GET  /api/<resource>
 POST /api/<resource>
 GET  /api/<resource>/item?<key>
@@ -89,5 +106,16 @@ DELETE /api/<resource>/item?<key>
 Auth-ответ содержит `token`, `token_type` и пользователя в форме `{ "login": "...", "role": "..." }`. Регистрация через `/auth/register` выдает роль `farm_worker`; `/users` предназначен для просмотра пользователей, создания пользователя с явной ролью и изменения ролей. Эти маршруты требуют JWT роли `agriculture_admin` или `association_director`.
 
 При старте сервер создает встроенного администратора `admin` / `admin12345` с ролью `agriculture_admin`, если `FARM_ADMIN_ENABLED` не выключен. Логин и пароль переопределяются через `FARM_ADMIN_LOGIN` и `FARM_ADMIN_PASSWORD`.
+
+Минимальная smoke-проверка после запуска:
+
+```bash
+curl http://localhost:8080/health
+ADMIN_TOKEN=$(curl -sS -X POST http://localhost:8080/auth/login -H "Content-Type: application/json" -d '{"login":"admin","password":"admin12345"}' | node -pe "JSON.parse(require('fs').readFileSync(0, 'utf8')).token")
+curl -X POST http://localhost:8080/auth/register -H "Content-Type: application/json" -d '{"login":"alex","password":"password123"}'
+curl -X POST http://localhost:8080/users -H "Content-Type: application/json" -H "Authorization: Bearer ${ADMIN_TOKEN}" -d '{"login":"owner","password":"password123","role":"farm_owner"}'
+curl -X PUT "http://localhost:8080/users/role?login=owner" -H "Content-Type: application/json" -H "Authorization: Bearer ${ADMIN_TOKEN}" -d '{"role":"agronomist"}'
+curl http://localhost:8080/api/farm
+```
 
 Подробное руководство находится в корневом [README.md](../README.md), карте документации `../docs/00_DOCUMENTATION_MAP.md`, инструкции запуска `../docs/02_BUILD_RUN_TEST.md` и общем обзоре архитектуры `../docs/06_SYSTEM_AND_SYNTAX_GUIDE.md`.

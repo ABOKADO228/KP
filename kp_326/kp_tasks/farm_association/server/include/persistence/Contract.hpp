@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <domain/Types.hpp>
 
@@ -7,9 +7,15 @@
 #include <odb/core.hxx>
 #include <odb/nullable.hxx>
 
+#ifndef ODB_COMPILER
+#include <persistence/DomainValueTraits.hpp>
+#endif
+
 #include <string>
 
-namespace fasc::server::persistence {
+namespace fasc {
+namespace server {
+namespace persistence {
 
 /// Сущность таблицы contract.
 struct ContractEntity {
@@ -17,10 +23,10 @@ struct ContractEntity {
   std::uint64_t id{};
 
   /// Значение колонки supplier_id.
-  odb::nullable<std::uint64_t> supplierId;
+  odb::nullable<unsigned long long> supplierId;
 
   /// Значение колонки farm_id.
-  odb::nullable<std::uint64_t> farmId;
+  odb::nullable<unsigned long long> farmId;
 
   /// Значение колонки association_id.
   std::uint64_t associationId{};
@@ -56,4 +62,6 @@ struct ContractEntity {
 #pragma db member(ContractEntity::status) column("status")
 #pragma db member(ContractEntity::description) column("description")
 
-} // namespace fasc::server::persistence
+} // namespace persistence
+} // namespace server
+} // namespace fasc

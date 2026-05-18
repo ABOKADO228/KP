@@ -50,10 +50,7 @@
 | Файл | Назначение |
 | --- | --- |
 | [database/dump-mydb-sprinthost-public.sql](../database/dump-mydb-sprinthost-public.sql) | Исходная предметная SQL-схема и seed-данные фермерской ассоциации |
-| [server/generated/persistence/user.sql](../server/generated/persistence/user.sql) | ODB SQL-схема для таблицы пользователей |
-| [server/generated/persistence/user-odb.hxx](../server/generated/persistence/user-odb.hxx) | Сгенерированный ODB header для `User` |
-| [server/generated/persistence/user-odb.ixx](../server/generated/persistence/user-odb.ixx) | Сгенерированные inline ODB части |
-| [server/generated/persistence/user-odb.cxx](../server/generated/persistence/user-odb.cxx) | Сгенерированная ODB реализация |
+| [server/generated/persistence](../server/generated/persistence) | Checked-in ODB generated files для всех persistence-моделей; fallback для Manjaro и сборок без ODB compiler |
 
 ## Кодовые Точки Входа
 
@@ -98,4 +95,3 @@
 - Resource CRUD - `GET/POST /api/<resource>` и `GET/PUT/DELETE /api/<resource>/item?<key>`.
 - Frontend - React + TypeScript, role-based навигация, клиентский поиск и фильтры в таблицах.
 - Dev proxy - Vite проксирует `/auth`, `/users`, `/api`, `/health` в C++ server.
-

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <domain/Types.hpp>
 
@@ -7,9 +7,15 @@
 #include <odb/core.hxx>
 #include <odb/nullable.hxx>
 
+#ifndef ODB_COMPILER
+#include <persistence/DomainValueTraits.hpp>
+#endif
+
 #include <string>
 
-namespace fasc::server::persistence {
+namespace fasc {
+namespace server {
+namespace persistence {
 
 /// Сущность таблицы purchase_order_item.
 struct PurchaseOrderItemEntity {
@@ -45,4 +51,6 @@ struct PurchaseOrderItemEntity {
 #pragma db member(PurchaseOrderItemEntity::vatRate) column("vat_rate")
 #pragma db member(PurchaseOrderItemEntity::currency) column("currency")
 
-} // namespace fasc::server::persistence
+} // namespace persistence
+} // namespace server
+} // namespace fasc

@@ -222,6 +222,76 @@ TEST(DatabaseBackedEndpointTests, CompositeKeyUpdateAndDeleteUseFullKey) {
   EXPECT_EQ(survivingLink.result(), http::status::ok) << survivingLink.body();
 }
 
+TEST(DatabaseBackedEndpointTests, AllCompositeKeyTablesUseOdbIdentity) {
+  auto database = createResetIntegrationDatabase();
+
+  struct CompositeCase {
+    std::string target;
+    std::string survivorTarget;
+    std::string updateBody;
+    std::string updatedField;
+    nlohmann::json updatedValue;
+  };
+
+  const std::vector<CompositeCase> cases{
+      {"/api/association_farms/item?farm_id=1&association_id=1",
+       "/api/association_farms/item?farm_id=2&association_id=2",
+       R"({"status":"inactive","notes":"all-composite-check"})",
+       "notes",
+       "all-composite-check"},
+      {"/api/farm_plot_assignment/item?farm_id=1&farm_plot_id=1",
+       "/api/farm_plot_assignment/item?farm_id=1&farm_plot_id=61",
+       R"({"status":"inactive","notes":"all-composite-check"})",
+       "notes",
+       "all-composite-check"},
+      {"/api/farm_plot_consumption_product/item?product_id=1&farm_plot_id=16",
+       "/api/farm_plot_consumption_product/item?product_id=1&farm_plot_id=20",
+       R"({"quantity":999,"consumption_now":0})",
+       "quantity",
+       999},
+      {"/api/farm_plot_production_product/item?product_id=1&farm_plot_id=3",
+       "/api/farm_plot_production_product/item?product_id=1&farm_plot_id=11",
+       R"({"quantity":1999,"production_now":0})",
+       "quantity",
+       1999},
+  };
+
+  for (const CompositeCase& item : cases) {
+    const BeastResponse updateResponse =
+        dispatchFarmEntityRequest(database, http::verb::put, item.target, item.updateBody);
+    ASSERT_EQ(updateResponse.result(), http::status::ok) << item.target << ": "
+                                                         << updateResponse.body();
+    EXPECT_EQ(nlohmann::json::parse(updateResponse.body()).at("affectedRows"), 1);
+
+    const BeastResponse updated =
+        dispatchFarmEntityRequest(database, http::verb::get, item.target);
+    ASSERT_EQ(updated.result(), http::status::ok) << item.target << ": " << updated.body();
+    EXPECT_EQ(nlohmann::json::parse(updated.body()).at("data").at(item.updatedField),
+              item.updatedValue);
+
+    const BeastResponse survivor =
+        dispatchFarmEntityRequest(database, http::verb::get, item.survivorTarget);
+    ASSERT_EQ(survivor.result(), http::status::ok) << item.survivorTarget << ": "
+                                                   << survivor.body();
+
+    const BeastResponse deleteResponse =
+        dispatchFarmEntityRequest(database, http::verb::delete_, item.target);
+    ASSERT_EQ(deleteResponse.result(), http::status::ok) << item.target << ": "
+                                                         << deleteResponse.body();
+    EXPECT_EQ(nlohmann::json::parse(deleteResponse.body()).at("affectedRows"), 1);
+
+    const BeastResponse deleted =
+        dispatchFarmEntityRequest(database, http::verb::get, item.target);
+    EXPECT_EQ(deleted.result(), http::status::not_found) << item.target << ": "
+                                                         << deleted.body();
+
+    const BeastResponse survivingAfterDelete =
+        dispatchFarmEntityRequest(database, http::verb::get, item.survivorTarget);
+    EXPECT_EQ(survivingAfterDelete.result(), http::status::ok)
+        << item.survivorTarget << ": " << survivingAfterDelete.body();
+  }
+}
+
 TEST(DatabaseBackedEndpointTests, AuthRegisterAndLoginRoundTripThroughFascTest) {
   auto database = createResetIntegrationDatabase();
   const std::string credentials = R"({"login":"db_integration_user","password":"password123"})";

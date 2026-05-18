@@ -1,5 +1,183 @@
 #pragma once
 
+#ifdef ODB_COMPILER
+
+#include <cstdint>
+
+namespace fasc {
+namespace server {
+namespace domain {
+
+struct Date {};
+
+enum class FarmStatus {
+  Active,
+  Inactive,
+  Suspended,
+  Archived,
+};
+
+enum class FarmType {
+  PeasantFarm,
+  Llc,
+  IndividualEntrepreneur,
+  PersonalSubsidiary,
+};
+
+enum class FarmAssociationStatus {
+  Active,
+  Inactive,
+  Suspended,
+};
+
+enum class FarmOwnerStatus {
+  Active,
+  Inactive,
+  Archived,
+};
+
+enum class FarmPlotStatus {
+  Active,
+  Archived,
+  Suspended,
+  Inactive,
+};
+
+enum class FarmPlotAssignmentStatus {
+  Active,
+  Inactive,
+  Suspended,
+};
+
+enum class AssociationMemberStatus {
+  Active,
+  Inactive,
+  Expelled,
+  Deceased,
+};
+
+enum class AssociationFarmsStatus {
+  Active,
+  Inactive,
+  Suspended,
+};
+
+enum class ContractStatus {
+  Expired,
+  Active,
+  Terminated,
+};
+
+enum class PurchaseOrderStatus {
+  Received,
+  Draft,
+  Sent,
+  Archived,
+  Cancelled,
+};
+
+enum class PurchaseRequisitionStatus {
+  Completed,
+  Approved,
+  Draft,
+  Cancelled,
+  Delivering,
+};
+
+enum class SalesRequisitionStatus {
+  Approved,
+  Delivering,
+  Draft,
+  Completed,
+  Cancelled,
+};
+
+enum class SupplierStatus {
+  Active,
+  Inactive,
+  Suspended,
+  Archived,
+};
+
+enum class AssociationRoleCode {
+  Chairman,
+  ViceChairman,
+  BoardMember,
+  Accountant,
+  Agronomist,
+  ProcurementMgr,
+  LogisticsMgr,
+  Inspector,
+};
+
+enum class IdentityDocumentTypeCode {
+  PassportRf,
+  ForeignPassport,
+  MilitaryId,
+  ResidencePermit,
+  BirthCertificate,
+};
+
+enum class EmploymentStatusCode {
+  Active,
+  Vacation,
+  SickLeave,
+  Probation,
+  Terminated,
+};
+
+enum class EmployeePlotAssignmentType {
+  Primary,
+  Secondary,
+  Temporary,
+};
+
+enum class UnitCode {
+  Kg,
+  T,
+  L,
+  Pcs,
+  Box,
+  Bag,
+  M,
+  M2,
+  Ha,
+  Head,
+  Doz,
+  Pack,
+};
+
+enum class CurrencyCode {
+  Rub,
+};
+
+} // namespace domain
+} // namespace server
+} // namespace fasc
+
+#pragma db value(fasc::server::domain::Date) type("DATE")
+#pragma db value(fasc::server::domain::FarmStatus) type("TEXT")
+#pragma db value(fasc::server::domain::FarmType) type("TEXT")
+#pragma db value(fasc::server::domain::FarmAssociationStatus) type("TEXT")
+#pragma db value(fasc::server::domain::FarmOwnerStatus) type("TEXT")
+#pragma db value(fasc::server::domain::FarmPlotStatus) type("TEXT")
+#pragma db value(fasc::server::domain::FarmPlotAssignmentStatus) type("TEXT")
+#pragma db value(fasc::server::domain::AssociationMemberStatus) type("TEXT")
+#pragma db value(fasc::server::domain::AssociationFarmsStatus) type("TEXT")
+#pragma db value(fasc::server::domain::ContractStatus) type("TEXT")
+#pragma db value(fasc::server::domain::PurchaseOrderStatus) type("TEXT")
+#pragma db value(fasc::server::domain::PurchaseRequisitionStatus) type("TEXT")
+#pragma db value(fasc::server::domain::SalesRequisitionStatus) type("TEXT")
+#pragma db value(fasc::server::domain::SupplierStatus) type("TEXT")
+#pragma db value(fasc::server::domain::AssociationRoleCode) type("TEXT")
+#pragma db value(fasc::server::domain::IdentityDocumentTypeCode) type("TEXT")
+#pragma db value(fasc::server::domain::EmploymentStatusCode) type("TEXT")
+#pragma db value(fasc::server::domain::EmployeePlotAssignmentType) type("TEXT")
+#pragma db value(fasc::server::domain::UnitCode) type("TEXT")
+#pragma db value(fasc::server::domain::CurrencyCode) type("TEXT")
+
+#else
+
 #include <array>
 #include <chrono>
 #include <charconv>
@@ -510,3 +688,5 @@ struct EnumTraits<CurrencyCode> {
 };
 
 } // namespace fasc::server::domain
+
+#endif

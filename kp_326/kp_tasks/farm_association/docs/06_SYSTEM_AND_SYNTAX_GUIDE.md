@@ -57,7 +57,7 @@ Backend разделен на слои:
 | Views | `server/include/views` | Публичная форма ответа API |
 | Marshalling | `server/include/marshalling` | `to_json`, `from_json`, преобразование entity/DTO/view |
 | Persistence | `server/include/persistence`, `server/generated/persistence` | C++ представление таблиц и ODB-generated код |
-| Database | `server/include/database`, `server/src/database` | Bootstrap, SQL helpers, ODB connection, generic CRUD |
+| Database | `server/include/database`, `server/src/database` | Bootstrap, ODB connection, ODB table registry, низкоуровневый SQL для bootstrap |
 | Security | `server/include/security`, `server/src/security` | JWT, password hash, encoding helpers |
 
 ### Маршрут Запроса
@@ -79,7 +79,7 @@ Boost.Beast request
 
 ```text
 PostgreSQL row
-  -> persistence entity или SqlRow
+  -> ODB persistence entity
   -> DTO
   -> View
   -> nlohmann::json
@@ -337,6 +337,28 @@ if (entity.name.null()) {
 
 JSON для пустого значения возвращает `null`.
 
+### ODB Mapping
+
+Каждая persistence-модель участвует в ODB generation:
+
+```cpp
+#pragma db object(FarmEntity) table("farm")
+#pragma db member(FarmEntity::id) id auto column("id")
+```
+
+Для таблиц с составным первичным ключом используется отдельный value key и virtual id, чтобы C++ entity сохраняла привычные поля JSON/API, а ODB видел настоящий ключ таблицы:
+
+```cpp
+#pragma db value(AssociationFarmsKey)
+#pragma db member(AssociationFarmsKey::farmId) column("farm_id")
+#pragma db member(AssociationFarmsKey::associationId) column("association_id")
+
+#pragma db object(AssociationFarmsEntity) table("association_farms")
+#pragma db member(AssociationFarmsEntity::id) virtual(AssociationFarmsKey) access(id) id column("")
+```
+
+`domain::Date` мапится на PostgreSQL `DATE`, а enum-типы домена - на текстовые значения из SQL dump (`active`, `draft`, `RUB` и т.д.).
+
 ### Database Facade
 
 Предметные CRUD-контроллеры используют generic методы:
@@ -348,7 +370,9 @@ db_.updateRows("public.farm", columns, values, keys, keyValues(key));
 db_.deleteRows("public.farm", keys, keyValues(key));
 ```
 
-Пользователи используют ODB entity `User`, потому что для них нужны login/password hash/role и auth-сценарии.
+Эти методы больше не собирают SQL в контроллерах. Для зарегистрированных предметных таблиц они переходят в `OdbTableRegistry`, где table name связывается с ODB entity из `server/include/persistence` и generated mapping из `server/generated/persistence`. Поэтому обычные ключи и составные ключи обновляются/удаляются через ODB object identity.
+
+Низкоуровневые `querySql` и `executeSql` остаются в `Database` для bootstrap, служебной диагностики и случаев, где нужен сырой SQL поверх libpq connection.
 
 ### CMake Синтаксис
 
@@ -692,7 +716,7 @@ Backend:
 
 ```bash
 cmake --build server/build --parallel
-ctest --test-dir server/build -C Debug --output-on-failure
+ctest --test-dir server/build --output-on-failure
 ```
 
 Client:
@@ -713,4 +737,3 @@ Smoke-проверка UI:
 5. Войти как `admin` / `admin12345`.
 6. Проверить таблицу `Хозяйства`, поиск, фильтр и сброс.
 7. Проверить экран `Пользователи`: список, создание пользователя, изменение роли.
-

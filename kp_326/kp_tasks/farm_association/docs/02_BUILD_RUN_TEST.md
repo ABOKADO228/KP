@@ -30,12 +30,12 @@ ctest --test-dir server\build -C Debug --output-on-failure
 Manjaro:
 
 ```bash
-cmake -S server -B server/build -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug
-cmake --build server/build --config Debug --parallel
+cmake -S server -B server/build -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DFARM_SERVER_USE_CHECKED_IN_ODB=ON
+cmake --build server/build --parallel
 sudo test -f /var/lib/postgres/data/PG_VERSION || sudo -iu postgres initdb -D /var/lib/postgres/data
 sudo systemctl enable --now postgresql
 sudo -iu postgres psql -c "ALTER USER postgres WITH PASSWORD 'password';"
-ctest --test-dir server/build -C Debug --output-on-failure
+ctest --test-dir server/build --output-on-failure
 ```
 
 Debug-сервер при старте использует базу `fasc_test`, каждый раз удаляет ее, создает заново и применяет SQL-инициализацию. Это удобно для разработки и ручной проверки: состояние базы не протухает между запусками.
@@ -57,12 +57,12 @@ ctest --test-dir server\build-release -C Release --output-on-failure
 Manjaro:
 
 ```bash
-cmake -S server -B server/build-release -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release
-cmake --build server/build-release --config Release --parallel
+cmake -S server -B server/build-release -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release -DFARM_SERVER_USE_CHECKED_IN_ODB=ON
+cmake --build server/build-release --parallel
 sudo test -f /var/lib/postgres/data/PG_VERSION || sudo -iu postgres initdb -D /var/lib/postgres/data
 sudo systemctl enable --now postgresql
 sudo -iu postgres psql -c "ALTER USER postgres WITH PASSWORD 'password';"
-ctest --test-dir server/build-release -C Release --output-on-failure
+ctest --test-dir server/build-release --output-on-failure
 ```
 
 Release-сервер при старте использует базу `fasc_db`. Если базы нет, он создает ее. Если отсутствуют основные таблицы, он применяет SQL-инициализацию. Существующие данные в Release не очищаются.
@@ -72,14 +72,15 @@ Release-сервер при старте использует базу `fasc_db`
 Основные шаги:
 
 ```text
-1. ODB compiler читает server/include/persistence/User.hpp
-2. Генерирует user-odb.cxx, user-odb.hxx, user-odb.ixx и user.sql
-3. При необходимости собирает локальные libodb/libodb-pgsql для текущей конфигурации
-4. Собирает farm_association_server_core
-5. Собирает farm_association_server
-6. Собирает GoogleTest targets
-7. Копирует SQL bootstrap scripts рядом с executable в каталог sql/
-8. На Windows копирует PostgreSQL runtime DLL рядом с executable и tests
+1. CMake собирает список FARM_SERVER_PERSISTENCE_MODELS
+2. Если ODB compiler доступен, генерирует *-odb.cxx, *-odb.hxx, *-odb.ixx и *.sql для всех persistence-моделей
+3. Если ODB compiler недоступен или включен FARM_SERVER_USE_CHECKED_IN_ODB=ON, берет checked-in generated-файлы из server/generated/persistence
+4. При необходимости собирает локальные libodb/libodb-pgsql для текущей конфигурации
+5. Собирает farm_association_server_core
+6. Собирает farm_association_server
+7. Собирает GoogleTest targets
+8. Копирует SQL bootstrap scripts рядом с executable в каталог sql/
+9. На Windows копирует PostgreSQL runtime DLL рядом с executable и tests
 ```
 
 `farm_association_server_core` содержит основную серверную логику без `main()`, чтобы тесты могли линковаться к тому же коду. `farm_association_server` содержит только точку входа и запускает HTTP-сервер.
@@ -88,7 +89,7 @@ Release-сервер при старте использует базу `fasc_db`
 
 Unit tests не требуют запущенный PostgreSQL. Полный CTest включает DB-backed integration tests, поэтому перед запуском `ctest` PostgreSQL должен быть доступен на `FARM_DB_HOST:FARM_DB_PORT`.
 
-DB-backed integration tests всегда используют `fasc_test`, даже если проверяется Release build. Перед DB-backed проверкой тесты сбрасывают `fasc_test`, применяют предметный SQL и generated ODB `user.sql`, затем проверяют чтение `/api/farm` и auth register/login через реальную БД.
+DB-backed integration tests всегда используют `fasc_test`, даже если проверяется Release build. Перед DB-backed проверкой тесты сбрасывают `fasc_test`, применяют предметный SQL и generated ODB `user.sql`, затем проверяют чтение `/api/farm`, обновление/удаление обычных и составных ключей, auth register/login и управление ролями через реальную БД.
 
 Для запуска сервера PostgreSQL должен быть доступен на `FARM_DB_HOST:FARM_DB_PORT`. Базу и схемы сервер готовит сам.
 
@@ -150,6 +151,14 @@ sudo -iu postgres psql -c "ALTER USER postgres WITH PASSWORD 'password';"
 pg_isready -h localhost -p 5432
 ```
 
+В Docker/CI-образах Manjaro обычно нет systemd. Тогда PostgreSQL можно поднять вручную через `runuser` и отдельный socket-каталог:
+
+```bash
+runuser -u postgres -- initdb -D /tmp/farm_pgdata --encoding=UTF8 --locale=C
+runuser -u postgres -- pg_ctl -D /tmp/farm_pgdata -l /tmp/farm_pg.log -o "-h 127.0.0.1 -p 5432 -k /tmp" start -w
+printf "%s\n" "ALTER USER postgres WITH PASSWORD 'password';" | runuser -u postgres -- psql -h /tmp
+```
+
 ## Запуск Сервера
 
 Debug Windows:
@@ -201,9 +210,10 @@ curl http://localhost:8080/health
 curl -X POST http://localhost:8080/auth/register -H "Content-Type: application/json" -d '{"login":"alex","password":"password123"}'
 curl -X POST http://localhost:8080/auth/login -H "Content-Type: application/json" -d '{"login":"alex","password":"password123"}'
 curl -X POST http://localhost:8080/auth/login -H "Content-Type: application/json" -d '{"login":"admin","password":"admin12345"}'
-curl -X POST http://localhost:8080/users -H "Content-Type: application/json" -H "Authorization: Bearer <manager-jwt>" -d '{"login":"owner","password":"password123","role":"farm_owner"}'
-curl http://localhost:8080/users -H "Authorization: Bearer <manager-jwt>"
-curl -X PUT "http://localhost:8080/users/role?login=owner" -H "Content-Type: application/json" -H "Authorization: Bearer <manager-jwt>" -d '{"role":"agronomist"}'
+ADMIN_TOKEN=$(curl -sS -X POST http://localhost:8080/auth/login -H "Content-Type: application/json" -d '{"login":"admin","password":"admin12345"}' | node -pe "JSON.parse(require('fs').readFileSync(0, 'utf8')).token")
+curl -X POST http://localhost:8080/users -H "Content-Type: application/json" -H "Authorization: Bearer ${ADMIN_TOKEN}" -d '{"login":"owner","password":"password123","role":"farm_owner"}'
+curl http://localhost:8080/users -H "Authorization: Bearer ${ADMIN_TOKEN}"
+curl -X PUT "http://localhost:8080/users/role?login=owner" -H "Content-Type: application/json" -H "Authorization: Bearer ${ADMIN_TOKEN}" -d '{"role":"agronomist"}'
 ```
 
 `/auth/register` создает пользователя с ролью `farm_worker`. Сервер при старте создает встроенного администратора `admin` / `admin12345` с ролью `agriculture_admin`; значения задаются через `FARM_ADMIN_LOGIN` и `FARM_ADMIN_PASSWORD`, создание отключается через `FARM_ADMIN_ENABLED=0`. Успешный ответ `/auth/register` и `/auth/login` содержит `token`, `token_type` и `user.login`/`user.role`. Управление пользователями через `/users` доступно JWT ролей `agriculture_admin` и `association_director`.
@@ -218,6 +228,45 @@ curl -X PUT "http://localhost:8080/api/farm/item?id=1" -H "Content-Type: applica
 
 Все `/api/*` endpoints ожидают и возвращают JSON с типами view-слоя, а не persistence-структуры. Схема маршрутов: `GET/POST /api/<resource>` и `GET/PUT/DELETE /api/<resource>/item?<key>`.
 
+## Полный Manjaro Pipeline
+
+Этот маршрут проверяет систему от чистой подготовки зависимостей до реальных HTTP-запросов и клиентской сборки:
+
+```bash
+sudo pacman -S --needed base-devel cmake ninja clang curl unzip tar openssl postgresql postgresql-libs nodejs npm git
+
+chmod +x tools/bootstrap-deps.sh
+./tools/bootstrap-deps.sh
+
+cmake -S server -B server/build -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DFARM_SERVER_USE_CHECKED_IN_ODB=ON
+cmake --build server/build --parallel
+
+sudo test -f /var/lib/postgres/data/PG_VERSION || sudo -iu postgres initdb -D /var/lib/postgres/data
+sudo systemctl enable --now postgresql
+sudo -iu postgres psql -c "ALTER USER postgres WITH PASSWORD 'password';"
+ctest --test-dir server/build --output-on-failure
+
+FARM_SERVER_ADDRESS=127.0.0.1 FARM_SERVER_PORT=8080 ./server/build/farm_association_server &
+SERVER_PID=$!
+
+curl http://127.0.0.1:8080/health
+curl -X POST http://127.0.0.1:8080/auth/register -H "Content-Type: application/json" -d '{"login":"alex","password":"password123"}'
+curl -X POST http://127.0.0.1:8080/auth/login -H "Content-Type: application/json" -d '{"login":"alex","password":"password123"}'
+ADMIN_TOKEN=$(curl -sS -X POST http://127.0.0.1:8080/auth/login -H "Content-Type: application/json" -d '{"login":"admin","password":"admin12345"}' | node -pe "JSON.parse(require('fs').readFileSync(0, 'utf8')).token")
+curl -X POST http://127.0.0.1:8080/users -H "Content-Type: application/json" -H "Authorization: Bearer ${ADMIN_TOKEN}" -d '{"login":"owner","password":"password123","role":"farm_owner"}'
+curl http://127.0.0.1:8080/users -H "Authorization: Bearer ${ADMIN_TOKEN}"
+curl -X PUT "http://127.0.0.1:8080/users/role?login=owner" -H "Content-Type: application/json" -H "Authorization: Bearer ${ADMIN_TOKEN}" -d '{"role":"agronomist"}'
+curl http://127.0.0.1:8080/api/farm
+
+kill "$SERVER_PID"
+
+cd client
+npm install
+npm test -- --run
+npm run typecheck
+npm run build
+```
+
 ## Тесты
 
 Тесты запускаются через CTest:
@@ -227,7 +276,7 @@ ctest --test-dir server\build -C Debug --output-on-failure
 ```
 
 ```bash
-ctest --test-dir server/build -C Debug --output-on-failure
+ctest --test-dir server/build --output-on-failure
 ```
 
 Текущий набор проверяет:
@@ -243,7 +292,7 @@ fixtures
 utils
 ```
 
-На текущей ревизии ожидается полное прохождение набора CTest при запущенном PostgreSQL. Последняя проверка Debug прошла `113/113` тестов. Если число тестов изменилось после добавления новых сценариев, ориентируйся на фактический вывод `ctest`.
+На текущей ревизии ожидается полное прохождение набора CTest при запущенном PostgreSQL. Последняя проверка Debug прошла `127/127` тестов; полный Manjaro pipeline также прошел от скачивания зависимостей до `curl` smoke-запросов и клиентской сборки. Если число тестов изменилось после добавления новых сценариев, ориентируйся на фактический вывод `ctest`.
 
 ## Диагностика
 
@@ -251,11 +300,14 @@ utils
 
 ```powershell
 netstat -ano | findstr :8080
+netsh interface ipv4 show excludedportrange protocol=tcp
 ```
 
 ```bash
 ss -ltnp | grep :8080
 ```
+
+На Windows ошибка PostgreSQL `could not bind IPv4 address "127.0.0.1": Permission denied` может означать не занятый порт, а системный excluded range. Проверь `netsh interface ipv4 show excludedportrange protocol=tcp` и выбери порт вне этих диапазонов.
 
 PostgreSQL недоступен:
 

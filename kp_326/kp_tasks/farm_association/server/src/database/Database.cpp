@@ -1,5 +1,6 @@
 #include <database/Database.hpp>
 #include <database/Bootstrap.hpp>
+#include <database/OdbTableRegistry.hpp>
 
 #include <libpq-fe.h>
 
@@ -184,34 +185,20 @@ const odb::database& Database::raw() const {
 
 std::vector<SqlRow> Database::selectRows(const std::string& table,
                                          const std::vector<std::string>& columns) {
-  const std::string sql = "SELECT " + columnsSql(columns) + " FROM " +
-                          requireIdentifierPath(table);
-  return querySql(sql, {});
+  return selectOdbRows(*this, table, columns);
 }
 
 std::optional<SqlRow> Database::selectOneRow(const std::string& table,
                                              const std::vector<std::string>& columns,
                                              const std::vector<std::string>& keyColumns,
                                              const std::vector<SqlParameter>& keyValues) {
-  requireSameSize("key", keyColumns, keyValues);
-  const std::string sql = "SELECT " + columnsSql(columns) + " FROM " +
-                          requireIdentifierPath(table) + " WHERE " + whereSql(keyColumns) +
-                          " LIMIT 1";
-  const auto rows = querySql(sql, keyValues);
-  if (rows.empty()) {
-    return std::nullopt;
-  }
-  return rows.front();
+  return selectOneOdbRow(*this, table, columns, keyColumns, keyValues);
 }
 
 unsigned long long Database::insertRow(const std::string& table,
                                        const std::vector<std::string>& columns,
                                        const std::vector<SqlParameter>& values) {
-  requireSameSize("insert", columns, values);
-  const std::string sql = "INSERT INTO " + requireIdentifierPath(table) + " (" +
-                          columnsSql(columns) + ") VALUES (" + placeholdersSql(values.size()) +
-                          ")";
-  return executeSql(sql, values);
+  return insertOdbRow(*this, table, columns, values);
 }
 
 unsigned long long Database::updateRows(const std::string& table,
@@ -219,24 +206,13 @@ unsigned long long Database::updateRows(const std::string& table,
                                         const std::vector<SqlParameter>& values,
                                         const std::vector<std::string>& keyColumns,
                                         const std::vector<SqlParameter>& keyValues) {
-  requireSameSize("update", columns, values);
-  requireSameSize("key", keyColumns, keyValues);
-
-  std::vector<SqlParameter> parameters = values;
-  parameters.insert(parameters.end(), keyValues.begin(), keyValues.end());
-  const std::string sql = "UPDATE " + requireIdentifierPath(table) + " SET " +
-                          assignmentsSql(columns) + " WHERE " +
-                          whereSql(keyColumns, values.size());
-  return executeSql(sql, parameters);
+  return updateOdbRows(*this, table, columns, values, keyColumns, keyValues);
 }
 
 unsigned long long Database::deleteRows(const std::string& table,
                                         const std::vector<std::string>& keyColumns,
                                         const std::vector<SqlParameter>& keyValues) {
-  requireSameSize("key", keyColumns, keyValues);
-  const std::string sql = "DELETE FROM " + requireIdentifierPath(table) + " WHERE " +
-                          whereSql(keyColumns);
-  return executeSql(sql, keyValues);
+  return deleteOdbRows(*this, table, keyColumns, keyValues);
 }
 
 std::vector<SqlRow> Database::querySql(const std::string& sql,

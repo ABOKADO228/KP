@@ -12,6 +12,8 @@ option(FARM_SERVER_ODB_STATIC "Link ODB runtime as static libraries" ON)
 option(FARM_SERVER_BUILD_LOCAL_ODB_DEPS
     "Build local libodb/libodb-pgsql archives into server/third_party when they are missing" ON)
 option(FARM_SERVER_BUILD_TESTS "Build unit and integration tests" ON)
+option(FARM_SERVER_USE_CHECKED_IN_ODB
+    "Use checked-in generated ODB files even when the ODB compiler is available" OFF)
 
 set(FARM_SERVER_DEPS_DIR
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party"
@@ -62,79 +64,136 @@ else()
     endif()
 endif()
 
-set(FARM_SERVER_USER_MODEL "${CMAKE_CURRENT_SOURCE_DIR}/include/persistence/User.hpp")
-if(WIN32)
-    find_program(FARM_SERVER_ODB_COMPILER
-        NAMES odb.exe odb
-        HINTS
-            "${FARM_SERVER_DEPS_DIR}/odb/bin/${FARM_SERVER_PLATFORM}"
-            "${FARM_SERVER_DEPS_DIR}/odb/bin"
-        NO_DEFAULT_PATH)
-else()
-    find_program(FARM_SERVER_ODB_COMPILER
-        NAMES odb
-        HINTS
-            "${FARM_SERVER_DEPS_DIR}/odb/bin/${FARM_SERVER_PLATFORM}"
-            "${FARM_SERVER_DEPS_DIR}/odb/bin"
-        NO_DEFAULT_PATH)
+set(FARM_SERVER_PERSISTENCE_MODELS
+    AssociationEmployee
+    AssociationFarms
+    AssociationMember
+    AssociationRole
+    Contract
+    EmployeePlotAssignment
+    EmploymentStatus
+    Farm
+    FarmAssociation
+    FarmEmployee
+    FarmOwner
+    FarmOwnership
+    FarmPlot
+    FarmPlotAssignment
+    FarmPlotConsumptionProduct
+    FarmPlotProductionProduct
+    FarmPlotType
+    FarmRole
+    IdentityDocumentType
+    Person
+    PersonDocument
+    Product
+    ProductType
+    PurchaseOrder
+    PurchaseOrderItem
+    PurchaseRequisition
+    SalesRequisition
+    Supplier
+    SupplierProductPrice
+    Unit
+    User)
+
+if(NOT FARM_SERVER_USE_CHECKED_IN_ODB)
+    if(WIN32)
+        find_program(FARM_SERVER_ODB_COMPILER
+            NAMES odb.exe odb
+            HINTS
+                "${FARM_SERVER_DEPS_DIR}/odb/bin/${FARM_SERVER_PLATFORM}"
+                "${FARM_SERVER_DEPS_DIR}/odb/bin"
+            NO_DEFAULT_PATH)
+    else()
+        find_program(FARM_SERVER_ODB_COMPILER
+            NAMES odb
+            HINTS
+                "${FARM_SERVER_DEPS_DIR}/odb/bin/${FARM_SERVER_PLATFORM}"
+                "${FARM_SERVER_DEPS_DIR}/odb/bin"
+            NO_DEFAULT_PATH)
+    endif()
 endif()
 
 if(FARM_SERVER_ODB_COMPILER)
     message(STATUS "Farm server ODB compiler: ${FARM_SERVER_ODB_COMPILER}")
     set(FARM_SERVER_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
     set(FARM_SERVER_GENERATED_PERSISTENCE_DIR "${FARM_SERVER_GENERATED_DIR}/persistence")
-    set(FARM_SERVER_USER_ODB_CXX "${FARM_SERVER_GENERATED_PERSISTENCE_DIR}/user-odb.cxx")
-    set(FARM_SERVER_USER_ODB_HXX "${FARM_SERVER_GENERATED_PERSISTENCE_DIR}/user-odb.hxx")
-    set(FARM_SERVER_USER_ODB_IXX "${FARM_SERVER_GENERATED_PERSISTENCE_DIR}/user-odb.ixx")
-    set(FARM_SERVER_USER_SQL "${FARM_SERVER_GENERATED_PERSISTENCE_DIR}/user.sql")
-
-    add_custom_command(
-        OUTPUT
-            "${FARM_SERVER_USER_ODB_CXX}"
-            "${FARM_SERVER_USER_ODB_HXX}"
-            "${FARM_SERVER_USER_ODB_IXX}"
-            "${FARM_SERVER_USER_SQL}"
-        COMMAND "${CMAKE_COMMAND}" -E make_directory "${FARM_SERVER_GENERATED_PERSISTENCE_DIR}"
-        COMMAND "${FARM_SERVER_ODB_COMPILER}"
-            --std c++14
-            --database pgsql
-            --generate-query
-            --generate-schema
-            --output-dir "${FARM_SERVER_GENERATED_PERSISTENCE_DIR}"
-            --input-name user
-            "${FARM_SERVER_USER_MODEL}"
-        DEPENDS
-            "${FARM_SERVER_USER_MODEL}"
-            "${FARM_SERVER_ODB_COMPILER}"
-        COMMENT "Generating ODB mapping for persistence/User.hpp"
-        VERBATIM)
-
-    set_source_files_properties(
-        "${FARM_SERVER_USER_ODB_CXX}"
-        "${FARM_SERVER_USER_ODB_HXX}"
-        "${FARM_SERVER_USER_ODB_IXX}"
-        "${FARM_SERVER_USER_SQL}"
-        PROPERTIES GENERATED TRUE)
 else()
-    message(STATUS "Farm server ODB compiler not found; using checked-in generated persistence files")
+    message(STATUS "Farm server using checked-in generated persistence files")
     set(FARM_SERVER_GENERATED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/generated")
     set(FARM_SERVER_GENERATED_PERSISTENCE_DIR "${FARM_SERVER_GENERATED_DIR}/persistence")
-    set(FARM_SERVER_USER_ODB_CXX "${FARM_SERVER_GENERATED_PERSISTENCE_DIR}/user-odb.cxx")
-    set(FARM_SERVER_USER_ODB_HXX "${FARM_SERVER_GENERATED_PERSISTENCE_DIR}/user-odb.hxx")
-    set(FARM_SERVER_USER_ODB_IXX "${FARM_SERVER_GENERATED_PERSISTENCE_DIR}/user-odb.ixx")
-    set(FARM_SERVER_USER_SQL "${FARM_SERVER_GENERATED_PERSISTENCE_DIR}/user.sql")
-
-    farm_require_path("${FARM_SERVER_USER_ODB_CXX}" "checked-in ODB user source")
-    farm_require_path("${FARM_SERVER_USER_ODB_HXX}" "checked-in ODB user header")
-    farm_require_path("${FARM_SERVER_USER_ODB_IXX}" "checked-in ODB user inline header")
-    farm_require_path("${FARM_SERVER_USER_SQL}" "checked-in ODB user SQL schema")
 endif()
+
+set(FARM_SERVER_ODB_GENERATED_SOURCES)
+set(FARM_SERVER_ODB_GENERATED_FILES)
+
+foreach(FARM_SERVER_MODEL IN LISTS FARM_SERVER_PERSISTENCE_MODELS)
+    string(REGEX REPLACE "([a-z0-9])([A-Z])" "\\1-\\2"
+        FARM_SERVER_MODEL_INPUT "${FARM_SERVER_MODEL}")
+    string(TOLOWER "${FARM_SERVER_MODEL_INPUT}" FARM_SERVER_MODEL_INPUT)
+
+    set(FARM_SERVER_MODEL_HEADER
+        "${CMAKE_CURRENT_SOURCE_DIR}/include/persistence/${FARM_SERVER_MODEL}.hpp")
+    set(FARM_SERVER_MODEL_ODB_CXX
+        "${FARM_SERVER_GENERATED_PERSISTENCE_DIR}/${FARM_SERVER_MODEL_INPUT}-odb.cxx")
+    set(FARM_SERVER_MODEL_ODB_HXX
+        "${FARM_SERVER_GENERATED_PERSISTENCE_DIR}/${FARM_SERVER_MODEL_INPUT}-odb.hxx")
+    set(FARM_SERVER_MODEL_ODB_IXX
+        "${FARM_SERVER_GENERATED_PERSISTENCE_DIR}/${FARM_SERVER_MODEL_INPUT}-odb.ixx")
+    set(FARM_SERVER_MODEL_SQL
+        "${FARM_SERVER_GENERATED_PERSISTENCE_DIR}/${FARM_SERVER_MODEL_INPUT}.sql")
+
+    if(FARM_SERVER_ODB_COMPILER)
+        add_custom_command(
+            OUTPUT
+                "${FARM_SERVER_MODEL_ODB_CXX}"
+                "${FARM_SERVER_MODEL_ODB_HXX}"
+                "${FARM_SERVER_MODEL_ODB_IXX}"
+                "${FARM_SERVER_MODEL_SQL}"
+            COMMAND "${CMAKE_COMMAND}" -E make_directory "${FARM_SERVER_GENERATED_PERSISTENCE_DIR}"
+            COMMAND "${FARM_SERVER_ODB_COMPILER}"
+                --std c++14
+                --database pgsql
+                --generate-query
+                --generate-schema
+                --output-dir "${FARM_SERVER_GENERATED_PERSISTENCE_DIR}"
+                --input-name "${FARM_SERVER_MODEL_INPUT}"
+                -I "${CMAKE_CURRENT_SOURCE_DIR}/include"
+                "${FARM_SERVER_MODEL_HEADER}"
+            DEPENDS
+                "${FARM_SERVER_MODEL_HEADER}"
+                "${CMAKE_CURRENT_SOURCE_DIR}/include/domain/Types.hpp"
+                "${FARM_SERVER_ODB_COMPILER}"
+            COMMENT "Generating ODB mapping for persistence/${FARM_SERVER_MODEL}.hpp"
+            VERBATIM)
+    else()
+        farm_require_path("${FARM_SERVER_MODEL_ODB_CXX}" "checked-in ODB ${FARM_SERVER_MODEL_INPUT} source")
+        farm_require_path("${FARM_SERVER_MODEL_ODB_HXX}" "checked-in ODB ${FARM_SERVER_MODEL_INPUT} header")
+        farm_require_path("${FARM_SERVER_MODEL_ODB_IXX}" "checked-in ODB ${FARM_SERVER_MODEL_INPUT} inline header")
+        farm_require_path("${FARM_SERVER_MODEL_SQL}" "checked-in ODB ${FARM_SERVER_MODEL_INPUT} SQL schema")
+    endif()
+
+    list(APPEND FARM_SERVER_ODB_GENERATED_SOURCES "${FARM_SERVER_MODEL_ODB_CXX}")
+    list(APPEND FARM_SERVER_ODB_GENERATED_FILES
+        "${FARM_SERVER_MODEL_ODB_CXX}"
+        "${FARM_SERVER_MODEL_ODB_HXX}"
+        "${FARM_SERVER_MODEL_ODB_IXX}"
+        "${FARM_SERVER_MODEL_SQL}")
+endforeach()
+
+if(FARM_SERVER_ODB_COMPILER)
+    set_source_files_properties(${FARM_SERVER_ODB_GENERATED_FILES} PROPERTIES GENERATED TRUE)
+endif()
+
+set(FARM_SERVER_USER_SQL "${FARM_SERVER_GENERATED_PERSISTENCE_DIR}/user.sql")
 
 set(FARM_SERVER_CORE_SOURCES
         src/controllers/app/Users.cpp
         src/controllers/http/Users.cpp
         src/database/Bootstrap.cpp
         src/database/Database.cpp
+        src/database/OdbTableRegistry.cpp
         src/handling/Health.cpp
         src/handling/Users.cpp
         ${FARM_SERVER_ENTITY_SOURCES}
@@ -144,7 +203,7 @@ set(FARM_SERVER_CORE_SOURCES
         src/server/core/AppRouter.cpp
         src/server/core/RequestDispatcher.cpp
         src/server/core/Server.cpp
-        "${FARM_SERVER_USER_ODB_CXX}")
+        ${FARM_SERVER_ODB_GENERATED_SOURCES})
 
 add_library(farm_association_server_core STATIC)
 

@@ -6,6 +6,7 @@ DEPS="$ROOT/server/third_party"
 DOWNLOADS="$DEPS/_downloads"
 SOURCES="$DEPS/_sources"
 FORCE="${FORCE:-0}"
+SKIP_ODB_COMPILER="${SKIP_ODB_COMPILER:-1}"
 
 need_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -118,8 +119,12 @@ extract_zip "$DOWNLOADS/fmt-12.1.0.zip" "$SOURCES/fmt-12.1.0"
 ensure_zip "https://github.com/google/googletest/archive/refs/tags/v1.17.0.zip" "$DOWNLOADS/googletest-1.17.0.zip"
 extract_zip "$DOWNLOADS/googletest-1.17.0.zip" "$SOURCES/googletest-1.17.0"
 
-ensure_tar_bz2 "https://www.codesynthesis.com/download/odb/2.4/odb-2.4.0-x86_64-linux-gnu.tar.bz2" "$DOWNLOADS/odb-2.4.0-x86_64-linux-gnu.tar.bz2"
-extract_tar_bz2 "$DOWNLOADS/odb-2.4.0-x86_64-linux-gnu.tar.bz2" "$SOURCES/odb-2.4.0-x86_64-linux-gnu"
+if [[ "$SKIP_ODB_COMPILER" == "1" ]]; then
+  echo "skip ODB compiler download; checked-in generated ODB files will be used"
+else
+  ensure_tar_bz2 "https://www.codesynthesis.com/download/odb/2.4/odb-2.4.0-x86_64-linux-gnu.tar.bz2" "$DOWNLOADS/odb-2.4.0-x86_64-linux-gnu.tar.bz2"
+  extract_tar_bz2 "$DOWNLOADS/odb-2.4.0-x86_64-linux-gnu.tar.bz2" "$SOURCES/odb-2.4.0-x86_64-linux-gnu"
+fi
 
 ensure_tar_bz2 "https://www.codesynthesis.com/download/odb/2.4/libodb-2.4.0.tar.bz2" "$DOWNLOADS/libodb-2.4.0.tar.bz2"
 extract_tar_bz2 "$DOWNLOADS/libodb-2.4.0.tar.bz2" "$SOURCES/libodb-2.4.0"
@@ -139,8 +144,10 @@ mkdir -p \
 
 cp -R "$SOURCES/boost_1_90_0/boost" "$DEPS/boost/include/"
 cp -R "$SOURCES/json-3.12.0/include/nlohmann" "$DEPS/nlohmann_json/include/"
-cp "$SOURCES/odb-2.4.0-x86_64-linux-gnu/bin/odb" "$DEPS/odb/bin/odb"
-chmod +x "$DEPS/odb/bin/odb"
+if [[ "$SKIP_ODB_COMPILER" != "1" ]]; then
+  cp "$SOURCES/odb-2.4.0-x86_64-linux-gnu/bin/odb" "$DEPS/odb/bin/odb"
+  chmod +x "$DEPS/odb/bin/odb"
+fi
 
 if [[ -f /usr/include/postgresql/libpq-fe.h ]]; then
   cp -R /usr/include/postgresql/* "$DEPS/postgresql/include/"

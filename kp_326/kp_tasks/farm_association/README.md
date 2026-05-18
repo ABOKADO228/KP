@@ -22,23 +22,64 @@ ctest --test-dir server\build -C Debug --output-on-failure
 Manjaro:
 
 ```bash
-sudo pacman -S --needed base-devel cmake ninja clang curl unzip tar openssl postgresql postgresql-libs
+sudo pacman -S --needed base-devel cmake ninja clang curl unzip tar openssl postgresql postgresql-libs nodejs npm git
 chmod +x tools/bootstrap-deps.sh
 ./tools/bootstrap-deps.sh
-cmake -S server -B server/build -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug
+cmake -S server -B server/build -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DFARM_SERVER_USE_CHECKED_IN_ODB=ON
 cmake --build server/build --parallel
 sudo test -f /var/lib/postgres/data/PG_VERSION || sudo -iu postgres initdb -D /var/lib/postgres/data
 sudo systemctl enable --now postgresql
 sudo -iu postgres psql -c "ALTER USER postgres WITH PASSWORD 'password';"
-ctest --test-dir server/build -C Debug --output-on-failure
+ctest --test-dir server/build --output-on-failure
 ```
+
+## Полное Развертывание На Manjaro
+
+Этот маршрут поднимает всю систему с нуля: зависимости, сервер, PostgreSQL, API smoke-проверку и клиент.
+
+```bash
+sudo pacman -S --needed base-devel cmake ninja clang curl unzip tar openssl postgresql postgresql-libs nodejs npm git
+chmod +x tools/bootstrap-deps.sh
+./tools/bootstrap-deps.sh
+
+cmake -S server -B server/build -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DFARM_SERVER_USE_CHECKED_IN_ODB=ON
+cmake --build server/build --parallel
+
+sudo test -f /var/lib/postgres/data/PG_VERSION || sudo -iu postgres initdb -D /var/lib/postgres/data
+sudo systemctl enable --now postgresql
+sudo -iu postgres psql -c "ALTER USER postgres WITH PASSWORD 'password';"
+
+ctest --test-dir server/build --output-on-failure
+./server/build/farm_association_server &
+SERVER_PID=$!
+sleep 2
+
+curl http://localhost:8080/health
+ADMIN_TOKEN=$(curl -sS -X POST http://localhost:8080/auth/login -H "Content-Type: application/json" -d '{"login":"admin","password":"admin12345"}' | node -pe "JSON.parse(require('fs').readFileSync(0, 'utf8')).token")
+curl -X POST http://localhost:8080/auth/register -H "Content-Type: application/json" -d '{"login":"alex","password":"password123"}'
+curl -X POST http://localhost:8080/auth/login -H "Content-Type: application/json" -d '{"login":"alex","password":"password123"}'
+curl -X POST http://localhost:8080/users -H "Content-Type: application/json" -H "Authorization: Bearer ${ADMIN_TOKEN}" -d '{"login":"owner","password":"password123","role":"farm_owner"}'
+curl http://localhost:8080/users -H "Authorization: Bearer ${ADMIN_TOKEN}"
+curl -X PUT "http://localhost:8080/users/role?login=owner" -H "Content-Type: application/json" -H "Authorization: Bearer ${ADMIN_TOKEN}" -d '{"role":"agronomist"}'
+curl http://localhost:8080/api/farm
+
+cd client
+npm install
+npm test -- --run
+npm run typecheck
+npm run build
+cd ..
+kill "$SERVER_PID"
+```
+
+В Docker/CI без systemd PostgreSQL можно запускать вручную: `runuser -u postgres -- initdb -D /tmp/farm_pgdata --encoding=UTF8 --locale=C`, затем `runuser -u postgres -- pg_ctl -D /tmp/farm_pgdata -l /tmp/farm_pg.log -o '-h 127.0.0.1 -p 5432 -k /tmp' start -w`. На обычной Manjaro-машине достаточно `systemctl enable --now postgresql`.
 
 Release лучше собирать в отдельный каталог:
 
 ```bash
-cmake -S server -B server/build-release -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release
-cmake --build server/build-release --config Release --parallel
-ctest --test-dir server/build-release -C Release --output-on-failure
+cmake -S server -B server/build-release -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release -DFARM_SERVER_USE_CHECKED_IN_ODB=ON
+cmake --build server/build-release --parallel
+ctest --test-dir server/build-release --output-on-failure
 ```
 
 ## Зависимости
@@ -50,9 +91,10 @@ server/third_party/boost/include/boost/version.hpp
 server/third_party/nlohmann_json/include/nlohmann/json.hpp
 server/third_party/_sources/fmt-12.1.0/CMakeLists.txt
 server/third_party/_sources/googletest-1.17.0/CMakeLists.txt
-server/third_party/odb/bin/odb(.exe)
 server/third_party/postgresql/include/libpq-fe.h
 ```
+
+На Windows bootstrap также кладет `server/third_party/odb/bin/odb.exe`, и CMake может регенерировать ODB-код. На Manjaro скачивание ODB compiler по умолчанию пропускается: сборка использует проверенные `server/generated/persistence/*-odb.*`, чтобы не зависеть от медленного/нестабильного архива CodeSynthesis.
 
 На Windows OpenSSL приходит вместе с локальным PostgreSQL:
 
@@ -107,6 +149,8 @@ Release
 ```
 
 Сервер открывает libpq/ODB-подключения с `client_encoding=UTF8`. Новые базы, которые создает bootstrap, создаются как UTF-8 (`template0`, `LC_COLLATE=C`, `LC_CTYPE=C`), а для уже существующих баз PostgreSQL выполняет конвертацию результата в UTF-8 на уровне клиента. Это важно на Windows-кластерах с русской локалью `WIN1251`: JSON API остается валидным UTF-8, и `/api/farm` не падает на русских сидовых данных.
+
+Предметные таблицы и пользователи имеют ODB mapping в `server/include/persistence` и generated-файлы в `server/generated/persistence`. CRUD facade `Database::selectRows/insertRow/updateRows/deleteRows` для `/api/*` теперь dispatch-ит в ODB registry, а прямой libpq SQL остается для bootstrap и низкоуровневой диагностики.
 
 Сервер использует параметры подключения:
 
@@ -179,7 +223,7 @@ curl http://localhost:8080/health
 curl -X POST http://localhost:8080/auth/login -H "Content-Type: application/json" -d '{"login":"admin","password":"admin12345"}'
 curl -X POST http://localhost:8080/auth/register -H "Content-Type: application/json" -d '{"login":"alex","password":"password123"}'
 curl -X POST http://localhost:8080/auth/login -H "Content-Type: application/json" -d '{"login":"alex","password":"password123"}'
-curl -X POST http://localhost:8080/users -H "Content-Type: application/json" -H "Authorization: Bearer <manager-jwt>" -d '{"login":"owner","password":"password123","role":"farm_owner"}'
+curl -X POST http://localhost:8080/users -H "Content-Type: application/json" -H "Authorization: Bearer <admin-or-director-jwt>" -d '{"login":"owner","password":"password123","role":"farm_owner"}'
 curl http://localhost:8080/users -H "Authorization: Bearer <admin-or-director-jwt>"
 curl -X PUT "http://localhost:8080/users/role?login=owner" -H "Content-Type: application/json" -H "Authorization: Bearer <admin-or-director-jwt>" -d '{"role":"agronomist"}'
 curl http://localhost:8080/api/farm

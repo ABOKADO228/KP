@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <domain/Types.hpp>
 
@@ -7,9 +7,15 @@
 #include <odb/core.hxx>
 #include <odb/nullable.hxx>
 
+#ifndef ODB_COMPILER
+#include <persistence/DomainValueTraits.hpp>
+#endif
+
 #include <string>
 
-namespace fasc::server::persistence {
+namespace fasc {
+namespace server {
+namespace persistence {
 
 /// Сущность таблицы purchase_order.
 struct PurchaseOrderEntity {
@@ -41,7 +47,7 @@ struct PurchaseOrderEntity {
   odb::nullable<fasc::server::domain::Date> receivedAt;
 
   /// Значение колонки created_by.
-  odb::nullable<std::uint64_t> createdBy;
+  odb::nullable<unsigned long long> createdBy;
 
 };
 
@@ -57,4 +63,6 @@ struct PurchaseOrderEntity {
 #pragma db member(PurchaseOrderEntity::receivedAt) column("received_at")
 #pragma db member(PurchaseOrderEntity::createdBy) column("created_by")
 
-} // namespace fasc::server::persistence
+} // namespace persistence
+} // namespace server
+} // namespace fasc

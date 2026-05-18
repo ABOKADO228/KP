@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <domain/Types.hpp>
 
@@ -7,9 +7,15 @@
 #include <odb/core.hxx>
 #include <odb/nullable.hxx>
 
+#ifndef ODB_COMPILER
+#include <persistence/DomainValueTraits.hpp>
+#endif
+
 #include <string>
 
-namespace fasc::server::persistence {
+namespace fasc {
+namespace server {
+namespace persistence {
 
 /// Сущность таблицы farm_plot.
 struct FarmPlotEntity {
@@ -17,7 +23,7 @@ struct FarmPlotEntity {
   std::uint64_t id{};
 
   /// Значение колонки farm_plot_type_id.
-  odb::nullable<std::uint64_t> farmPlotTypeId;
+  odb::nullable<unsigned long long> farmPlotTypeId;
 
   /// Значение колонки name.
   odb::nullable<std::string> name;
@@ -45,4 +51,6 @@ struct FarmPlotEntity {
 #pragma db member(FarmPlotEntity::cadastralNumber) column("cadastral_number")
 #pragma db member(FarmPlotEntity::status) column("status")
 
-} // namespace fasc::server::persistence
+} // namespace persistence
+} // namespace server
+} // namespace fasc

@@ -36,7 +36,7 @@ server/third_party/_build
 Boost.Asio/Beast  HTTP server
 nlohmann/json     JSON marshalling
 fmt               formatting
-ODB compiler      generation of persistence mapping
+ODB compiler      regeneration of persistence mapping when available
 libodb            ODB runtime
 libodb-pgsql      ODB PostgreSQL driver
 PostgreSQL libpq  PostgreSQL client library
@@ -44,7 +44,7 @@ OpenSSL/libcrypto JWT/password/security dependencies
 GoogleTest        unit/integration tests
 ```
 
-Boost и nlohmann/json используются как headers. fmt и GoogleTest подключаются из исходников через CMake. ODB compiler скачивается bootstrap-ом, а `libodb`/`libodb-pgsql` собираются CMake-ом при первом build.
+Boost и nlohmann/json используются как headers. fmt и GoogleTest подключаются из исходников через CMake. ODB compiler нужен только для регенерации `*-odb.*`; обычная Linux/Manjaro-сборка может использовать checked-in файлы из `server/generated/persistence`. `libodb`/`libodb-pgsql` собираются CMake-ом при первом build.
 
 ## Windows
 
@@ -109,7 +109,7 @@ server/third_party/libodb-pgsql-Release
 Установи системные пакеты:
 
 ```bash
-sudo pacman -S --needed base-devel cmake ninja clang curl unzip tar openssl postgresql postgresql-libs
+sudo pacman -S --needed base-devel cmake ninja clang curl unzip tar openssl postgresql postgresql-libs nodejs npm git
 ```
 
 Bootstrap:
@@ -125,7 +125,9 @@ chmod +x tools/bootstrap-deps.sh
 FORCE=1 ./tools/bootstrap-deps.sh
 ```
 
-Linux-скрипт скачивает Boost, nlohmann/json, fmt, ODB compiler и GoogleTest. PostgreSQL/libpq и OpenSSL берутся из системных пакетов; CMake использует их напрямую, а bootstrap может подготовить локальную копию в `server/third_party` без подмешивания Windows-бандла PostgreSQL в Linux include path.
+`tools/bootstrap-deps.sh` должен храниться с LF-переносами строк. Это закреплено в `.gitattributes`. Если после копирования проекта на Manjaro появляется ошибка `/usr/bin/env: 'bash\r': No such file or directory`, файл был превращен в CRLF; восстанови его через Git checkout с нормальными line endings или выполни `dos2unix tools/bootstrap-deps.sh`.
+
+Linux-скрипт скачивает Boost, nlohmann/json, fmt и GoogleTest. ODB compiler на Linux по умолчанию не скачивается (`SKIP_ODB_COMPILER=1`), потому что проект хранит проверенные generated-файлы. PostgreSQL/libpq и OpenSSL берутся из системных пакетов; CMake использует их напрямую, а bootstrap может подготовить локальную копию в `server/third_party` без подмешивания Windows-бандла PostgreSQL в Linux include path.
 
 После bootstrap ожидаются:
 
@@ -134,12 +136,13 @@ server/third_party/boost/include/boost/version.hpp
 server/third_party/nlohmann_json/include/nlohmann/json.hpp
 server/third_party/_sources/fmt-12.1.0/CMakeLists.txt
 server/third_party/_sources/googletest-1.17.0/CMakeLists.txt
-server/third_party/odb/bin/odb
 server/third_party/postgresql/include/libpq-fe.h
 server/third_party/postgresql/lib/libpq.so
 server/third_party/openssl/include/openssl/evp.h
 server/third_party/openssl/lib/libcrypto.so
 ```
+
+Если на Manjaro нужно именно регенерировать ODB-код локально, запусти bootstrap с `SKIP_ODB_COMPILER=0`. Для обычной сборки это не требуется.
 
 `libodb` и `libodb-pgsql` также собираются CMake-ом при первом build. На Linux итоговые каталоги имеют конфигурационное имя только если это нужно текущему генератору и toolchain; проект не требует ручной установки ODB runtime в систему.
 
@@ -166,12 +169,13 @@ test -f server/third_party/boost/include/boost/version.hpp
 test -f server/third_party/nlohmann_json/include/nlohmann/json.hpp
 test -f server/third_party/_sources/fmt-12.1.0/CMakeLists.txt
 test -f server/third_party/_sources/googletest-1.17.0/CMakeLists.txt
-test -x server/third_party/odb/bin/odb
 test -f server/third_party/postgresql/include/libpq-fe.h
 test -f server/third_party/postgresql/lib/libpq.so
 test -f server/third_party/openssl/include/openssl/evp.h
 test -f server/third_party/openssl/lib/libcrypto.so
 ```
+
+Полный проверенный маршрут Manjaro описан в [02_BUILD_RUN_TEST.md](02_BUILD_RUN_TEST.md): системные пакеты, `bootstrap-deps.sh`, сборка с `FARM_SERVER_USE_CHECKED_IN_ODB=ON`, PostgreSQL, CTest, smoke-запросы `curl` и клиентские `npm`-проверки.
 
 Git-проверка:
 
@@ -198,7 +202,7 @@ git add server/third_party/.gitkeep
 : bootstrap не был выполнен или завершился неуспешно.
 
 `odb` не найден
-: проверь `server/third_party/odb/bin/odb` или `server/third_party/odb/bin/odb.exe`.
+: на Manjaro это нормально для обычной сборки: CMake возьмет `server/generated/persistence/*-odb.*`. На Windows или при ручной регенерации проверь `server/third_party/odb/bin/odb.exe`/`odb`.
 
 `openssl/evp.h` или `libcrypto` не найдены на Manjaro
 : установи `openssl` и повтори `FORCE=1 ./tools/bootstrap-deps.sh`.

@@ -89,24 +89,27 @@ src/server/core
 
 ## ODB Workflow
 
-Текущий ODB persistent model:
+ODB persistent models:
 
 ```text
-server/include/persistence/User.hpp
+server/include/persistence/*.hpp
+server/generated/persistence/*-odb.cxx
+server/generated/persistence/*-odb.hxx
+server/generated/persistence/*-odb.ixx
 ```
 
-`User` содержит `login` как primary key, `password_hash` и серверную роль `role`. Остальные persistence-структуры предметной области зеркалят таблицы SQL-дампа и используются CRUD-контроллерами через универсальные SQL-методы `Database`; отдельная ODB-генерация сейчас выполняется только для `User`.
+`User` содержит `login` как primary key, `password_hash` и серверную роль `role`. Предметные persistence-структуры зеркалят таблицы SQL-дампа и тоже имеют ODB-generated mapping. Таблицы с составным первичным ключом (`association_farms`, `farm_plot_assignment`, `farm_plot_consumption_product`, `farm_plot_production_product`) описаны через composite value key и virtual ODB id.
 
-На build этапе ODB генерирует:
+На build этапе CMake либо запускает ODB compiler для всех моделей, либо берет checked-in generated files из `server/generated/persistence`:
 
 ```text
-server/build/generated/persistence/user-odb.cxx
-server/build/generated/persistence/user-odb.hxx
-server/build/generated/persistence/user-odb.ixx
-server/build/generated/persistence/user.sql
+server/build/generated/persistence/<model>-odb.cxx
+server/build/generated/persistence/<model>-odb.hxx
+server/build/generated/persistence/<model>-odb.ixx
+server/build/generated/persistence/<model>.sql
 ```
 
-Generated `.cxx` входит в `farm_association_server_core`. Generated `user.sql` используется bootstrap-ом базы данных.
+Generated `.cxx` входят в `farm_association_server_core`. Bootstrap применяет предметный SQL dump и generated `user.sql`; предметные таблицы уже создаются dump-файлом, а ODB-generated files используются runtime CRUD-операциями.
 
 ## Database Bootstrap
 
@@ -205,7 +208,7 @@ integration/database
 CTest запускается так:
 
 ```bash
-ctest --test-dir server/build -C Debug --output-on-failure
+ctest --test-dir server/build --output-on-failure
 ```
 
 Unit tests не требуют живой PostgreSQL. Integration tests включают DB-backed проверки и работают через `fasc_test`: тестовый bootstrap сбрасывает базу, применяет SQL-схемы и проверяет реальные DB-backed endpoints.

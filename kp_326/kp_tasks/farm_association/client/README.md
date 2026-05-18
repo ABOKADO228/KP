@@ -10,7 +10,18 @@ npm install
 npm run dev
 ```
 
+Manjaro:
+
+```bash
+sudo pacman -S --needed nodejs npm
+cd client
+npm install
+npm run dev
+```
+
 По умолчанию Vite открывает приложение на `http://127.0.0.1:5173` и проксирует `/auth`, `/users`, `/api` и `/health` в C++ сервер `http://127.0.0.1:8080`. Backend для dev-прокси можно переопределить через `FARM_SERVER_URL`; сервер также возвращает CORS/preflight-заголовки для прямых клиентов.
+
+Перед `npm run dev` должен быть запущен C++ backend. Если сервер не слушает `127.0.0.1:8080`, Vite вернет `502 Bad Gateway` на `/auth/login`, `/auth/register`, `/users` и `/api/*`.
 
 Сервер можно переопределить:
 
@@ -26,6 +37,14 @@ npm run dev
 ```powershell
 npm run typecheck
 npm test
+npm run build
+```
+
+На Manjaro используются те же npm-команды:
+
+```bash
+npm run typecheck
+npm test -- --run
 npm run build
 ```
 

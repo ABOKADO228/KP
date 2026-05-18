@@ -184,8 +184,8 @@ public:
   ///@returns const-ссылка на @c odb::database.
   const odb::database& raw() const;
 
-  // Table-level CRUD helpers for application controllers. They keep SQL assembly
-  // in the database wrapper while still using positional PostgreSQL parameters.
+  // Table-level CRUD helpers for application controllers. Registered business
+  // tables are dispatched through ODB mappings in OdbTableRegistry.
   std::vector<SqlRow> selectRows(const std::string& table,
                                  const std::vector<std::string>& columns);
 

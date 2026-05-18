@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <domain/Types.hpp>
 
@@ -7,9 +7,15 @@
 #include <odb/core.hxx>
 #include <odb/nullable.hxx>
 
+#ifndef ODB_COMPILER
+#include <persistence/DomainValueTraits.hpp>
+#endif
+
 #include <string>
 
-namespace fasc::server::persistence {
+namespace fasc {
+namespace server {
+namespace persistence {
 
 /// Сущность таблицы product_type.
 struct ProductTypeEntity {
@@ -17,7 +23,7 @@ struct ProductTypeEntity {
   std::uint64_t id{};
 
   /// Значение колонки parent_id.
-  odb::nullable<std::uint64_t> parentId;
+  odb::nullable<unsigned long long> parentId;
 
   /// Значение колонки sku.
   odb::nullable<std::string> sku;
@@ -41,4 +47,6 @@ struct ProductTypeEntity {
 #pragma db member(ProductTypeEntity::name) column("name")
 #pragma db member(ProductTypeEntity::description) column("description")
 
-} // namespace fasc::server::persistence
+} // namespace persistence
+} // namespace server
+} // namespace fasc

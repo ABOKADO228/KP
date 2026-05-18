@@ -19,7 +19,7 @@ cmake -S server -B server/build -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BU
 Основная команда build:
 
 ```bash
-cmake --build server/build --config Debug --parallel
+cmake --build server/build --parallel
 ```
 
 Для Ninja `CMAKE_BUILD_TYPE` задается на этапе configure. Поэтому Debug и Release лучше держать в разных каталогах:
@@ -38,9 +38,10 @@ option(FARM_SERVER_WITH_ODB "Build with ODB PostgreSQL support" ON)
 option(FARM_SERVER_ODB_STATIC "Link ODB runtime as static libraries" ON)
 option(FARM_SERVER_BUILD_LOCAL_ODB_DEPS "Build local libodb/libodb-pgsql archives" ON)
 option(FARM_SERVER_BUILD_TESTS "Build unit and integration tests" ON)
+option(FARM_SERVER_USE_CHECKED_IN_ODB "Use checked-in generated ODB files even when the ODB compiler is available" OFF)
 ```
 
-Обычная сборка оставляет все options включенными. `FARM_SERVER_BUILD_LOCAL_ODB_DEPS=ON` означает, что CMake сам соберет локальные `libodb` и `libodb-pgsql` из `server/third_party/_sources`.
+Обычная сборка оставляет первые options включенными. `FARM_SERVER_BUILD_LOCAL_ODB_DEPS=ON` означает, что CMake сам соберет локальные `libodb` и `libodb-pgsql` из `server/third_party/_sources`. `FARM_SERVER_USE_CHECKED_IN_ODB=ON` полезен для проверки Manjaro/fallback-сценария: build не запускает ODB compiler и берет `server/generated/persistence/*-odb.*`.
 
 ## Targets
 
@@ -69,6 +70,7 @@ set(FARM_SERVER_CORE_SOURCES
         src/controllers/http/Users.cpp
         src/database/Bootstrap.cpp
         src/database/Database.cpp
+        src/database/OdbTableRegistry.cpp
         src/handling/Health.cpp
         src/handling/Users.cpp
         ${FARM_SERVER_ENTITY_SOURCES}
@@ -78,36 +80,39 @@ set(FARM_SERVER_CORE_SOURCES
         src/server/core/AppRouter.cpp
         src/server/core/RequestDispatcher.cpp
         src/server/core/Server.cpp
-        "${FARM_SERVER_USER_ODB_CXX}")
+        ${FARM_SERVER_ODB_GENERATED_SOURCES})
 ```
 
 `FARM_SERVER_ENTITY_SOURCES` собирает app/http controllers и handlers для предметных сущностей через `file(GLOB ... CONFIGURE_DEPENDS)`. Специальные `Users.cpp` и `Health.cpp` подключаются явно, потому что у них отдельная логика.
 
 ## Generated ODB Files
 
-ODB читает:
+ODB читает список `FARM_SERVER_PERSISTENCE_MODELS`:
 
 ```text
+server/include/persistence/AssociationEmployee.hpp
+server/include/persistence/AssociationFarms.hpp
+...
+server/include/persistence/Unit.hpp
 server/include/persistence/User.hpp
 ```
 
-На текущей ревизии ODB generation включен только для пользовательской модели. Предметные CRUD-сущности из SQL-дампа имеют persistence-структуры в `server/include/persistence`, но работают через универсальные SQL-методы `Database` без отдельных generated `*-odb.*` файлов.
-
-И генерирует:
+И генерирует для каждой модели:
 
 ```text
-server/build/generated/persistence/user-odb.cxx
-server/build/generated/persistence/user-odb.hxx
-server/build/generated/persistence/user-odb.ixx
-server/build/generated/persistence/user.sql
+server/build/generated/persistence/<model>-odb.cxx
+server/build/generated/persistence/<model>-odb.hxx
+server/build/generated/persistence/<model>-odb.ixx
+server/build/generated/persistence/<model>.sql
 ```
 
-Если локальный ODB compiler недоступен для текущей платформы, CMake использует проверенную копию этих файлов из `server/generated/persistence`. Это нужно для Linux/Manjaro-сборки в окружении, где в `server/third_party/odb/bin` есть только Windows `odb.exe`.
+Если локальный ODB compiler недоступен для текущей платформы или задано `FARM_SERVER_USE_CHECKED_IN_ODB=ON`, CMake использует проверенную копию этих файлов из `server/generated/persistence`. Это основной сценарий для Linux/Manjaro, где bootstrap по умолчанию не скачивает ODB compiler.
 
 Генерация описана через `add_custom_command`. Generated header подключается через include path `server/build/generated` или fallback path `server/generated`, поэтому код может писать:
 
 ```cpp
 #include <persistence/user-odb.hxx>
+#include <persistence/farm-odb.hxx>
 ```
 
 ## Локальные ODB Runtime Libraries
@@ -196,7 +201,7 @@ gtest_discover_tests(farm_association_integration_tests
 Запуск:
 
 ```bash
-ctest --test-dir server/build -C Debug --output-on-failure
+ctest --test-dir server/build --output-on-failure
 ```
 
 ## Как Добавить Source File
