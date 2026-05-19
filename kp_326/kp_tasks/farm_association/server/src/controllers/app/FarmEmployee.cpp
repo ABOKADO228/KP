@@ -1,9 +1,8 @@
 #include <controllers/app/FarmEmployee.hpp>
 
-#include <database/SqlValue.hpp>
-
-#include <stdexcept>
-#include <string>
+#include <algorithm>
+#include <exception>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -11,60 +10,40 @@ namespace fasc::server::controllers::app {
 
 namespace {
 
-std::string requireColumn(const fasc::server::database::SqlRow& row, const std::string& column) {
-  const auto it = row.find(column);
-  if (it == row.end() || !it->second.has_value()) {
-    throw std::runtime_error{"Column is null: " + column};
-  }
-  return *it->second;
+using Entity = fasc::server::persistence::FarmEmployeeEntity;
+
+bool matchesKey(const Entity& entity, const fasc::server::controllers::dto::FarmEmployeeKeyDto& key) {
+  return entity.id == key.id;
 }
 
-std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& row,
-                                         const std::string& column) {
-  const auto it = row.find(column);
-  if (it == row.end()) {
-    throw std::runtime_error{"Column is missing: " + column};
+void applyUpdateDto(Entity& entity, const fasc::server::controllers::dto::FarmEmployeeUpdateDto& dto) {
+  if (dto.personId.has_value()) {
+    entity.personId = *dto.personId;
   }
-  return it->second;
-}
-
-
-fasc::server::persistence::FarmEmployeeEntity rowToEntity(const fasc::server::database::SqlRow& row) {
-  fasc::server::persistence::FarmEmployeeEntity entity;
-  entity.id = fasc::server::database::requireColumn<std::uint64_t>(row, "id");
-  entity.personId = fasc::server::database::requireColumn<std::uint64_t>(row, "person_id");
-  entity.farmId = fasc::server::database::requireColumn<std::uint64_t>(row, "farm_id");
-  entity.roleId = fasc::server::database::requireColumn<std::uint64_t>(row, "role_id");
-  entity.employmentStatusId = fasc::server::database::requireColumn<std::uint64_t>(row, "employment_status_id");
-  entity.hireDate = fasc::server::database::requireColumn<fasc::server::domain::Date>(row, "hire_date");
-  if (const auto value = fasc::server::database::optionalColumn<fasc::server::domain::Date>(row, "dismissal_date")) {
-    entity.dismissalDate = *value;
-  } else {
-    entity.dismissalDate.reset();
+  if (dto.farmId.has_value()) {
+    entity.farmId = *dto.farmId;
   }
-  if (const auto value = fasc::server::database::optionalColumn<double>(row, "salary")) {
-    entity.salary = *value;
-  } else {
-    entity.salary.reset();
+  if (dto.roleId.has_value()) {
+    entity.roleId = *dto.roleId;
   }
-  if (const auto value = optionalColumn(row, "employment_contract_number")) {
-    entity.employmentContractNumber = *value;
-  } else {
-    entity.employmentContractNumber.reset();
+  if (dto.employmentStatusId.has_value()) {
+    entity.employmentStatusId = *dto.employmentStatusId;
   }
-  if (const auto value = fasc::server::database::optionalColumn<bool>(row, "is_primary_workplace")) {
-    entity.isPrimaryWorkplace = *value;
-  } else {
-    entity.isPrimaryWorkplace.reset();
+  if (dto.hireDate.has_value()) {
+    entity.hireDate = *dto.hireDate;
   }
-  return entity;
-}
-
-std::vector<fasc::server::database::SqlParameter> keyValues(
-    const fasc::server::controllers::dto::FarmEmployeeKeyDto& key) {
-  std::vector<fasc::server::database::SqlParameter> values;
-  values.push_back(fasc::server::database::makeSqlParameter(key.id));
-  return values;
+  if (dto.dismissalDate.has_value()) {
+    entity.dismissalDate = *dto.dismissalDate;
+  }
+  if (dto.salary.has_value()) {
+    entity.salary = *dto.salary;
+  }
+  if (dto.employmentContractNumber.has_value()) {
+    entity.employmentContractNumber = *dto.employmentContractNumber;
+  }
+  if (dto.isPrimaryWorkplace.has_value()) {
+    entity.isPrimaryWorkplace = *dto.isPrimaryWorkplace;
+  }
 }
 
 } // namespace
@@ -72,17 +51,13 @@ std::vector<fasc::server::database::SqlParameter> keyValues(
 FarmEmployeeController::FarmEmployeeController(fasc::server::database::Database& db) : db_(db) {}
 
 FarmEmployeeRowsResult FarmEmployeeController::list() const {
-  static const std::vector<std::string> columns{"id", "person_id", "farm_id", "role_id", "employment_status_id", "hire_date", "dismissal_date", "salary", "employment_contract_number", "is_primary_workplace"};
   try {
-    const auto rows = db_.invokeTransactionally([&] {
-      return db_.selectRows("public.farm_employee", columns);
+    auto rows = db_.invokeTransactionally([&] {
+      return db_.selectEntities<Entity>();
     });
 
     fasc::server::controllers::dto::FarmEmployeeRowsDto dto;
-    // Собираем строки ответа.
-    for (const auto& row : rows) {
-      dto.rows.push_back(rowToEntity(row));
-    }
+    dto.rows = std::move(rows);
     return FarmEmployeeRowsResult::success(std::move(dto));
   } catch (const std::exception& exception) {
     return FarmEmployeeRowsResult::failure(
@@ -91,94 +66,98 @@ FarmEmployeeRowsResult FarmEmployeeController::list() const {
 }
 
 FarmEmployeeRowResult FarmEmployeeController::load(const fasc::server::controllers::dto::FarmEmployeeKeyDto& key) const {
-  static const std::vector<std::string> columns{"id", "person_id", "farm_id", "role_id", "employment_status_id", "hire_date", "dismissal_date", "salary", "employment_contract_number", "is_primary_workplace"};
-  static const std::vector<std::string> keys{"id"};
   try {
-    const auto row = db_.invokeTransactionally([&] {
-      return db_.selectOneRow("public.farm_employee", columns, keys, keyValues(key));
+    auto row = db_.invokeTransactionally([&]() -> std::optional<Entity> {
+      std::vector<Entity> rows = db_.selectEntities<Entity>();
+      const auto iterator = std::find_if(rows.begin(), rows.end(), [&](const Entity& entity) {
+        return matchesKey(entity, key);
+      });
+      if (iterator == rows.end()) {
+        return std::nullopt;
+      }
+      return *iterator;
     });
     if (!row.has_value()) {
-      return FarmEmployeeRowResult::failure(FarmEntityError{FarmEntityErrorCode::NotFound, "Row not found"});
+      return FarmEmployeeRowResult::failure(
+          FarmEntityError{FarmEntityErrorCode::NotFound, "Row not found"});
     }
-    return FarmEmployeeRowResult::success(
-        fasc::server::controllers::dto::FarmEmployeeRowDto{rowToEntity(*row)});
+    return FarmEmployeeRowResult::success(fasc::server::controllers::dto::FarmEmployeeRowDto{std::move(*row)});
   } catch (const std::exception& exception) {
     return FarmEmployeeRowResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
   }
 }
 
-FarmEmployeeMutationResult FarmEmployeeController::create(
-    const fasc::server::controllers::dto::FarmEmployeeCreateDto& dto) const {
-  std::vector<std::string> columns;
-  std::vector<fasc::server::database::SqlParameter> values;
+FarmEmployeeMutationResult FarmEmployeeController::create(const fasc::server::controllers::dto::FarmEmployeeCreateDto& dto) const {
+  Entity entity{};
+  bool hasWritableValues = false;
   if (!dto.personId.has_value()) {
     return FarmEmployeeMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "Missing field: person_id"});
   }
   if (dto.personId.has_value()) {
-    columns.push_back("person_id");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.personId));
+    entity.personId = *dto.personId;
+    hasWritableValues = true;
   }
   if (!dto.farmId.has_value()) {
     return FarmEmployeeMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "Missing field: farm_id"});
   }
   if (dto.farmId.has_value()) {
-    columns.push_back("farm_id");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.farmId));
+    entity.farmId = *dto.farmId;
+    hasWritableValues = true;
   }
   if (!dto.roleId.has_value()) {
     return FarmEmployeeMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "Missing field: role_id"});
   }
   if (dto.roleId.has_value()) {
-    columns.push_back("role_id");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.roleId));
+    entity.roleId = *dto.roleId;
+    hasWritableValues = true;
   }
   if (!dto.employmentStatusId.has_value()) {
     return FarmEmployeeMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "Missing field: employment_status_id"});
   }
   if (dto.employmentStatusId.has_value()) {
-    columns.push_back("employment_status_id");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.employmentStatusId));
+    entity.employmentStatusId = *dto.employmentStatusId;
+    hasWritableValues = true;
   }
   if (!dto.hireDate.has_value()) {
     return FarmEmployeeMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "Missing field: hire_date"});
   }
   if (dto.hireDate.has_value()) {
-    columns.push_back("hire_date");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.hireDate));
+    entity.hireDate = *dto.hireDate;
+    hasWritableValues = true;
   }
   if (dto.dismissalDate.has_value()) {
-    columns.push_back("dismissal_date");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.dismissalDate));
+    entity.dismissalDate = *dto.dismissalDate;
+    hasWritableValues = true;
   }
   if (dto.salary.has_value()) {
-    columns.push_back("salary");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.salary));
+    entity.salary = *dto.salary;
+    hasWritableValues = true;
   }
   if (dto.employmentContractNumber.has_value()) {
-    columns.push_back("employment_contract_number");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.employmentContractNumber));
+    entity.employmentContractNumber = *dto.employmentContractNumber;
+    hasWritableValues = true;
   }
   if (dto.isPrimaryWorkplace.has_value()) {
-    columns.push_back("is_primary_workplace");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.isPrimaryWorkplace));
+    entity.isPrimaryWorkplace = *dto.isPrimaryWorkplace;
+    hasWritableValues = true;
   }
-  if (columns.empty()) {
+  if (!hasWritableValues) {
     return FarmEmployeeMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "No writable columns provided"});
   }
 
   try {
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.insertRow("public.farm_employee", columns, values);
+      db_.persistEntity(entity);
+      return 1ULL;
     });
-    return FarmEmployeeMutationResult::success(
-        fasc::server::controllers::dto::FarmEmployeeMutationDto{affectedRows});
+    return FarmEmployeeMutationResult::success(fasc::server::controllers::dto::FarmEmployeeMutationDto{affectedRows});
   } catch (const std::exception& exception) {
     return FarmEmployeeMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
@@ -188,71 +167,73 @@ FarmEmployeeMutationResult FarmEmployeeController::create(
 FarmEmployeeMutationResult FarmEmployeeController::update(
     const fasc::server::controllers::dto::FarmEmployeeKeyDto& key,
     const fasc::server::controllers::dto::FarmEmployeeUpdateDto& dto) const {
-  static const std::vector<std::string> keys{"id"};
-  std::vector<std::string> columns;
-  std::vector<fasc::server::database::SqlParameter> values;
+  bool hasWritableValues = false;
   if (dto.personId.has_value()) {
-    columns.push_back("person_id");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.personId));
+    hasWritableValues = true;
   }
   if (dto.farmId.has_value()) {
-    columns.push_back("farm_id");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.farmId));
+    hasWritableValues = true;
   }
   if (dto.roleId.has_value()) {
-    columns.push_back("role_id");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.roleId));
+    hasWritableValues = true;
   }
   if (dto.employmentStatusId.has_value()) {
-    columns.push_back("employment_status_id");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.employmentStatusId));
+    hasWritableValues = true;
   }
   if (dto.hireDate.has_value()) {
-    columns.push_back("hire_date");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.hireDate));
+    hasWritableValues = true;
   }
   if (dto.dismissalDate.has_value()) {
-    columns.push_back("dismissal_date");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.dismissalDate));
+    hasWritableValues = true;
   }
   if (dto.salary.has_value()) {
-    columns.push_back("salary");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.salary));
+    hasWritableValues = true;
   }
   if (dto.employmentContractNumber.has_value()) {
-    columns.push_back("employment_contract_number");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.employmentContractNumber));
+    hasWritableValues = true;
   }
   if (dto.isPrimaryWorkplace.has_value()) {
-    columns.push_back("is_primary_workplace");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.isPrimaryWorkplace));
+    hasWritableValues = true;
   }
-  if (columns.empty()) {
+  if (!hasWritableValues) {
     return FarmEmployeeMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "No writable columns provided"});
   }
 
   try {
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.updateRows("public.farm_employee", columns, values, keys, keyValues(key));
+      unsigned long long count{};
+      std::vector<Entity> rows = db_.selectEntities<Entity>();
+      for (Entity& entity : rows) {
+        if (matchesKey(entity, key)) {
+          applyUpdateDto(entity, dto);
+          db_.updateEntity(entity);
+          ++count;
+        }
+      }
+      return count;
     });
-    return FarmEmployeeMutationResult::success(
-        fasc::server::controllers::dto::FarmEmployeeMutationDto{affectedRows});
+    return FarmEmployeeMutationResult::success(fasc::server::controllers::dto::FarmEmployeeMutationDto{affectedRows});
   } catch (const std::exception& exception) {
     return FarmEmployeeMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
   }
 }
 
-FarmEmployeeMutationResult FarmEmployeeController::erase(
-    const fasc::server::controllers::dto::FarmEmployeeKeyDto& key) const {
-  static const std::vector<std::string> keys{"id"};
+FarmEmployeeMutationResult FarmEmployeeController::erase(const fasc::server::controllers::dto::FarmEmployeeKeyDto& key) const {
   try {
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.deleteRows("public.farm_employee", keys, keyValues(key));
+      unsigned long long count{};
+      std::vector<Entity> rows = db_.selectEntities<Entity>();
+      for (Entity& entity : rows) {
+        if (matchesKey(entity, key)) {
+          db_.eraseEntity(entity);
+          ++count;
+        }
+      }
+      return count;
     });
-    return FarmEmployeeMutationResult::success(
-        fasc::server::controllers::dto::FarmEmployeeMutationDto{affectedRows});
+    return FarmEmployeeMutationResult::success(fasc::server::controllers::dto::FarmEmployeeMutationDto{affectedRows});
   } catch (const std::exception& exception) {
     return FarmEmployeeMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});

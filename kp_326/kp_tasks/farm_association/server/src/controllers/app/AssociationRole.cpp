@@ -1,9 +1,8 @@
 #include <controllers/app/AssociationRole.hpp>
 
-#include <database/SqlValue.hpp>
-
-#include <stdexcept>
-#include <string>
+#include <algorithm>
+#include <exception>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -11,50 +10,22 @@ namespace fasc::server::controllers::app {
 
 namespace {
 
-std::string requireColumn(const fasc::server::database::SqlRow& row, const std::string& column) {
-  const auto it = row.find(column);
-  if (it == row.end() || !it->second.has_value()) {
-    throw std::runtime_error{"Column is null: " + column};
-  }
-  return *it->second;
+using Entity = fasc::server::persistence::AssociationRoleEntity;
+
+bool matchesKey(const Entity& entity, const fasc::server::controllers::dto::AssociationRoleKeyDto& key) {
+  return entity.id == key.id;
 }
 
-std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& row,
-                                         const std::string& column) {
-  const auto it = row.find(column);
-  if (it == row.end()) {
-    throw std::runtime_error{"Column is missing: " + column};
+void applyUpdateDto(Entity& entity, const fasc::server::controllers::dto::AssociationRoleUpdateDto& dto) {
+  if (dto.code.has_value()) {
+    entity.code = *dto.code;
   }
-  return it->second;
-}
-
-
-fasc::server::persistence::AssociationRoleEntity rowToEntity(const fasc::server::database::SqlRow& row) {
-  fasc::server::persistence::AssociationRoleEntity entity;
-  entity.id = fasc::server::database::requireColumn<std::uint64_t>(row, "id");
-  if (const auto value = fasc::server::database::optionalColumn<fasc::server::domain::AssociationRoleCode>(row, "code")) {
-    entity.code = *value;
-  } else {
-    entity.code.reset();
+  if (dto.name.has_value()) {
+    entity.name = *dto.name;
   }
-  if (const auto value = optionalColumn(row, "name")) {
-    entity.name = *value;
-  } else {
-    entity.name.reset();
+  if (dto.description.has_value()) {
+    entity.description = *dto.description;
   }
-  if (const auto value = optionalColumn(row, "description")) {
-    entity.description = *value;
-  } else {
-    entity.description.reset();
-  }
-  return entity;
-}
-
-std::vector<fasc::server::database::SqlParameter> keyValues(
-    const fasc::server::controllers::dto::AssociationRoleKeyDto& key) {
-  std::vector<fasc::server::database::SqlParameter> values;
-  values.push_back(fasc::server::database::makeSqlParameter(key.id));
-  return values;
 }
 
 } // namespace
@@ -62,17 +33,13 @@ std::vector<fasc::server::database::SqlParameter> keyValues(
 AssociationRoleController::AssociationRoleController(fasc::server::database::Database& db) : db_(db) {}
 
 AssociationRoleRowsResult AssociationRoleController::list() const {
-  static const std::vector<std::string> columns{"id", "code", "name", "description"};
   try {
-    const auto rows = db_.invokeTransactionally([&] {
-      return db_.selectRows("public.association_role", columns);
+    auto rows = db_.invokeTransactionally([&] {
+      return db_.selectEntities<Entity>();
     });
 
     fasc::server::controllers::dto::AssociationRoleRowsDto dto;
-    // Собираем строки ответа.
-    for (const auto& row : rows) {
-      dto.rows.push_back(rowToEntity(row));
-    }
+    dto.rows = std::move(rows);
     return AssociationRoleRowsResult::success(std::move(dto));
   } catch (const std::exception& exception) {
     return AssociationRoleRowsResult::failure(
@@ -81,58 +48,62 @@ AssociationRoleRowsResult AssociationRoleController::list() const {
 }
 
 AssociationRoleRowResult AssociationRoleController::load(const fasc::server::controllers::dto::AssociationRoleKeyDto& key) const {
-  static const std::vector<std::string> columns{"id", "code", "name", "description"};
-  static const std::vector<std::string> keys{"id"};
   try {
-    const auto row = db_.invokeTransactionally([&] {
-      return db_.selectOneRow("public.association_role", columns, keys, keyValues(key));
+    auto row = db_.invokeTransactionally([&]() -> std::optional<Entity> {
+      std::vector<Entity> rows = db_.selectEntities<Entity>();
+      const auto iterator = std::find_if(rows.begin(), rows.end(), [&](const Entity& entity) {
+        return matchesKey(entity, key);
+      });
+      if (iterator == rows.end()) {
+        return std::nullopt;
+      }
+      return *iterator;
     });
     if (!row.has_value()) {
-      return AssociationRoleRowResult::failure(FarmEntityError{FarmEntityErrorCode::NotFound, "Row not found"});
+      return AssociationRoleRowResult::failure(
+          FarmEntityError{FarmEntityErrorCode::NotFound, "Row not found"});
     }
-    return AssociationRoleRowResult::success(
-        fasc::server::controllers::dto::AssociationRoleRowDto{rowToEntity(*row)});
+    return AssociationRoleRowResult::success(fasc::server::controllers::dto::AssociationRoleRowDto{std::move(*row)});
   } catch (const std::exception& exception) {
     return AssociationRoleRowResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
   }
 }
 
-AssociationRoleMutationResult AssociationRoleController::create(
-    const fasc::server::controllers::dto::AssociationRoleCreateDto& dto) const {
-  std::vector<std::string> columns;
-  std::vector<fasc::server::database::SqlParameter> values;
+AssociationRoleMutationResult AssociationRoleController::create(const fasc::server::controllers::dto::AssociationRoleCreateDto& dto) const {
+  Entity entity{};
+  bool hasWritableValues = false;
   if (!dto.id.has_value()) {
     return AssociationRoleMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "Missing field: id"});
   }
   if (dto.id.has_value()) {
-    columns.push_back("id");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.id));
+    entity.id = *dto.id;
+    hasWritableValues = true;
   }
   if (dto.code.has_value()) {
-    columns.push_back("code");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.code));
+    entity.code = *dto.code;
+    hasWritableValues = true;
   }
   if (dto.name.has_value()) {
-    columns.push_back("name");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.name));
+    entity.name = *dto.name;
+    hasWritableValues = true;
   }
   if (dto.description.has_value()) {
-    columns.push_back("description");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.description));
+    entity.description = *dto.description;
+    hasWritableValues = true;
   }
-  if (columns.empty()) {
+  if (!hasWritableValues) {
     return AssociationRoleMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "No writable columns provided"});
   }
 
   try {
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.insertRow("public.association_role", columns, values);
+      db_.persistEntity(entity);
+      return 1ULL;
     });
-    return AssociationRoleMutationResult::success(
-        fasc::server::controllers::dto::AssociationRoleMutationDto{affectedRows});
+    return AssociationRoleMutationResult::success(fasc::server::controllers::dto::AssociationRoleMutationDto{affectedRows});
   } catch (const std::exception& exception) {
     return AssociationRoleMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
@@ -142,47 +113,55 @@ AssociationRoleMutationResult AssociationRoleController::create(
 AssociationRoleMutationResult AssociationRoleController::update(
     const fasc::server::controllers::dto::AssociationRoleKeyDto& key,
     const fasc::server::controllers::dto::AssociationRoleUpdateDto& dto) const {
-  static const std::vector<std::string> keys{"id"};
-  std::vector<std::string> columns;
-  std::vector<fasc::server::database::SqlParameter> values;
+  bool hasWritableValues = false;
   if (dto.code.has_value()) {
-    columns.push_back("code");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.code));
+    hasWritableValues = true;
   }
   if (dto.name.has_value()) {
-    columns.push_back("name");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.name));
+    hasWritableValues = true;
   }
   if (dto.description.has_value()) {
-    columns.push_back("description");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.description));
+    hasWritableValues = true;
   }
-  if (columns.empty()) {
+  if (!hasWritableValues) {
     return AssociationRoleMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "No writable columns provided"});
   }
 
   try {
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.updateRows("public.association_role", columns, values, keys, keyValues(key));
+      unsigned long long count{};
+      std::vector<Entity> rows = db_.selectEntities<Entity>();
+      for (Entity& entity : rows) {
+        if (matchesKey(entity, key)) {
+          applyUpdateDto(entity, dto);
+          db_.updateEntity(entity);
+          ++count;
+        }
+      }
+      return count;
     });
-    return AssociationRoleMutationResult::success(
-        fasc::server::controllers::dto::AssociationRoleMutationDto{affectedRows});
+    return AssociationRoleMutationResult::success(fasc::server::controllers::dto::AssociationRoleMutationDto{affectedRows});
   } catch (const std::exception& exception) {
     return AssociationRoleMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
   }
 }
 
-AssociationRoleMutationResult AssociationRoleController::erase(
-    const fasc::server::controllers::dto::AssociationRoleKeyDto& key) const {
-  static const std::vector<std::string> keys{"id"};
+AssociationRoleMutationResult AssociationRoleController::erase(const fasc::server::controllers::dto::AssociationRoleKeyDto& key) const {
   try {
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.deleteRows("public.association_role", keys, keyValues(key));
+      unsigned long long count{};
+      std::vector<Entity> rows = db_.selectEntities<Entity>();
+      for (Entity& entity : rows) {
+        if (matchesKey(entity, key)) {
+          db_.eraseEntity(entity);
+          ++count;
+        }
+      }
+      return count;
     });
-    return AssociationRoleMutationResult::success(
-        fasc::server::controllers::dto::AssociationRoleMutationDto{affectedRows});
+    return AssociationRoleMutationResult::success(fasc::server::controllers::dto::AssociationRoleMutationDto{affectedRows});
   } catch (const std::exception& exception) {
     return AssociationRoleMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});

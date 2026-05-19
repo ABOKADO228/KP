@@ -6,14 +6,24 @@
 #include <odb/exceptions.hxx>
 #include <odb/result.hxx>
 #include <odb/transaction.hxx>
+#include <persistence/User.hpp>
 #include <optional>
 #include <string>
 #include <type_traits>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
 namespace fasc::server::database {
+
+class Database;
+
+template <typename Entity>
+struct EntityAccess {
+  static std::vector<Entity> select(Database& db);
+  static void persist(Database& db, Entity& entity);
+  static void update(Database& db, Entity& entity);
+  static void erase(Database& db, Entity& entity);
+};
 
 struct ConnectionSettings {
   std::string user;
@@ -22,18 +32,6 @@ struct ConnectionSettings {
   std::string host;
   unsigned int port{};
 };
-
-///SQL-параметр для низкоуровневой операции database layer.
-struct SqlParameter {
-  ///Текстовое значение параметра.
-  std::string text;
-
-  ///Признак SQL NULL.
-  bool isNull{};
-};
-
-///Строка результата SQL-запроса.
-using SqlRow = std::unordered_map<std::string, std::optional<std::string>>;
 
 ///RAII-обертка над @c odb::transaction.
 ///@note Если @c commit() не вызван, ODB откатит активную транзакцию при уничтожении объекта.
@@ -124,49 +122,9 @@ public:
     }
   }
 
-  ///Сохраняет новую persistence-сущность.
-  ///@note Использовать внутри активной транзакции или через @c invokeTransactionally().
-  ///@param entity сущность, которую нужно сохранить.
-  ///@returns идентификатор, возвращенный ODB для сохраненной сущности.
-  ///@throws Исключения ODB, если сохранение не выполнено.
+private:
   template <typename Entity>
-  auto persist(Entity& entity) {
-    return underlying->persist(entity);
-  }
-
-  ///Обновляет существующую persistence-сущность.
-  ///@note Использовать внутри активной транзакции или через @c invokeTransactionally().
-  ///@param entity сущность, которую нужно обновить.
-  ///@throws Исключения ODB, если обновление не выполнено.
-  template <typename Entity>
-  void update(Entity& entity) {
-    underlying->update(entity);
-  }
-
-  ///Удаляет существующую persistence-сущность.
-  ///@note Использовать внутри активной транзакции или через @c invokeTransactionally().
-  ///@param entity сущность, которую нужно удалить.
-  ///@throws Исключения ODB, если удаление не выполнено.
-  template <typename Entity>
-  void erase(Entity& entity) {
-    underlying->erase(entity);
-  }
-
-  ///Удаляет persistence-сущность по идентификатору.
-  ///@note Использовать внутри активной транзакции или через @c invokeTransactionally().
-  ///@param id идентификатор удаляемой сущности.
-  ///@returns @c true, если сущность была удалена.
-  ///@throws Исключения ODB, если удаление не выполнено.
-  template <typename Entity, typename Id>
-  bool eraseById(const Id& id) {
-    return underlying->erase<Entity>(id);
-  }
-
-  ///Runs an ODB query through the wrapper and materializes the result.
-  ///@note Use inside an active transaction or via @c invokeTransactionally().
-  template <typename Entity, typename Query>
-  std::vector<Entity> query(Query&& query) {
-    odb::result<Entity> result = underlying->query<Entity>(std::forward<Query>(query));
+  static std::vector<Entity> materialize(odb::result<Entity> result) {
     std::vector<Entity> entities;
     for (auto iterator = result.begin(); iterator != result.end(); ++iterator) {
       entities.push_back(*iterator);
@@ -174,55 +132,39 @@ public:
     return entities;
   }
 
-  ///Возвращает доступ к сырому ODB database object.
-  ///@note Использовать только для низкоуровневых сценариев, которые не покрыты методами @c Database.
-  ///@returns ссылка на @c odb::database.
-  odb::database& raw();
+public:
+  template <typename Entity>
+  std::vector<Entity> selectEntities() {
+    return EntityAccess<Entity>::select(*this);
+  }
 
-  ///Возвращает read-only доступ к сырому ODB database object.
-  ///@note Использовать только для низкоуровневых сценариев, которые не покрыты методами @c Database.
-  ///@returns const-ссылка на @c odb::database.
-  const odb::database& raw() const;
+  template <typename Entity>
+  void persistEntity(Entity& entity) {
+    EntityAccess<Entity>::persist(*this, entity);
+  }
 
-  // Table-level CRUD helpers for application controllers. Registered business
-  // tables are dispatched through ODB mappings in OdbTableRegistry.
-  std::vector<SqlRow> selectRows(const std::string& table,
-                                 const std::vector<std::string>& columns);
+  template <typename Entity>
+  void updateEntity(Entity& entity) {
+    EntityAccess<Entity>::update(*this, entity);
+  }
 
-  std::optional<SqlRow> selectOneRow(const std::string& table,
-                                     const std::vector<std::string>& columns,
-                                     const std::vector<std::string>& keyColumns,
-                                     const std::vector<SqlParameter>& keyValues);
+  template <typename Entity>
+  void eraseEntity(Entity& entity) {
+    EntityAccess<Entity>::erase(*this, entity);
+  }
 
-  unsigned long long insertRow(const std::string& table,
-                               const std::vector<std::string>& columns,
-                               const std::vector<SqlParameter>& values);
+  std::vector<fasc::server::persistence::User> selectUsers();
 
-  unsigned long long updateRows(const std::string& table,
-                                const std::vector<std::string>& columns,
-                                const std::vector<SqlParameter>& values,
-                                const std::vector<std::string>& keyColumns,
-                                const std::vector<SqlParameter>& keyValues);
+  std::optional<fasc::server::persistence::User> findUserByLogin(const std::string& login);
 
-  unsigned long long deleteRows(const std::string& table,
-                                const std::vector<std::string>& keyColumns,
-                                const std::vector<SqlParameter>& keyValues);
+  void persistUser(fasc::server::persistence::User& user);
 
-  ///Выполняет SELECT через ODB PostgreSQL connection.
-  ///@param sql    SQL-запрос с позиционными параметрами PostgreSQL.
-  ///@param values значения параметров.
-  ///@returns строки результата.
-  std::vector<SqlRow> querySql(const std::string& sql,
-                               const std::vector<SqlParameter>& values);
-
-  ///Выполняет команду изменения данных через ODB PostgreSQL connection.
-  ///@param sql    SQL-команда с позиционными параметрами PostgreSQL.
-  ///@param values значения параметров.
-  ///@returns количество затронутых строк.
-  unsigned long long executeSql(const std::string& sql,
-                                const std::vector<SqlParameter>& values);
+  void updateUser(fasc::server::persistence::User& user);
 
 private:
+  template <typename Entity>
+  friend struct EntityAccess;
+
   std::unique_ptr<odb::database> underlying;
 };
 

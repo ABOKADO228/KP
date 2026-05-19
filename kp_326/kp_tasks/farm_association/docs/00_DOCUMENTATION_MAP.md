@@ -62,7 +62,7 @@
 | Routing | [server/include/server/core/AppRouter.hpp](../server/include/server/core/AppRouter.hpp) | Хранение и поиск HTTP-маршрутов |
 | Dispatch | [server/include/server/core/RequestDispatcher.hpp](../server/include/server/core/RequestDispatcher.hpp) | Преобразование Beast request в проектный request/response |
 | Database bootstrap | [server/include/database/Bootstrap.hpp](../server/include/database/Bootstrap.hpp) | Подготовка PostgreSQL базы, схем и seed-данных |
-| Database facade | [server/include/database/Database.hpp](../server/include/database/Database.hpp) | Унифицированные операции select/insert/update/delete и ODB доступ |
+| Database facade | [server/include/database/Database.hpp](../server/include/database/Database.hpp) | Типизированные операции CRUD; ODB спрятан за методами `Database` |
 | Auth/users | [server/include/controllers/app/Users.hpp](../server/include/controllers/app/Users.hpp) | Регистрация, логин, список пользователей, смена роли |
 | Resource routes | [server/include/handling/FarmEntityRoutes.hpp](../server/include/handling/FarmEntityRoutes.hpp) | Регистрация CRUD-маршрутов предметных таблиц |
 | Client entrypoint | [client/src/main.tsx](../client/src/main.tsx) | Создает React root |

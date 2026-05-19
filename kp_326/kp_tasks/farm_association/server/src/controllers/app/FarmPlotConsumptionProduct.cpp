@@ -1,9 +1,8 @@
 #include <controllers/app/FarmPlotConsumptionProduct.hpp>
 
-#include <database/SqlValue.hpp>
-
-#include <stdexcept>
-#include <string>
+#include <algorithm>
+#include <exception>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -11,39 +10,20 @@ namespace fasc::server::controllers::app {
 
 namespace {
 
-std::string requireColumn(const fasc::server::database::SqlRow& row, const std::string& column) {
-  const auto it = row.find(column);
-  if (it == row.end() || !it->second.has_value()) {
-    throw std::runtime_error{"Column is null: " + column};
+using Entity = fasc::server::persistence::FarmPlotConsumptionProductEntity;
+
+bool matchesKey(const Entity& entity, const fasc::server::controllers::dto::FarmPlotConsumptionProductKeyDto& key) {
+  return entity.productId == key.productId &&
+         entity.farmPlotId == key.farmPlotId;
+}
+
+void applyUpdateDto(Entity& entity, const fasc::server::controllers::dto::FarmPlotConsumptionProductUpdateDto& dto) {
+  if (dto.quantity.has_value()) {
+    entity.quantity = *dto.quantity;
   }
-  return *it->second;
-}
-
-std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& row,
-                                         const std::string& column) {
-  const auto it = row.find(column);
-  if (it == row.end()) {
-    throw std::runtime_error{"Column is missing: " + column};
+  if (dto.consumptionNow.has_value()) {
+    entity.consumptionNow = *dto.consumptionNow;
   }
-  return it->second;
-}
-
-
-fasc::server::persistence::FarmPlotConsumptionProductEntity rowToEntity(const fasc::server::database::SqlRow& row) {
-  fasc::server::persistence::FarmPlotConsumptionProductEntity entity;
-  entity.productId = fasc::server::database::requireColumn<std::uint64_t>(row, "product_id");
-  entity.farmPlotId = fasc::server::database::requireColumn<std::uint64_t>(row, "farm_plot_id");
-  entity.quantity = fasc::server::database::requireColumn<int>(row, "quantity");
-  entity.consumptionNow = fasc::server::database::requireColumn<int>(row, "consumption_now");
-  return entity;
-}
-
-std::vector<fasc::server::database::SqlParameter> keyValues(
-    const fasc::server::controllers::dto::FarmPlotConsumptionProductKeyDto& key) {
-  std::vector<fasc::server::database::SqlParameter> values;
-  values.push_back(fasc::server::database::makeSqlParameter(key.productId));
-  values.push_back(fasc::server::database::makeSqlParameter(key.farmPlotId));
-  return values;
 }
 
 } // namespace
@@ -51,17 +31,13 @@ std::vector<fasc::server::database::SqlParameter> keyValues(
 FarmPlotConsumptionProductController::FarmPlotConsumptionProductController(fasc::server::database::Database& db) : db_(db) {}
 
 FarmPlotConsumptionProductRowsResult FarmPlotConsumptionProductController::list() const {
-  static const std::vector<std::string> columns{"product_id", "farm_plot_id", "quantity", "consumption_now"};
   try {
-    const auto rows = db_.invokeTransactionally([&] {
-      return db_.selectRows("public.farm_plot_consumption_product", columns);
+    auto rows = db_.invokeTransactionally([&] {
+      return db_.selectEntities<Entity>();
     });
 
     fasc::server::controllers::dto::FarmPlotConsumptionProductRowsDto dto;
-    // Собираем строки ответа.
-    for (const auto& row : rows) {
-      dto.rows.push_back(rowToEntity(row));
-    }
+    dto.rows = std::move(rows);
     return FarmPlotConsumptionProductRowsResult::success(std::move(dto));
   } catch (const std::exception& exception) {
     return FarmPlotConsumptionProductRowsResult::failure(
@@ -70,70 +46,74 @@ FarmPlotConsumptionProductRowsResult FarmPlotConsumptionProductController::list(
 }
 
 FarmPlotConsumptionProductRowResult FarmPlotConsumptionProductController::load(const fasc::server::controllers::dto::FarmPlotConsumptionProductKeyDto& key) const {
-  static const std::vector<std::string> columns{"product_id", "farm_plot_id", "quantity", "consumption_now"};
-  static const std::vector<std::string> keys{"product_id", "farm_plot_id"};
   try {
-    const auto row = db_.invokeTransactionally([&] {
-      return db_.selectOneRow("public.farm_plot_consumption_product", columns, keys, keyValues(key));
+    auto row = db_.invokeTransactionally([&]() -> std::optional<Entity> {
+      std::vector<Entity> rows = db_.selectEntities<Entity>();
+      const auto iterator = std::find_if(rows.begin(), rows.end(), [&](const Entity& entity) {
+        return matchesKey(entity, key);
+      });
+      if (iterator == rows.end()) {
+        return std::nullopt;
+      }
+      return *iterator;
     });
     if (!row.has_value()) {
-      return FarmPlotConsumptionProductRowResult::failure(FarmEntityError{FarmEntityErrorCode::NotFound, "Row not found"});
+      return FarmPlotConsumptionProductRowResult::failure(
+          FarmEntityError{FarmEntityErrorCode::NotFound, "Row not found"});
     }
-    return FarmPlotConsumptionProductRowResult::success(
-        fasc::server::controllers::dto::FarmPlotConsumptionProductRowDto{rowToEntity(*row)});
+    return FarmPlotConsumptionProductRowResult::success(fasc::server::controllers::dto::FarmPlotConsumptionProductRowDto{std::move(*row)});
   } catch (const std::exception& exception) {
     return FarmPlotConsumptionProductRowResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
   }
 }
 
-FarmPlotConsumptionProductMutationResult FarmPlotConsumptionProductController::create(
-    const fasc::server::controllers::dto::FarmPlotConsumptionProductCreateDto& dto) const {
-  std::vector<std::string> columns;
-  std::vector<fasc::server::database::SqlParameter> values;
+FarmPlotConsumptionProductMutationResult FarmPlotConsumptionProductController::create(const fasc::server::controllers::dto::FarmPlotConsumptionProductCreateDto& dto) const {
+  Entity entity{};
+  bool hasWritableValues = false;
   if (!dto.productId.has_value()) {
     return FarmPlotConsumptionProductMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "Missing field: product_id"});
   }
   if (dto.productId.has_value()) {
-    columns.push_back("product_id");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.productId));
+    entity.productId = *dto.productId;
+    hasWritableValues = true;
   }
   if (!dto.farmPlotId.has_value()) {
     return FarmPlotConsumptionProductMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "Missing field: farm_plot_id"});
   }
   if (dto.farmPlotId.has_value()) {
-    columns.push_back("farm_plot_id");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.farmPlotId));
+    entity.farmPlotId = *dto.farmPlotId;
+    hasWritableValues = true;
   }
   if (!dto.quantity.has_value()) {
     return FarmPlotConsumptionProductMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "Missing field: quantity"});
   }
   if (dto.quantity.has_value()) {
-    columns.push_back("quantity");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.quantity));
+    entity.quantity = *dto.quantity;
+    hasWritableValues = true;
   }
   if (!dto.consumptionNow.has_value()) {
     return FarmPlotConsumptionProductMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "Missing field: consumption_now"});
   }
   if (dto.consumptionNow.has_value()) {
-    columns.push_back("consumption_now");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.consumptionNow));
+    entity.consumptionNow = *dto.consumptionNow;
+    hasWritableValues = true;
   }
-  if (columns.empty()) {
+  if (!hasWritableValues) {
     return FarmPlotConsumptionProductMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "No writable columns provided"});
   }
 
   try {
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.insertRow("public.farm_plot_consumption_product", columns, values);
+      db_.persistEntity(entity);
+      return 1ULL;
     });
-    return FarmPlotConsumptionProductMutationResult::success(
-        fasc::server::controllers::dto::FarmPlotConsumptionProductMutationDto{affectedRows});
+    return FarmPlotConsumptionProductMutationResult::success(fasc::server::controllers::dto::FarmPlotConsumptionProductMutationDto{affectedRows});
   } catch (const std::exception& exception) {
     return FarmPlotConsumptionProductMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
@@ -143,43 +123,52 @@ FarmPlotConsumptionProductMutationResult FarmPlotConsumptionProductController::c
 FarmPlotConsumptionProductMutationResult FarmPlotConsumptionProductController::update(
     const fasc::server::controllers::dto::FarmPlotConsumptionProductKeyDto& key,
     const fasc::server::controllers::dto::FarmPlotConsumptionProductUpdateDto& dto) const {
-  static const std::vector<std::string> keys{"product_id", "farm_plot_id"};
-  std::vector<std::string> columns;
-  std::vector<fasc::server::database::SqlParameter> values;
+  bool hasWritableValues = false;
   if (dto.quantity.has_value()) {
-    columns.push_back("quantity");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.quantity));
+    hasWritableValues = true;
   }
   if (dto.consumptionNow.has_value()) {
-    columns.push_back("consumption_now");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.consumptionNow));
+    hasWritableValues = true;
   }
-  if (columns.empty()) {
+  if (!hasWritableValues) {
     return FarmPlotConsumptionProductMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "No writable columns provided"});
   }
 
   try {
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.updateRows("public.farm_plot_consumption_product", columns, values, keys, keyValues(key));
+      unsigned long long count{};
+      std::vector<Entity> rows = db_.selectEntities<Entity>();
+      for (Entity& entity : rows) {
+        if (matchesKey(entity, key)) {
+          applyUpdateDto(entity, dto);
+          db_.updateEntity(entity);
+          ++count;
+        }
+      }
+      return count;
     });
-    return FarmPlotConsumptionProductMutationResult::success(
-        fasc::server::controllers::dto::FarmPlotConsumptionProductMutationDto{affectedRows});
+    return FarmPlotConsumptionProductMutationResult::success(fasc::server::controllers::dto::FarmPlotConsumptionProductMutationDto{affectedRows});
   } catch (const std::exception& exception) {
     return FarmPlotConsumptionProductMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
   }
 }
 
-FarmPlotConsumptionProductMutationResult FarmPlotConsumptionProductController::erase(
-    const fasc::server::controllers::dto::FarmPlotConsumptionProductKeyDto& key) const {
-  static const std::vector<std::string> keys{"product_id", "farm_plot_id"};
+FarmPlotConsumptionProductMutationResult FarmPlotConsumptionProductController::erase(const fasc::server::controllers::dto::FarmPlotConsumptionProductKeyDto& key) const {
   try {
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.deleteRows("public.farm_plot_consumption_product", keys, keyValues(key));
+      unsigned long long count{};
+      std::vector<Entity> rows = db_.selectEntities<Entity>();
+      for (Entity& entity : rows) {
+        if (matchesKey(entity, key)) {
+          db_.eraseEntity(entity);
+          ++count;
+        }
+      }
+      return count;
     });
-    return FarmPlotConsumptionProductMutationResult::success(
-        fasc::server::controllers::dto::FarmPlotConsumptionProductMutationDto{affectedRows});
+    return FarmPlotConsumptionProductMutationResult::success(fasc::server::controllers::dto::FarmPlotConsumptionProductMutationDto{affectedRows});
   } catch (const std::exception& exception) {
     return FarmPlotConsumptionProductMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});

@@ -1,9 +1,8 @@
 #include <controllers/app/FarmOwner.hpp>
 
-#include <database/SqlValue.hpp>
-
-#include <stdexcept>
-#include <string>
+#include <algorithm>
+#include <exception>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -11,46 +10,22 @@ namespace fasc::server::controllers::app {
 
 namespace {
 
-std::string requireColumn(const fasc::server::database::SqlRow& row, const std::string& column) {
-  const auto it = row.find(column);
-  if (it == row.end() || !it->second.has_value()) {
-    throw std::runtime_error{"Column is null: " + column};
-  }
-  return *it->second;
+using Entity = fasc::server::persistence::FarmOwnerEntity;
+
+bool matchesKey(const Entity& entity, const fasc::server::controllers::dto::FarmOwnerKeyDto& key) {
+  return entity.id == key.id;
 }
 
-std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& row,
-                                         const std::string& column) {
-  const auto it = row.find(column);
-  if (it == row.end()) {
-    throw std::runtime_error{"Column is missing: " + column};
+void applyUpdateDto(Entity& entity, const fasc::server::controllers::dto::FarmOwnerUpdateDto& dto) {
+  if (dto.personId.has_value()) {
+    entity.personId = *dto.personId;
   }
-  return it->second;
-}
-
-
-fasc::server::persistence::FarmOwnerEntity rowToEntity(const fasc::server::database::SqlRow& row) {
-  fasc::server::persistence::FarmOwnerEntity entity;
-  entity.id = fasc::server::database::requireColumn<std::uint64_t>(row, "id");
-  entity.personId = fasc::server::database::requireColumn<std::uint64_t>(row, "person_id");
-  if (const auto value = fasc::server::database::optionalColumn<fasc::server::domain::FarmOwnerStatus>(row, "status")) {
-    entity.status = *value;
-  } else {
-    entity.status.reset();
+  if (dto.status.has_value()) {
+    entity.status = *dto.status;
   }
-  if (const auto value = fasc::server::database::optionalColumn<double>(row, "rating")) {
-    entity.rating = *value;
-  } else {
-    entity.rating.reset();
+  if (dto.rating.has_value()) {
+    entity.rating = *dto.rating;
   }
-  return entity;
-}
-
-std::vector<fasc::server::database::SqlParameter> keyValues(
-    const fasc::server::controllers::dto::FarmOwnerKeyDto& key) {
-  std::vector<fasc::server::database::SqlParameter> values;
-  values.push_back(fasc::server::database::makeSqlParameter(key.id));
-  return values;
 }
 
 } // namespace
@@ -58,17 +33,13 @@ std::vector<fasc::server::database::SqlParameter> keyValues(
 FarmOwnerController::FarmOwnerController(fasc::server::database::Database& db) : db_(db) {}
 
 FarmOwnerRowsResult FarmOwnerController::list() const {
-  static const std::vector<std::string> columns{"id", "person_id", "status", "rating"};
   try {
-    const auto rows = db_.invokeTransactionally([&] {
-      return db_.selectRows("public.farm_owner", columns);
+    auto rows = db_.invokeTransactionally([&] {
+      return db_.selectEntities<Entity>();
     });
 
     fasc::server::controllers::dto::FarmOwnerRowsDto dto;
-    // Собираем строки ответа.
-    for (const auto& row : rows) {
-      dto.rows.push_back(rowToEntity(row));
-    }
+    dto.rows = std::move(rows);
     return FarmOwnerRowsResult::success(std::move(dto));
   } catch (const std::exception& exception) {
     return FarmOwnerRowsResult::failure(
@@ -77,54 +48,58 @@ FarmOwnerRowsResult FarmOwnerController::list() const {
 }
 
 FarmOwnerRowResult FarmOwnerController::load(const fasc::server::controllers::dto::FarmOwnerKeyDto& key) const {
-  static const std::vector<std::string> columns{"id", "person_id", "status", "rating"};
-  static const std::vector<std::string> keys{"id"};
   try {
-    const auto row = db_.invokeTransactionally([&] {
-      return db_.selectOneRow("public.farm_owner", columns, keys, keyValues(key));
+    auto row = db_.invokeTransactionally([&]() -> std::optional<Entity> {
+      std::vector<Entity> rows = db_.selectEntities<Entity>();
+      const auto iterator = std::find_if(rows.begin(), rows.end(), [&](const Entity& entity) {
+        return matchesKey(entity, key);
+      });
+      if (iterator == rows.end()) {
+        return std::nullopt;
+      }
+      return *iterator;
     });
     if (!row.has_value()) {
-      return FarmOwnerRowResult::failure(FarmEntityError{FarmEntityErrorCode::NotFound, "Row not found"});
+      return FarmOwnerRowResult::failure(
+          FarmEntityError{FarmEntityErrorCode::NotFound, "Row not found"});
     }
-    return FarmOwnerRowResult::success(
-        fasc::server::controllers::dto::FarmOwnerRowDto{rowToEntity(*row)});
+    return FarmOwnerRowResult::success(fasc::server::controllers::dto::FarmOwnerRowDto{std::move(*row)});
   } catch (const std::exception& exception) {
     return FarmOwnerRowResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
   }
 }
 
-FarmOwnerMutationResult FarmOwnerController::create(
-    const fasc::server::controllers::dto::FarmOwnerCreateDto& dto) const {
-  std::vector<std::string> columns;
-  std::vector<fasc::server::database::SqlParameter> values;
+FarmOwnerMutationResult FarmOwnerController::create(const fasc::server::controllers::dto::FarmOwnerCreateDto& dto) const {
+  Entity entity{};
+  bool hasWritableValues = false;
   if (!dto.personId.has_value()) {
     return FarmOwnerMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "Missing field: person_id"});
   }
   if (dto.personId.has_value()) {
-    columns.push_back("person_id");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.personId));
+    entity.personId = *dto.personId;
+    hasWritableValues = true;
   }
   if (dto.status.has_value()) {
-    columns.push_back("status");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.status));
+    entity.status = *dto.status;
+    hasWritableValues = true;
   }
   if (dto.rating.has_value()) {
-    columns.push_back("rating");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.rating));
+    entity.rating = *dto.rating;
+    hasWritableValues = true;
   }
-  if (columns.empty()) {
+  if (!hasWritableValues) {
     return FarmOwnerMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "No writable columns provided"});
   }
 
   try {
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.insertRow("public.farm_owner", columns, values);
+      db_.persistEntity(entity);
+      return 1ULL;
     });
-    return FarmOwnerMutationResult::success(
-        fasc::server::controllers::dto::FarmOwnerMutationDto{affectedRows});
+    return FarmOwnerMutationResult::success(fasc::server::controllers::dto::FarmOwnerMutationDto{affectedRows});
   } catch (const std::exception& exception) {
     return FarmOwnerMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
@@ -134,47 +109,55 @@ FarmOwnerMutationResult FarmOwnerController::create(
 FarmOwnerMutationResult FarmOwnerController::update(
     const fasc::server::controllers::dto::FarmOwnerKeyDto& key,
     const fasc::server::controllers::dto::FarmOwnerUpdateDto& dto) const {
-  static const std::vector<std::string> keys{"id"};
-  std::vector<std::string> columns;
-  std::vector<fasc::server::database::SqlParameter> values;
+  bool hasWritableValues = false;
   if (dto.personId.has_value()) {
-    columns.push_back("person_id");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.personId));
+    hasWritableValues = true;
   }
   if (dto.status.has_value()) {
-    columns.push_back("status");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.status));
+    hasWritableValues = true;
   }
   if (dto.rating.has_value()) {
-    columns.push_back("rating");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.rating));
+    hasWritableValues = true;
   }
-  if (columns.empty()) {
+  if (!hasWritableValues) {
     return FarmOwnerMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "No writable columns provided"});
   }
 
   try {
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.updateRows("public.farm_owner", columns, values, keys, keyValues(key));
+      unsigned long long count{};
+      std::vector<Entity> rows = db_.selectEntities<Entity>();
+      for (Entity& entity : rows) {
+        if (matchesKey(entity, key)) {
+          applyUpdateDto(entity, dto);
+          db_.updateEntity(entity);
+          ++count;
+        }
+      }
+      return count;
     });
-    return FarmOwnerMutationResult::success(
-        fasc::server::controllers::dto::FarmOwnerMutationDto{affectedRows});
+    return FarmOwnerMutationResult::success(fasc::server::controllers::dto::FarmOwnerMutationDto{affectedRows});
   } catch (const std::exception& exception) {
     return FarmOwnerMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
   }
 }
 
-FarmOwnerMutationResult FarmOwnerController::erase(
-    const fasc::server::controllers::dto::FarmOwnerKeyDto& key) const {
-  static const std::vector<std::string> keys{"id"};
+FarmOwnerMutationResult FarmOwnerController::erase(const fasc::server::controllers::dto::FarmOwnerKeyDto& key) const {
   try {
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.deleteRows("public.farm_owner", keys, keyValues(key));
+      unsigned long long count{};
+      std::vector<Entity> rows = db_.selectEntities<Entity>();
+      for (Entity& entity : rows) {
+        if (matchesKey(entity, key)) {
+          db_.eraseEntity(entity);
+          ++count;
+        }
+      }
+      return count;
     });
-    return FarmOwnerMutationResult::success(
-        fasc::server::controllers::dto::FarmOwnerMutationDto{affectedRows});
+    return FarmOwnerMutationResult::success(fasc::server::controllers::dto::FarmOwnerMutationDto{affectedRows});
   } catch (const std::exception& exception) {
     return FarmOwnerMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});

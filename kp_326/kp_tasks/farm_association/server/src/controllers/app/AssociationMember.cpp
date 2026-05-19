@@ -1,9 +1,8 @@
 #include <controllers/app/AssociationMember.hpp>
 
-#include <database/SqlValue.hpp>
-
-#include <stdexcept>
-#include <string>
+#include <algorithm>
+#include <exception>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -11,53 +10,31 @@ namespace fasc::server::controllers::app {
 
 namespace {
 
-std::string requireColumn(const fasc::server::database::SqlRow& row, const std::string& column) {
-  const auto it = row.find(column);
-  if (it == row.end() || !it->second.has_value()) {
-    throw std::runtime_error{"Column is null: " + column};
-  }
-  return *it->second;
+using Entity = fasc::server::persistence::AssociationMemberEntity;
+
+bool matchesKey(const Entity& entity, const fasc::server::controllers::dto::AssociationMemberKeyDto& key) {
+  return entity.id == key.id;
 }
 
-std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& row,
-                                         const std::string& column) {
-  const auto it = row.find(column);
-  if (it == row.end()) {
-    throw std::runtime_error{"Column is missing: " + column};
+void applyUpdateDto(Entity& entity, const fasc::server::controllers::dto::AssociationMemberUpdateDto& dto) {
+  if (dto.associationId.has_value()) {
+    entity.associationId = *dto.associationId;
   }
-  return it->second;
-}
-
-
-fasc::server::persistence::AssociationMemberEntity rowToEntity(const fasc::server::database::SqlRow& row) {
-  fasc::server::persistence::AssociationMemberEntity entity;
-  entity.id = fasc::server::database::requireColumn<std::uint64_t>(row, "id");
-  entity.associationId = fasc::server::database::requireColumn<std::uint64_t>(row, "association_id");
-  entity.personId = fasc::server::database::requireColumn<std::uint64_t>(row, "person_id");
-  if (const auto value = optionalColumn(row, "membership_number")) {
-    entity.membershipNumber = *value;
-  } else {
-    entity.membershipNumber.reset();
+  if (dto.personId.has_value()) {
+    entity.personId = *dto.personId;
   }
-  entity.joinedDate = fasc::server::database::requireColumn<fasc::server::domain::Date>(row, "joined_date");
-  if (const auto value = fasc::server::database::optionalColumn<fasc::server::domain::AssociationMemberStatus>(row, "status")) {
-    entity.status = *value;
-  } else {
-    entity.status.reset();
+  if (dto.membershipNumber.has_value()) {
+    entity.membershipNumber = *dto.membershipNumber;
   }
-  if (const auto value = optionalColumn(row, "notes")) {
-    entity.notes = *value;
-  } else {
-    entity.notes.reset();
+  if (dto.joinedDate.has_value()) {
+    entity.joinedDate = *dto.joinedDate;
   }
-  return entity;
-}
-
-std::vector<fasc::server::database::SqlParameter> keyValues(
-    const fasc::server::controllers::dto::AssociationMemberKeyDto& key) {
-  std::vector<fasc::server::database::SqlParameter> values;
-  values.push_back(fasc::server::database::makeSqlParameter(key.id));
-  return values;
+  if (dto.status.has_value()) {
+    entity.status = *dto.status;
+  }
+  if (dto.notes.has_value()) {
+    entity.notes = *dto.notes;
+  }
 }
 
 } // namespace
@@ -65,17 +42,13 @@ std::vector<fasc::server::database::SqlParameter> keyValues(
 AssociationMemberController::AssociationMemberController(fasc::server::database::Database& db) : db_(db) {}
 
 AssociationMemberRowsResult AssociationMemberController::list() const {
-  static const std::vector<std::string> columns{"id", "association_id", "person_id", "membership_number", "joined_date", "status", "notes"};
   try {
-    const auto rows = db_.invokeTransactionally([&] {
-      return db_.selectRows("public.association_member", columns);
+    auto rows = db_.invokeTransactionally([&] {
+      return db_.selectEntities<Entity>();
     });
 
     fasc::server::controllers::dto::AssociationMemberRowsDto dto;
-    // Собираем строки ответа.
-    for (const auto& row : rows) {
-      dto.rows.push_back(rowToEntity(row));
-    }
+    dto.rows = std::move(rows);
     return AssociationMemberRowsResult::success(std::move(dto));
   } catch (const std::exception& exception) {
     return AssociationMemberRowsResult::failure(
@@ -84,74 +57,78 @@ AssociationMemberRowsResult AssociationMemberController::list() const {
 }
 
 AssociationMemberRowResult AssociationMemberController::load(const fasc::server::controllers::dto::AssociationMemberKeyDto& key) const {
-  static const std::vector<std::string> columns{"id", "association_id", "person_id", "membership_number", "joined_date", "status", "notes"};
-  static const std::vector<std::string> keys{"id"};
   try {
-    const auto row = db_.invokeTransactionally([&] {
-      return db_.selectOneRow("public.association_member", columns, keys, keyValues(key));
+    auto row = db_.invokeTransactionally([&]() -> std::optional<Entity> {
+      std::vector<Entity> rows = db_.selectEntities<Entity>();
+      const auto iterator = std::find_if(rows.begin(), rows.end(), [&](const Entity& entity) {
+        return matchesKey(entity, key);
+      });
+      if (iterator == rows.end()) {
+        return std::nullopt;
+      }
+      return *iterator;
     });
     if (!row.has_value()) {
-      return AssociationMemberRowResult::failure(FarmEntityError{FarmEntityErrorCode::NotFound, "Row not found"});
+      return AssociationMemberRowResult::failure(
+          FarmEntityError{FarmEntityErrorCode::NotFound, "Row not found"});
     }
-    return AssociationMemberRowResult::success(
-        fasc::server::controllers::dto::AssociationMemberRowDto{rowToEntity(*row)});
+    return AssociationMemberRowResult::success(fasc::server::controllers::dto::AssociationMemberRowDto{std::move(*row)});
   } catch (const std::exception& exception) {
     return AssociationMemberRowResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
   }
 }
 
-AssociationMemberMutationResult AssociationMemberController::create(
-    const fasc::server::controllers::dto::AssociationMemberCreateDto& dto) const {
-  std::vector<std::string> columns;
-  std::vector<fasc::server::database::SqlParameter> values;
+AssociationMemberMutationResult AssociationMemberController::create(const fasc::server::controllers::dto::AssociationMemberCreateDto& dto) const {
+  Entity entity{};
+  bool hasWritableValues = false;
   if (!dto.associationId.has_value()) {
     return AssociationMemberMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "Missing field: association_id"});
   }
   if (dto.associationId.has_value()) {
-    columns.push_back("association_id");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.associationId));
+    entity.associationId = *dto.associationId;
+    hasWritableValues = true;
   }
   if (!dto.personId.has_value()) {
     return AssociationMemberMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "Missing field: person_id"});
   }
   if (dto.personId.has_value()) {
-    columns.push_back("person_id");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.personId));
+    entity.personId = *dto.personId;
+    hasWritableValues = true;
   }
   if (dto.membershipNumber.has_value()) {
-    columns.push_back("membership_number");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.membershipNumber));
+    entity.membershipNumber = *dto.membershipNumber;
+    hasWritableValues = true;
   }
   if (!dto.joinedDate.has_value()) {
     return AssociationMemberMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "Missing field: joined_date"});
   }
   if (dto.joinedDate.has_value()) {
-    columns.push_back("joined_date");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.joinedDate));
+    entity.joinedDate = *dto.joinedDate;
+    hasWritableValues = true;
   }
   if (dto.status.has_value()) {
-    columns.push_back("status");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.status));
+    entity.status = *dto.status;
+    hasWritableValues = true;
   }
   if (dto.notes.has_value()) {
-    columns.push_back("notes");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.notes));
+    entity.notes = *dto.notes;
+    hasWritableValues = true;
   }
-  if (columns.empty()) {
+  if (!hasWritableValues) {
     return AssociationMemberMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "No writable columns provided"});
   }
 
   try {
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.insertRow("public.association_member", columns, values);
+      db_.persistEntity(entity);
+      return 1ULL;
     });
-    return AssociationMemberMutationResult::success(
-        fasc::server::controllers::dto::AssociationMemberMutationDto{affectedRows});
+    return AssociationMemberMutationResult::success(fasc::server::controllers::dto::AssociationMemberMutationDto{affectedRows});
   } catch (const std::exception& exception) {
     return AssociationMemberMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
@@ -161,59 +138,64 @@ AssociationMemberMutationResult AssociationMemberController::create(
 AssociationMemberMutationResult AssociationMemberController::update(
     const fasc::server::controllers::dto::AssociationMemberKeyDto& key,
     const fasc::server::controllers::dto::AssociationMemberUpdateDto& dto) const {
-  static const std::vector<std::string> keys{"id"};
-  std::vector<std::string> columns;
-  std::vector<fasc::server::database::SqlParameter> values;
+  bool hasWritableValues = false;
   if (dto.associationId.has_value()) {
-    columns.push_back("association_id");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.associationId));
+    hasWritableValues = true;
   }
   if (dto.personId.has_value()) {
-    columns.push_back("person_id");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.personId));
+    hasWritableValues = true;
   }
   if (dto.membershipNumber.has_value()) {
-    columns.push_back("membership_number");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.membershipNumber));
+    hasWritableValues = true;
   }
   if (dto.joinedDate.has_value()) {
-    columns.push_back("joined_date");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.joinedDate));
+    hasWritableValues = true;
   }
   if (dto.status.has_value()) {
-    columns.push_back("status");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.status));
+    hasWritableValues = true;
   }
   if (dto.notes.has_value()) {
-    columns.push_back("notes");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.notes));
+    hasWritableValues = true;
   }
-  if (columns.empty()) {
+  if (!hasWritableValues) {
     return AssociationMemberMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "No writable columns provided"});
   }
 
   try {
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.updateRows("public.association_member", columns, values, keys, keyValues(key));
+      unsigned long long count{};
+      std::vector<Entity> rows = db_.selectEntities<Entity>();
+      for (Entity& entity : rows) {
+        if (matchesKey(entity, key)) {
+          applyUpdateDto(entity, dto);
+          db_.updateEntity(entity);
+          ++count;
+        }
+      }
+      return count;
     });
-    return AssociationMemberMutationResult::success(
-        fasc::server::controllers::dto::AssociationMemberMutationDto{affectedRows});
+    return AssociationMemberMutationResult::success(fasc::server::controllers::dto::AssociationMemberMutationDto{affectedRows});
   } catch (const std::exception& exception) {
     return AssociationMemberMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
   }
 }
 
-AssociationMemberMutationResult AssociationMemberController::erase(
-    const fasc::server::controllers::dto::AssociationMemberKeyDto& key) const {
-  static const std::vector<std::string> keys{"id"};
+AssociationMemberMutationResult AssociationMemberController::erase(const fasc::server::controllers::dto::AssociationMemberKeyDto& key) const {
   try {
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.deleteRows("public.association_member", keys, keyValues(key));
+      unsigned long long count{};
+      std::vector<Entity> rows = db_.selectEntities<Entity>();
+      for (Entity& entity : rows) {
+        if (matchesKey(entity, key)) {
+          db_.eraseEntity(entity);
+          ++count;
+        }
+      }
+      return count;
     });
-    return AssociationMemberMutationResult::success(
-        fasc::server::controllers::dto::AssociationMemberMutationDto{affectedRows});
+    return AssociationMemberMutationResult::success(fasc::server::controllers::dto::AssociationMemberMutationDto{affectedRows});
   } catch (const std::exception& exception) {
     return AssociationMemberMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});

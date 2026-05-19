@@ -1,9 +1,10 @@
 #include <controllers/app/Users.hpp>
 
 #include <persistence/User.hpp>
-#include <persistence/user-odb.hxx>
 
+#include <algorithm>
 #include <array>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -86,9 +87,7 @@ CreateUserResult UserController::createUser(CreateUserCommand command) {
 UserListResult UserController::listUsers() {
   try {
     UserListDto result = db_.invokeTransactionally([&] {
-      using query = odb::query<User>;
-
-      std::vector<User> users = db_.query<User>(query::login != "");
+      std::vector<User> users = db_.selectUsers();
       std::sort(users.begin(), users.end(), [](const User& left, const User& right) {
         return left.login() < right.login();
       });
@@ -121,16 +120,14 @@ UpdateUserRoleResult UserController::updateUserRole(UpdateUserRoleCommand comman
 
   try {
     UserDto userDto = db_.invokeTransactionally([&] {
-      using query = odb::query<User>;
-
-      std::vector<User> users = db_.query<User>(query::login == command.login);
-      if (users.empty()) {
+      std::optional<User> existing = db_.findUserByLogin(command.login);
+      if (!existing.has_value()) {
         return UserDto{};
       }
 
-      User user = std::move(users.front());
+      User user = std::move(*existing);
       user.role(std::move(command.role));
-      db_.update(user);
+      db_.updateUser(user);
 
       return UserDto{user.login(), user.role()};
     });
@@ -173,14 +170,12 @@ AuthResult UserController::loginUser(LoginUserCommand command) {
 
   try {
     AuthResultDto result = db_.invokeTransactionally([&] {
-      using query = odb::query<User>;
-
-      std::vector<User> users = db_.query<User>(query::login == command.login);
-      if (users.empty()) {
+      std::optional<User> existing = db_.findUserByLogin(command.login);
+      if (!existing.has_value()) {
         return AuthResultDto{};
       }
 
-      const User& user = users.front();
+      const User& user = *existing;
       if (!passwordHasher_.verify(command.password, user.passwordHash())) {
         return AuthResultDto{};
       }
@@ -221,15 +216,12 @@ CreateUserResult UserController::createUserWithPassword(std::string login,
 
   try {
     UserDto userDto = db_.invokeTransactionally([&] {
-      using query = odb::query<User>;
-
-      std::vector<User> existing = db_.query<User>(query::login == login);
-      if (!existing.empty()) {
+      if (db_.findUserByLogin(login).has_value()) {
         return UserDto{};
       }
 
       User user{std::move(login), passwordHasher_.hash(password), std::move(role)};
-      db_.persist(user);
+      db_.persistUser(user);
 
       return UserDto{user.login(), user.role()};
     });

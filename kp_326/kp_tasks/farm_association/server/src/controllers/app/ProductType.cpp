@@ -1,9 +1,8 @@
 #include <controllers/app/ProductType.hpp>
 
-#include <database/SqlValue.hpp>
-
-#include <stdexcept>
-#include <string>
+#include <algorithm>
+#include <exception>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -11,56 +10,28 @@ namespace fasc::server::controllers::app {
 
 namespace {
 
-std::string requireColumn(const fasc::server::database::SqlRow& row, const std::string& column) {
-  const auto it = row.find(column);
-  if (it == row.end() || !it->second.has_value()) {
-    throw std::runtime_error{"Column is null: " + column};
-  }
-  return *it->second;
+using Entity = fasc::server::persistence::ProductTypeEntity;
+
+bool matchesKey(const Entity& entity, const fasc::server::controllers::dto::ProductTypeKeyDto& key) {
+  return entity.id == key.id;
 }
 
-std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& row,
-                                         const std::string& column) {
-  const auto it = row.find(column);
-  if (it == row.end()) {
-    throw std::runtime_error{"Column is missing: " + column};
+void applyUpdateDto(Entity& entity, const fasc::server::controllers::dto::ProductTypeUpdateDto& dto) {
+  if (dto.parentId.has_value()) {
+    entity.parentId = *dto.parentId;
   }
-  return it->second;
-}
-
-
-fasc::server::persistence::ProductTypeEntity rowToEntity(const fasc::server::database::SqlRow& row) {
-  fasc::server::persistence::ProductTypeEntity entity;
-  entity.id = fasc::server::database::requireColumn<std::uint64_t>(row, "id");
-  if (const auto value = fasc::server::database::optionalColumn<std::uint64_t>(row, "parent_id")) {
-    entity.parentId = *value;
-  } else {
-    entity.parentId.reset();
+  if (dto.sku.has_value()) {
+    entity.sku = *dto.sku;
   }
-  if (const auto value = optionalColumn(row, "sku")) {
-    entity.sku = *value;
-  } else {
-    entity.sku.reset();
+  if (dto.productLevel.has_value()) {
+    entity.productLevel = *dto.productLevel;
   }
-  entity.productLevel = fasc::server::database::requireColumn<int>(row, "product_level");
-  if (const auto value = optionalColumn(row, "name")) {
-    entity.name = *value;
-  } else {
-    entity.name.reset();
+  if (dto.name.has_value()) {
+    entity.name = *dto.name;
   }
-  if (const auto value = optionalColumn(row, "description")) {
-    entity.description = *value;
-  } else {
-    entity.description.reset();
+  if (dto.description.has_value()) {
+    entity.description = *dto.description;
   }
-  return entity;
-}
-
-std::vector<fasc::server::database::SqlParameter> keyValues(
-    const fasc::server::controllers::dto::ProductTypeKeyDto& key) {
-  std::vector<fasc::server::database::SqlParameter> values;
-  values.push_back(fasc::server::database::makeSqlParameter(key.id));
-  return values;
 }
 
 } // namespace
@@ -68,17 +39,13 @@ std::vector<fasc::server::database::SqlParameter> keyValues(
 ProductTypeController::ProductTypeController(fasc::server::database::Database& db) : db_(db) {}
 
 ProductTypeRowsResult ProductTypeController::list() const {
-  static const std::vector<std::string> columns{"id", "parent_id", "sku", "product_level", "name", "description"};
   try {
-    const auto rows = db_.invokeTransactionally([&] {
-      return db_.selectRows("public.product_type", columns);
+    auto rows = db_.invokeTransactionally([&] {
+      return db_.selectEntities<Entity>();
     });
 
     fasc::server::controllers::dto::ProductTypeRowsDto dto;
-    // Собираем строки ответа.
-    for (const auto& row : rows) {
-      dto.rows.push_back(rowToEntity(row));
-    }
+    dto.rows = std::move(rows);
     return ProductTypeRowsResult::success(std::move(dto));
   } catch (const std::exception& exception) {
     return ProductTypeRowsResult::failure(
@@ -87,70 +54,74 @@ ProductTypeRowsResult ProductTypeController::list() const {
 }
 
 ProductTypeRowResult ProductTypeController::load(const fasc::server::controllers::dto::ProductTypeKeyDto& key) const {
-  static const std::vector<std::string> columns{"id", "parent_id", "sku", "product_level", "name", "description"};
-  static const std::vector<std::string> keys{"id"};
   try {
-    const auto row = db_.invokeTransactionally([&] {
-      return db_.selectOneRow("public.product_type", columns, keys, keyValues(key));
+    auto row = db_.invokeTransactionally([&]() -> std::optional<Entity> {
+      std::vector<Entity> rows = db_.selectEntities<Entity>();
+      const auto iterator = std::find_if(rows.begin(), rows.end(), [&](const Entity& entity) {
+        return matchesKey(entity, key);
+      });
+      if (iterator == rows.end()) {
+        return std::nullopt;
+      }
+      return *iterator;
     });
     if (!row.has_value()) {
-      return ProductTypeRowResult::failure(FarmEntityError{FarmEntityErrorCode::NotFound, "Row not found"});
+      return ProductTypeRowResult::failure(
+          FarmEntityError{FarmEntityErrorCode::NotFound, "Row not found"});
     }
-    return ProductTypeRowResult::success(
-        fasc::server::controllers::dto::ProductTypeRowDto{rowToEntity(*row)});
+    return ProductTypeRowResult::success(fasc::server::controllers::dto::ProductTypeRowDto{std::move(*row)});
   } catch (const std::exception& exception) {
     return ProductTypeRowResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
   }
 }
 
-ProductTypeMutationResult ProductTypeController::create(
-    const fasc::server::controllers::dto::ProductTypeCreateDto& dto) const {
-  std::vector<std::string> columns;
-  std::vector<fasc::server::database::SqlParameter> values;
+ProductTypeMutationResult ProductTypeController::create(const fasc::server::controllers::dto::ProductTypeCreateDto& dto) const {
+  Entity entity{};
+  bool hasWritableValues = false;
   if (!dto.id.has_value()) {
     return ProductTypeMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "Missing field: id"});
   }
   if (dto.id.has_value()) {
-    columns.push_back("id");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.id));
+    entity.id = *dto.id;
+    hasWritableValues = true;
   }
   if (dto.parentId.has_value()) {
-    columns.push_back("parent_id");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.parentId));
+    entity.parentId = *dto.parentId;
+    hasWritableValues = true;
   }
   if (dto.sku.has_value()) {
-    columns.push_back("sku");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.sku));
+    entity.sku = *dto.sku;
+    hasWritableValues = true;
   }
   if (!dto.productLevel.has_value()) {
     return ProductTypeMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "Missing field: product_level"});
   }
   if (dto.productLevel.has_value()) {
-    columns.push_back("product_level");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.productLevel));
+    entity.productLevel = *dto.productLevel;
+    hasWritableValues = true;
   }
   if (dto.name.has_value()) {
-    columns.push_back("name");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.name));
+    entity.name = *dto.name;
+    hasWritableValues = true;
   }
   if (dto.description.has_value()) {
-    columns.push_back("description");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.description));
+    entity.description = *dto.description;
+    hasWritableValues = true;
   }
-  if (columns.empty()) {
+  if (!hasWritableValues) {
     return ProductTypeMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "No writable columns provided"});
   }
 
   try {
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.insertRow("public.product_type", columns, values);
+      db_.persistEntity(entity);
+      return 1ULL;
     });
-    return ProductTypeMutationResult::success(
-        fasc::server::controllers::dto::ProductTypeMutationDto{affectedRows});
+    return ProductTypeMutationResult::success(fasc::server::controllers::dto::ProductTypeMutationDto{affectedRows});
   } catch (const std::exception& exception) {
     return ProductTypeMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
@@ -160,55 +131,61 @@ ProductTypeMutationResult ProductTypeController::create(
 ProductTypeMutationResult ProductTypeController::update(
     const fasc::server::controllers::dto::ProductTypeKeyDto& key,
     const fasc::server::controllers::dto::ProductTypeUpdateDto& dto) const {
-  static const std::vector<std::string> keys{"id"};
-  std::vector<std::string> columns;
-  std::vector<fasc::server::database::SqlParameter> values;
+  bool hasWritableValues = false;
   if (dto.parentId.has_value()) {
-    columns.push_back("parent_id");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.parentId));
+    hasWritableValues = true;
   }
   if (dto.sku.has_value()) {
-    columns.push_back("sku");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.sku));
+    hasWritableValues = true;
   }
   if (dto.productLevel.has_value()) {
-    columns.push_back("product_level");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.productLevel));
+    hasWritableValues = true;
   }
   if (dto.name.has_value()) {
-    columns.push_back("name");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.name));
+    hasWritableValues = true;
   }
   if (dto.description.has_value()) {
-    columns.push_back("description");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.description));
+    hasWritableValues = true;
   }
-  if (columns.empty()) {
+  if (!hasWritableValues) {
     return ProductTypeMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "No writable columns provided"});
   }
 
   try {
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.updateRows("public.product_type", columns, values, keys, keyValues(key));
+      unsigned long long count{};
+      std::vector<Entity> rows = db_.selectEntities<Entity>();
+      for (Entity& entity : rows) {
+        if (matchesKey(entity, key)) {
+          applyUpdateDto(entity, dto);
+          db_.updateEntity(entity);
+          ++count;
+        }
+      }
+      return count;
     });
-    return ProductTypeMutationResult::success(
-        fasc::server::controllers::dto::ProductTypeMutationDto{affectedRows});
+    return ProductTypeMutationResult::success(fasc::server::controllers::dto::ProductTypeMutationDto{affectedRows});
   } catch (const std::exception& exception) {
     return ProductTypeMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
   }
 }
 
-ProductTypeMutationResult ProductTypeController::erase(
-    const fasc::server::controllers::dto::ProductTypeKeyDto& key) const {
-  static const std::vector<std::string> keys{"id"};
+ProductTypeMutationResult ProductTypeController::erase(const fasc::server::controllers::dto::ProductTypeKeyDto& key) const {
   try {
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.deleteRows("public.product_type", keys, keyValues(key));
+      unsigned long long count{};
+      std::vector<Entity> rows = db_.selectEntities<Entity>();
+      for (Entity& entity : rows) {
+        if (matchesKey(entity, key)) {
+          db_.eraseEntity(entity);
+          ++count;
+        }
+      }
+      return count;
     });
-    return ProductTypeMutationResult::success(
-        fasc::server::controllers::dto::ProductTypeMutationDto{affectedRows});
+    return ProductTypeMutationResult::success(fasc::server::controllers::dto::ProductTypeMutationDto{affectedRows});
   } catch (const std::exception& exception) {
     return ProductTypeMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});

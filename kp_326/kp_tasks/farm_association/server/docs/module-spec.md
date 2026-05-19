@@ -111,6 +111,8 @@ server/build/generated/persistence/<model>.sql
 
 Generated `.cxx` входят в `farm_association_server_core`. Bootstrap применяет предметный SQL dump и generated `user.sql`; предметные таблицы уже создаются dump-файлом, а ODB-generated files используются runtime CRUD-операциями.
 
+ODB не прокидывается в app/controllers как сырой `odb::database`. `Database` владеет подключением и дает типизированные методы-обертки `selectEntities<Entity>/persistEntity/updateEntity/eraseEntity` для предметного CRUD и `selectUsers/findUserByLogin/persistUser/updateUser` для auth/users. Строкового CRUD API с именами таблиц/колонок и ручного SQL API в `Database` нет. Generated ODB headers и реальные вызовы `odb::database` остаются в `src/database/EntityAccess.cpp` и `src/database/Database.cpp`, а пользовательские controllers работают через `Database`.
+
 ## Database Bootstrap
 
 Сервер готовит PostgreSQL на старте:

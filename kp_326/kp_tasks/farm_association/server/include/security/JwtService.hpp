@@ -39,5 +39,4 @@ private:
   ///Время жизни токена.
   std::chrono::seconds ttl_;
 };
-
 } // namespace fasc::server::security

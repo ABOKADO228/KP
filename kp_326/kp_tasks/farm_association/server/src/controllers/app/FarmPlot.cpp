@@ -1,9 +1,8 @@
 #include <controllers/app/FarmPlot.hpp>
 
-#include <database/SqlValue.hpp>
-
-#include <stdexcept>
-#include <string>
+#include <algorithm>
+#include <exception>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -11,65 +10,31 @@ namespace fasc::server::controllers::app {
 
 namespace {
 
-std::string requireColumn(const fasc::server::database::SqlRow& row, const std::string& column) {
-  const auto it = row.find(column);
-  if (it == row.end() || !it->second.has_value()) {
-    throw std::runtime_error{"Column is null: " + column};
-  }
-  return *it->second;
+using Entity = fasc::server::persistence::FarmPlotEntity;
+
+bool matchesKey(const Entity& entity, const fasc::server::controllers::dto::FarmPlotKeyDto& key) {
+  return entity.id == key.id;
 }
 
-std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& row,
-                                         const std::string& column) {
-  const auto it = row.find(column);
-  if (it == row.end()) {
-    throw std::runtime_error{"Column is missing: " + column};
+void applyUpdateDto(Entity& entity, const fasc::server::controllers::dto::FarmPlotUpdateDto& dto) {
+  if (dto.farmPlotTypeId.has_value()) {
+    entity.farmPlotTypeId = *dto.farmPlotTypeId;
   }
-  return it->second;
-}
-
-
-fasc::server::persistence::FarmPlotEntity rowToEntity(const fasc::server::database::SqlRow& row) {
-  fasc::server::persistence::FarmPlotEntity entity;
-  entity.id = fasc::server::database::requireColumn<std::uint64_t>(row, "id");
-  if (const auto value = fasc::server::database::optionalColumn<std::uint64_t>(row, "farm_plot_type_id")) {
-    entity.farmPlotTypeId = *value;
-  } else {
-    entity.farmPlotTypeId.reset();
+  if (dto.name.has_value()) {
+    entity.name = *dto.name;
   }
-  if (const auto value = optionalColumn(row, "name")) {
-    entity.name = *value;
-  } else {
-    entity.name.reset();
+  if (dto.area.has_value()) {
+    entity.area = *dto.area;
   }
-  if (const auto value = fasc::server::database::optionalColumn<double>(row, "area")) {
-    entity.area = *value;
-  } else {
-    entity.area.reset();
+  if (dto.location.has_value()) {
+    entity.location = *dto.location;
   }
-  if (const auto value = optionalColumn(row, "location")) {
-    entity.location = *value;
-  } else {
-    entity.location.reset();
+  if (dto.cadastralNumber.has_value()) {
+    entity.cadastralNumber = *dto.cadastralNumber;
   }
-  if (const auto value = optionalColumn(row, "cadastral_number")) {
-    entity.cadastralNumber = *value;
-  } else {
-    entity.cadastralNumber.reset();
+  if (dto.status.has_value()) {
+    entity.status = *dto.status;
   }
-  if (const auto value = fasc::server::database::optionalColumn<fasc::server::domain::FarmPlotStatus>(row, "status")) {
-    entity.status = *value;
-  } else {
-    entity.status.reset();
-  }
-  return entity;
-}
-
-std::vector<fasc::server::database::SqlParameter> keyValues(
-    const fasc::server::controllers::dto::FarmPlotKeyDto& key) {
-  std::vector<fasc::server::database::SqlParameter> values;
-  values.push_back(fasc::server::database::makeSqlParameter(key.id));
-  return values;
 }
 
 } // namespace
@@ -77,17 +42,13 @@ std::vector<fasc::server::database::SqlParameter> keyValues(
 FarmPlotController::FarmPlotController(fasc::server::database::Database& db) : db_(db) {}
 
 FarmPlotRowsResult FarmPlotController::list() const {
-  static const std::vector<std::string> columns{"id", "farm_plot_type_id", "name", "area", "location", "cadastral_number", "status"};
   try {
-    const auto rows = db_.invokeTransactionally([&] {
-      return db_.selectRows("public.farm_plot", columns);
+    auto rows = db_.invokeTransactionally([&] {
+      return db_.selectEntities<Entity>();
     });
 
     fasc::server::controllers::dto::FarmPlotRowsDto dto;
-    // Собираем строки ответа.
-    for (const auto& row : rows) {
-      dto.rows.push_back(rowToEntity(row));
-    }
+    dto.rows = std::move(rows);
     return FarmPlotRowsResult::success(std::move(dto));
   } catch (const std::exception& exception) {
     return FarmPlotRowsResult::failure(
@@ -96,62 +57,66 @@ FarmPlotRowsResult FarmPlotController::list() const {
 }
 
 FarmPlotRowResult FarmPlotController::load(const fasc::server::controllers::dto::FarmPlotKeyDto& key) const {
-  static const std::vector<std::string> columns{"id", "farm_plot_type_id", "name", "area", "location", "cadastral_number", "status"};
-  static const std::vector<std::string> keys{"id"};
   try {
-    const auto row = db_.invokeTransactionally([&] {
-      return db_.selectOneRow("public.farm_plot", columns, keys, keyValues(key));
+    auto row = db_.invokeTransactionally([&]() -> std::optional<Entity> {
+      std::vector<Entity> rows = db_.selectEntities<Entity>();
+      const auto iterator = std::find_if(rows.begin(), rows.end(), [&](const Entity& entity) {
+        return matchesKey(entity, key);
+      });
+      if (iterator == rows.end()) {
+        return std::nullopt;
+      }
+      return *iterator;
     });
     if (!row.has_value()) {
-      return FarmPlotRowResult::failure(FarmEntityError{FarmEntityErrorCode::NotFound, "Row not found"});
+      return FarmPlotRowResult::failure(
+          FarmEntityError{FarmEntityErrorCode::NotFound, "Row not found"});
     }
-    return FarmPlotRowResult::success(
-        fasc::server::controllers::dto::FarmPlotRowDto{rowToEntity(*row)});
+    return FarmPlotRowResult::success(fasc::server::controllers::dto::FarmPlotRowDto{std::move(*row)});
   } catch (const std::exception& exception) {
     return FarmPlotRowResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
   }
 }
 
-FarmPlotMutationResult FarmPlotController::create(
-    const fasc::server::controllers::dto::FarmPlotCreateDto& dto) const {
-  std::vector<std::string> columns;
-  std::vector<fasc::server::database::SqlParameter> values;
+FarmPlotMutationResult FarmPlotController::create(const fasc::server::controllers::dto::FarmPlotCreateDto& dto) const {
+  Entity entity{};
+  bool hasWritableValues = false;
   if (dto.farmPlotTypeId.has_value()) {
-    columns.push_back("farm_plot_type_id");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.farmPlotTypeId));
+    entity.farmPlotTypeId = *dto.farmPlotTypeId;
+    hasWritableValues = true;
   }
   if (dto.name.has_value()) {
-    columns.push_back("name");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.name));
+    entity.name = *dto.name;
+    hasWritableValues = true;
   }
   if (dto.area.has_value()) {
-    columns.push_back("area");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.area));
+    entity.area = *dto.area;
+    hasWritableValues = true;
   }
   if (dto.location.has_value()) {
-    columns.push_back("location");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.location));
+    entity.location = *dto.location;
+    hasWritableValues = true;
   }
   if (dto.cadastralNumber.has_value()) {
-    columns.push_back("cadastral_number");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.cadastralNumber));
+    entity.cadastralNumber = *dto.cadastralNumber;
+    hasWritableValues = true;
   }
   if (dto.status.has_value()) {
-    columns.push_back("status");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.status));
+    entity.status = *dto.status;
+    hasWritableValues = true;
   }
-  if (columns.empty()) {
+  if (!hasWritableValues) {
     return FarmPlotMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "No writable columns provided"});
   }
 
   try {
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.insertRow("public.farm_plot", columns, values);
+      db_.persistEntity(entity);
+      return 1ULL;
     });
-    return FarmPlotMutationResult::success(
-        fasc::server::controllers::dto::FarmPlotMutationDto{affectedRows});
+    return FarmPlotMutationResult::success(fasc::server::controllers::dto::FarmPlotMutationDto{affectedRows});
   } catch (const std::exception& exception) {
     return FarmPlotMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
@@ -161,59 +126,64 @@ FarmPlotMutationResult FarmPlotController::create(
 FarmPlotMutationResult FarmPlotController::update(
     const fasc::server::controllers::dto::FarmPlotKeyDto& key,
     const fasc::server::controllers::dto::FarmPlotUpdateDto& dto) const {
-  static const std::vector<std::string> keys{"id"};
-  std::vector<std::string> columns;
-  std::vector<fasc::server::database::SqlParameter> values;
+  bool hasWritableValues = false;
   if (dto.farmPlotTypeId.has_value()) {
-    columns.push_back("farm_plot_type_id");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.farmPlotTypeId));
+    hasWritableValues = true;
   }
   if (dto.name.has_value()) {
-    columns.push_back("name");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.name));
+    hasWritableValues = true;
   }
   if (dto.area.has_value()) {
-    columns.push_back("area");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.area));
+    hasWritableValues = true;
   }
   if (dto.location.has_value()) {
-    columns.push_back("location");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.location));
+    hasWritableValues = true;
   }
   if (dto.cadastralNumber.has_value()) {
-    columns.push_back("cadastral_number");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.cadastralNumber));
+    hasWritableValues = true;
   }
   if (dto.status.has_value()) {
-    columns.push_back("status");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.status));
+    hasWritableValues = true;
   }
-  if (columns.empty()) {
+  if (!hasWritableValues) {
     return FarmPlotMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "No writable columns provided"});
   }
 
   try {
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.updateRows("public.farm_plot", columns, values, keys, keyValues(key));
+      unsigned long long count{};
+      std::vector<Entity> rows = db_.selectEntities<Entity>();
+      for (Entity& entity : rows) {
+        if (matchesKey(entity, key)) {
+          applyUpdateDto(entity, dto);
+          db_.updateEntity(entity);
+          ++count;
+        }
+      }
+      return count;
     });
-    return FarmPlotMutationResult::success(
-        fasc::server::controllers::dto::FarmPlotMutationDto{affectedRows});
+    return FarmPlotMutationResult::success(fasc::server::controllers::dto::FarmPlotMutationDto{affectedRows});
   } catch (const std::exception& exception) {
     return FarmPlotMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
   }
 }
 
-FarmPlotMutationResult FarmPlotController::erase(
-    const fasc::server::controllers::dto::FarmPlotKeyDto& key) const {
-  static const std::vector<std::string> keys{"id"};
+FarmPlotMutationResult FarmPlotController::erase(const fasc::server::controllers::dto::FarmPlotKeyDto& key) const {
   try {
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.deleteRows("public.farm_plot", keys, keyValues(key));
+      unsigned long long count{};
+      std::vector<Entity> rows = db_.selectEntities<Entity>();
+      for (Entity& entity : rows) {
+        if (matchesKey(entity, key)) {
+          db_.eraseEntity(entity);
+          ++count;
+        }
+      }
+      return count;
     });
-    return FarmPlotMutationResult::success(
-        fasc::server::controllers::dto::FarmPlotMutationDto{affectedRows});
+    return FarmPlotMutationResult::success(fasc::server::controllers::dto::FarmPlotMutationDto{affectedRows});
   } catch (const std::exception& exception) {
     return FarmPlotMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});

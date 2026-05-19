@@ -1,9 +1,8 @@
 #include <controllers/app/FarmPlotType.hpp>
 
-#include <database/SqlValue.hpp>
-
-#include <stdexcept>
-#include <string>
+#include <algorithm>
+#include <exception>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -11,51 +10,25 @@ namespace fasc::server::controllers::app {
 
 namespace {
 
-std::string requireColumn(const fasc::server::database::SqlRow& row, const std::string& column) {
-  const auto it = row.find(column);
-  if (it == row.end() || !it->second.has_value()) {
-    throw std::runtime_error{"Column is null: " + column};
-  }
-  return *it->second;
+using Entity = fasc::server::persistence::FarmPlotTypeEntity;
+
+bool matchesKey(const Entity& entity, const fasc::server::controllers::dto::FarmPlotTypeKeyDto& key) {
+  return entity.id == key.id;
 }
 
-std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& row,
-                                         const std::string& column) {
-  const auto it = row.find(column);
-  if (it == row.end()) {
-    throw std::runtime_error{"Column is missing: " + column};
+void applyUpdateDto(Entity& entity, const fasc::server::controllers::dto::FarmPlotTypeUpdateDto& dto) {
+  if (dto.name.has_value()) {
+    entity.name = *dto.name;
   }
-  return it->second;
-}
-
-
-fasc::server::persistence::FarmPlotTypeEntity rowToEntity(const fasc::server::database::SqlRow& row) {
-  fasc::server::persistence::FarmPlotTypeEntity entity;
-  entity.id = fasc::server::database::requireColumn<std::uint64_t>(row, "id");
-  if (const auto value = optionalColumn(row, "name")) {
-    entity.name = *value;
-  } else {
-    entity.name.reset();
+  if (dto.description.has_value()) {
+    entity.description = *dto.description;
   }
-  if (const auto value = optionalColumn(row, "description")) {
-    entity.description = *value;
-  } else {
-    entity.description.reset();
+  if (dto.farmPlotLevel.has_value()) {
+    entity.farmPlotLevel = *dto.farmPlotLevel;
   }
-  entity.farmPlotLevel = fasc::server::database::requireColumn<int>(row, "farm_plot_level");
-  if (const auto value = fasc::server::database::optionalColumn<std::uint64_t>(row, "parent_id")) {
-    entity.parentId = *value;
-  } else {
-    entity.parentId.reset();
+  if (dto.parentId.has_value()) {
+    entity.parentId = *dto.parentId;
   }
-  return entity;
-}
-
-std::vector<fasc::server::database::SqlParameter> keyValues(
-    const fasc::server::controllers::dto::FarmPlotTypeKeyDto& key) {
-  std::vector<fasc::server::database::SqlParameter> values;
-  values.push_back(fasc::server::database::makeSqlParameter(key.id));
-  return values;
 }
 
 } // namespace
@@ -63,17 +36,13 @@ std::vector<fasc::server::database::SqlParameter> keyValues(
 FarmPlotTypeController::FarmPlotTypeController(fasc::server::database::Database& db) : db_(db) {}
 
 FarmPlotTypeRowsResult FarmPlotTypeController::list() const {
-  static const std::vector<std::string> columns{"id", "name", "description", "farm_plot_level", "parent_id"};
   try {
-    const auto rows = db_.invokeTransactionally([&] {
-      return db_.selectRows("public.farm_plot_type", columns);
+    auto rows = db_.invokeTransactionally([&] {
+      return db_.selectEntities<Entity>();
     });
 
     fasc::server::controllers::dto::FarmPlotTypeRowsDto dto;
-    // Собираем строки ответа.
-    for (const auto& row : rows) {
-      dto.rows.push_back(rowToEntity(row));
-    }
+    dto.rows = std::move(rows);
     return FarmPlotTypeRowsResult::success(std::move(dto));
   } catch (const std::exception& exception) {
     return FarmPlotTypeRowsResult::failure(
@@ -82,66 +51,70 @@ FarmPlotTypeRowsResult FarmPlotTypeController::list() const {
 }
 
 FarmPlotTypeRowResult FarmPlotTypeController::load(const fasc::server::controllers::dto::FarmPlotTypeKeyDto& key) const {
-  static const std::vector<std::string> columns{"id", "name", "description", "farm_plot_level", "parent_id"};
-  static const std::vector<std::string> keys{"id"};
   try {
-    const auto row = db_.invokeTransactionally([&] {
-      return db_.selectOneRow("public.farm_plot_type", columns, keys, keyValues(key));
+    auto row = db_.invokeTransactionally([&]() -> std::optional<Entity> {
+      std::vector<Entity> rows = db_.selectEntities<Entity>();
+      const auto iterator = std::find_if(rows.begin(), rows.end(), [&](const Entity& entity) {
+        return matchesKey(entity, key);
+      });
+      if (iterator == rows.end()) {
+        return std::nullopt;
+      }
+      return *iterator;
     });
     if (!row.has_value()) {
-      return FarmPlotTypeRowResult::failure(FarmEntityError{FarmEntityErrorCode::NotFound, "Row not found"});
+      return FarmPlotTypeRowResult::failure(
+          FarmEntityError{FarmEntityErrorCode::NotFound, "Row not found"});
     }
-    return FarmPlotTypeRowResult::success(
-        fasc::server::controllers::dto::FarmPlotTypeRowDto{rowToEntity(*row)});
+    return FarmPlotTypeRowResult::success(fasc::server::controllers::dto::FarmPlotTypeRowDto{std::move(*row)});
   } catch (const std::exception& exception) {
     return FarmPlotTypeRowResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
   }
 }
 
-FarmPlotTypeMutationResult FarmPlotTypeController::create(
-    const fasc::server::controllers::dto::FarmPlotTypeCreateDto& dto) const {
-  std::vector<std::string> columns;
-  std::vector<fasc::server::database::SqlParameter> values;
+FarmPlotTypeMutationResult FarmPlotTypeController::create(const fasc::server::controllers::dto::FarmPlotTypeCreateDto& dto) const {
+  Entity entity{};
+  bool hasWritableValues = false;
   if (!dto.id.has_value()) {
     return FarmPlotTypeMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "Missing field: id"});
   }
   if (dto.id.has_value()) {
-    columns.push_back("id");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.id));
+    entity.id = *dto.id;
+    hasWritableValues = true;
   }
   if (dto.name.has_value()) {
-    columns.push_back("name");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.name));
+    entity.name = *dto.name;
+    hasWritableValues = true;
   }
   if (dto.description.has_value()) {
-    columns.push_back("description");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.description));
+    entity.description = *dto.description;
+    hasWritableValues = true;
   }
   if (!dto.farmPlotLevel.has_value()) {
     return FarmPlotTypeMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "Missing field: farm_plot_level"});
   }
   if (dto.farmPlotLevel.has_value()) {
-    columns.push_back("farm_plot_level");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.farmPlotLevel));
+    entity.farmPlotLevel = *dto.farmPlotLevel;
+    hasWritableValues = true;
   }
   if (dto.parentId.has_value()) {
-    columns.push_back("parent_id");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.parentId));
+    entity.parentId = *dto.parentId;
+    hasWritableValues = true;
   }
-  if (columns.empty()) {
+  if (!hasWritableValues) {
     return FarmPlotTypeMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "No writable columns provided"});
   }
 
   try {
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.insertRow("public.farm_plot_type", columns, values);
+      db_.persistEntity(entity);
+      return 1ULL;
     });
-    return FarmPlotTypeMutationResult::success(
-        fasc::server::controllers::dto::FarmPlotTypeMutationDto{affectedRows});
+    return FarmPlotTypeMutationResult::success(fasc::server::controllers::dto::FarmPlotTypeMutationDto{affectedRows});
   } catch (const std::exception& exception) {
     return FarmPlotTypeMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
@@ -151,51 +124,58 @@ FarmPlotTypeMutationResult FarmPlotTypeController::create(
 FarmPlotTypeMutationResult FarmPlotTypeController::update(
     const fasc::server::controllers::dto::FarmPlotTypeKeyDto& key,
     const fasc::server::controllers::dto::FarmPlotTypeUpdateDto& dto) const {
-  static const std::vector<std::string> keys{"id"};
-  std::vector<std::string> columns;
-  std::vector<fasc::server::database::SqlParameter> values;
+  bool hasWritableValues = false;
   if (dto.name.has_value()) {
-    columns.push_back("name");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.name));
+    hasWritableValues = true;
   }
   if (dto.description.has_value()) {
-    columns.push_back("description");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.description));
+    hasWritableValues = true;
   }
   if (dto.farmPlotLevel.has_value()) {
-    columns.push_back("farm_plot_level");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.farmPlotLevel));
+    hasWritableValues = true;
   }
   if (dto.parentId.has_value()) {
-    columns.push_back("parent_id");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.parentId));
+    hasWritableValues = true;
   }
-  if (columns.empty()) {
+  if (!hasWritableValues) {
     return FarmPlotTypeMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "No writable columns provided"});
   }
 
   try {
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.updateRows("public.farm_plot_type", columns, values, keys, keyValues(key));
+      unsigned long long count{};
+      std::vector<Entity> rows = db_.selectEntities<Entity>();
+      for (Entity& entity : rows) {
+        if (matchesKey(entity, key)) {
+          applyUpdateDto(entity, dto);
+          db_.updateEntity(entity);
+          ++count;
+        }
+      }
+      return count;
     });
-    return FarmPlotTypeMutationResult::success(
-        fasc::server::controllers::dto::FarmPlotTypeMutationDto{affectedRows});
+    return FarmPlotTypeMutationResult::success(fasc::server::controllers::dto::FarmPlotTypeMutationDto{affectedRows});
   } catch (const std::exception& exception) {
     return FarmPlotTypeMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
   }
 }
 
-FarmPlotTypeMutationResult FarmPlotTypeController::erase(
-    const fasc::server::controllers::dto::FarmPlotTypeKeyDto& key) const {
-  static const std::vector<std::string> keys{"id"};
+FarmPlotTypeMutationResult FarmPlotTypeController::erase(const fasc::server::controllers::dto::FarmPlotTypeKeyDto& key) const {
   try {
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.deleteRows("public.farm_plot_type", keys, keyValues(key));
+      unsigned long long count{};
+      std::vector<Entity> rows = db_.selectEntities<Entity>();
+      for (Entity& entity : rows) {
+        if (matchesKey(entity, key)) {
+          db_.eraseEntity(entity);
+          ++count;
+        }
+      }
+      return count;
     });
-    return FarmPlotTypeMutationResult::success(
-        fasc::server::controllers::dto::FarmPlotTypeMutationDto{affectedRows});
+    return FarmPlotTypeMutationResult::success(fasc::server::controllers::dto::FarmPlotTypeMutationDto{affectedRows});
   } catch (const std::exception& exception) {
     return FarmPlotTypeMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});

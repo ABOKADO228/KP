@@ -193,7 +193,7 @@ set(FARM_SERVER_CORE_SOURCES
         src/controllers/http/Users.cpp
         src/database/Bootstrap.cpp
         src/database/Database.cpp
-        src/database/OdbTableRegistry.cpp
+        src/database/EntityAccess.cpp
         src/handling/Health.cpp
         src/handling/Users.cpp
         ${FARM_SERVER_ENTITY_SOURCES}

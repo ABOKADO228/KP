@@ -70,7 +70,7 @@ set(FARM_SERVER_CORE_SOURCES
         src/controllers/http/Users.cpp
         src/database/Bootstrap.cpp
         src/database/Database.cpp
-        src/database/OdbTableRegistry.cpp
+        src/database/EntityAccess.cpp
         src/handling/Health.cpp
         src/handling/Users.cpp
         ${FARM_SERVER_ENTITY_SOURCES}
@@ -108,7 +108,7 @@ server/build/generated/persistence/<model>.sql
 
 Если локальный ODB compiler недоступен для текущей платформы или задано `FARM_SERVER_USE_CHECKED_IN_ODB=ON`, CMake использует проверенную копию этих файлов из `server/generated/persistence`. Это основной сценарий для Linux/Manjaro, где bootstrap по умолчанию не скачивает ODB compiler.
 
-Генерация описана через `add_custom_command`. Generated header подключается через include path `server/build/generated` или fallback path `server/generated`, поэтому код может писать:
+Генерация описана через `add_custom_command`. Generated header подключается через include path `server/build/generated` или fallback path `server/generated`, поэтому database-layer код может писать:
 
 ```cpp
 #include <persistence/user-odb.hxx>

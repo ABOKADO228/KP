@@ -313,7 +313,7 @@ void finishCopy(PGconn* connection, const std::string& statement) {
   }
 }
 
-void executeSqlScript(PGconn* connection, const std::filesystem::path& path) {
+void applySchemaScript(PGconn* connection, const std::filesystem::path& path) {
   const std::string script = readFile(path);
   std::string statement;
   bool copy_mode = false;
@@ -469,7 +469,7 @@ void prepareDatabase(const DatabaseBootstrapOptions& options) {
     const bool userScript = script.kind == DatabaseBootstrapScriptKind::UserSchema;
     const bool shouldRun = reset || (userScript ? !hasUserSchema : !hasDomainSchema);
     if (shouldRun) {
-      executeSqlScript(target.get(), script.path);
+      applySchemaScript(target.get(), script.path);
     }
   }
 }

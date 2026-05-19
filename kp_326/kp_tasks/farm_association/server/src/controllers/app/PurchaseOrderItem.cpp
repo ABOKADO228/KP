@@ -1,9 +1,8 @@
 #include <controllers/app/PurchaseOrderItem.hpp>
 
-#include <database/SqlValue.hpp>
-
-#include <stdexcept>
-#include <string>
+#include <algorithm>
+#include <exception>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -11,57 +10,31 @@ namespace fasc::server::controllers::app {
 
 namespace {
 
-std::string requireColumn(const fasc::server::database::SqlRow& row, const std::string& column) {
-  const auto it = row.find(column);
-  if (it == row.end() || !it->second.has_value()) {
-    throw std::runtime_error{"Column is null: " + column};
-  }
-  return *it->second;
+using Entity = fasc::server::persistence::PurchaseOrderItemEntity;
+
+bool matchesKey(const Entity& entity, const fasc::server::controllers::dto::PurchaseOrderItemKeyDto& key) {
+  return entity.id == key.id;
 }
 
-std::optional<std::string> optionalColumn(const fasc::server::database::SqlRow& row,
-                                         const std::string& column) {
-  const auto it = row.find(column);
-  if (it == row.end()) {
-    throw std::runtime_error{"Column is missing: " + column};
+void applyUpdateDto(Entity& entity, const fasc::server::controllers::dto::PurchaseOrderItemUpdateDto& dto) {
+  if (dto.purchaseOrderId.has_value()) {
+    entity.purchaseOrderId = *dto.purchaseOrderId;
   }
-  return it->second;
-}
-
-
-fasc::server::persistence::PurchaseOrderItemEntity rowToEntity(const fasc::server::database::SqlRow& row) {
-  fasc::server::persistence::PurchaseOrderItemEntity entity;
-  entity.id = fasc::server::database::requireColumn<std::uint64_t>(row, "id");
-  entity.purchaseOrderId = fasc::server::database::requireColumn<std::uint64_t>(row, "purchase_order_id");
-  entity.productId = fasc::server::database::requireColumn<std::uint64_t>(row, "product_id");
-  if (const auto value = fasc::server::database::optionalColumn<double>(row, "quantity")) {
-    entity.quantity = *value;
-  } else {
-    entity.quantity.reset();
+  if (dto.productId.has_value()) {
+    entity.productId = *dto.productId;
   }
-  if (const auto value = fasc::server::database::optionalColumn<double>(row, "unit_price")) {
-    entity.unitPrice = *value;
-  } else {
-    entity.unitPrice.reset();
+  if (dto.quantity.has_value()) {
+    entity.quantity = *dto.quantity;
   }
-  if (const auto value = fasc::server::database::optionalColumn<double>(row, "vat_rate")) {
-    entity.vatRate = *value;
-  } else {
-    entity.vatRate.reset();
+  if (dto.unitPrice.has_value()) {
+    entity.unitPrice = *dto.unitPrice;
   }
-  if (const auto value = fasc::server::database::optionalColumn<fasc::server::domain::CurrencyCode>(row, "currency")) {
-    entity.currency = *value;
-  } else {
-    entity.currency.reset();
+  if (dto.vatRate.has_value()) {
+    entity.vatRate = *dto.vatRate;
   }
-  return entity;
-}
-
-std::vector<fasc::server::database::SqlParameter> keyValues(
-    const fasc::server::controllers::dto::PurchaseOrderItemKeyDto& key) {
-  std::vector<fasc::server::database::SqlParameter> values;
-  values.push_back(fasc::server::database::makeSqlParameter(key.id));
-  return values;
+  if (dto.currency.has_value()) {
+    entity.currency = *dto.currency;
+  }
 }
 
 } // namespace
@@ -69,17 +42,13 @@ std::vector<fasc::server::database::SqlParameter> keyValues(
 PurchaseOrderItemController::PurchaseOrderItemController(fasc::server::database::Database& db) : db_(db) {}
 
 PurchaseOrderItemRowsResult PurchaseOrderItemController::list() const {
-  static const std::vector<std::string> columns{"id", "purchase_order_id", "product_id", "quantity", "unit_price", "vat_rate", "currency"};
   try {
-    const auto rows = db_.invokeTransactionally([&] {
-      return db_.selectRows("public.purchase_order_item", columns);
+    auto rows = db_.invokeTransactionally([&] {
+      return db_.selectEntities<Entity>();
     });
 
     fasc::server::controllers::dto::PurchaseOrderItemRowsDto dto;
-    // Собираем строки ответа.
-    for (const auto& row : rows) {
-      dto.rows.push_back(rowToEntity(row));
-    }
+    dto.rows = std::move(rows);
     return PurchaseOrderItemRowsResult::success(std::move(dto));
   } catch (const std::exception& exception) {
     return PurchaseOrderItemRowsResult::failure(
@@ -88,70 +57,74 @@ PurchaseOrderItemRowsResult PurchaseOrderItemController::list() const {
 }
 
 PurchaseOrderItemRowResult PurchaseOrderItemController::load(const fasc::server::controllers::dto::PurchaseOrderItemKeyDto& key) const {
-  static const std::vector<std::string> columns{"id", "purchase_order_id", "product_id", "quantity", "unit_price", "vat_rate", "currency"};
-  static const std::vector<std::string> keys{"id"};
   try {
-    const auto row = db_.invokeTransactionally([&] {
-      return db_.selectOneRow("public.purchase_order_item", columns, keys, keyValues(key));
+    auto row = db_.invokeTransactionally([&]() -> std::optional<Entity> {
+      std::vector<Entity> rows = db_.selectEntities<Entity>();
+      const auto iterator = std::find_if(rows.begin(), rows.end(), [&](const Entity& entity) {
+        return matchesKey(entity, key);
+      });
+      if (iterator == rows.end()) {
+        return std::nullopt;
+      }
+      return *iterator;
     });
     if (!row.has_value()) {
-      return PurchaseOrderItemRowResult::failure(FarmEntityError{FarmEntityErrorCode::NotFound, "Row not found"});
+      return PurchaseOrderItemRowResult::failure(
+          FarmEntityError{FarmEntityErrorCode::NotFound, "Row not found"});
     }
-    return PurchaseOrderItemRowResult::success(
-        fasc::server::controllers::dto::PurchaseOrderItemRowDto{rowToEntity(*row)});
+    return PurchaseOrderItemRowResult::success(fasc::server::controllers::dto::PurchaseOrderItemRowDto{std::move(*row)});
   } catch (const std::exception& exception) {
     return PurchaseOrderItemRowResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
   }
 }
 
-PurchaseOrderItemMutationResult PurchaseOrderItemController::create(
-    const fasc::server::controllers::dto::PurchaseOrderItemCreateDto& dto) const {
-  std::vector<std::string> columns;
-  std::vector<fasc::server::database::SqlParameter> values;
+PurchaseOrderItemMutationResult PurchaseOrderItemController::create(const fasc::server::controllers::dto::PurchaseOrderItemCreateDto& dto) const {
+  Entity entity{};
+  bool hasWritableValues = false;
   if (!dto.purchaseOrderId.has_value()) {
     return PurchaseOrderItemMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "Missing field: purchase_order_id"});
   }
   if (dto.purchaseOrderId.has_value()) {
-    columns.push_back("purchase_order_id");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.purchaseOrderId));
+    entity.purchaseOrderId = *dto.purchaseOrderId;
+    hasWritableValues = true;
   }
   if (!dto.productId.has_value()) {
     return PurchaseOrderItemMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "Missing field: product_id"});
   }
   if (dto.productId.has_value()) {
-    columns.push_back("product_id");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.productId));
+    entity.productId = *dto.productId;
+    hasWritableValues = true;
   }
   if (dto.quantity.has_value()) {
-    columns.push_back("quantity");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.quantity));
+    entity.quantity = *dto.quantity;
+    hasWritableValues = true;
   }
   if (dto.unitPrice.has_value()) {
-    columns.push_back("unit_price");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.unitPrice));
+    entity.unitPrice = *dto.unitPrice;
+    hasWritableValues = true;
   }
   if (dto.vatRate.has_value()) {
-    columns.push_back("vat_rate");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.vatRate));
+    entity.vatRate = *dto.vatRate;
+    hasWritableValues = true;
   }
   if (dto.currency.has_value()) {
-    columns.push_back("currency");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.currency));
+    entity.currency = *dto.currency;
+    hasWritableValues = true;
   }
-  if (columns.empty()) {
+  if (!hasWritableValues) {
     return PurchaseOrderItemMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "No writable columns provided"});
   }
 
   try {
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.insertRow("public.purchase_order_item", columns, values);
+      db_.persistEntity(entity);
+      return 1ULL;
     });
-    return PurchaseOrderItemMutationResult::success(
-        fasc::server::controllers::dto::PurchaseOrderItemMutationDto{affectedRows});
+    return PurchaseOrderItemMutationResult::success(fasc::server::controllers::dto::PurchaseOrderItemMutationDto{affectedRows});
   } catch (const std::exception& exception) {
     return PurchaseOrderItemMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
@@ -161,59 +134,64 @@ PurchaseOrderItemMutationResult PurchaseOrderItemController::create(
 PurchaseOrderItemMutationResult PurchaseOrderItemController::update(
     const fasc::server::controllers::dto::PurchaseOrderItemKeyDto& key,
     const fasc::server::controllers::dto::PurchaseOrderItemUpdateDto& dto) const {
-  static const std::vector<std::string> keys{"id"};
-  std::vector<std::string> columns;
-  std::vector<fasc::server::database::SqlParameter> values;
+  bool hasWritableValues = false;
   if (dto.purchaseOrderId.has_value()) {
-    columns.push_back("purchase_order_id");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.purchaseOrderId));
+    hasWritableValues = true;
   }
   if (dto.productId.has_value()) {
-    columns.push_back("product_id");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.productId));
+    hasWritableValues = true;
   }
   if (dto.quantity.has_value()) {
-    columns.push_back("quantity");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.quantity));
+    hasWritableValues = true;
   }
   if (dto.unitPrice.has_value()) {
-    columns.push_back("unit_price");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.unitPrice));
+    hasWritableValues = true;
   }
   if (dto.vatRate.has_value()) {
-    columns.push_back("vat_rate");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.vatRate));
+    hasWritableValues = true;
   }
   if (dto.currency.has_value()) {
-    columns.push_back("currency");
-    values.push_back(fasc::server::database::makeSqlParameter(*dto.currency));
+    hasWritableValues = true;
   }
-  if (columns.empty()) {
+  if (!hasWritableValues) {
     return PurchaseOrderItemMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::InvalidInput, "No writable columns provided"});
   }
 
   try {
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.updateRows("public.purchase_order_item", columns, values, keys, keyValues(key));
+      unsigned long long count{};
+      std::vector<Entity> rows = db_.selectEntities<Entity>();
+      for (Entity& entity : rows) {
+        if (matchesKey(entity, key)) {
+          applyUpdateDto(entity, dto);
+          db_.updateEntity(entity);
+          ++count;
+        }
+      }
+      return count;
     });
-    return PurchaseOrderItemMutationResult::success(
-        fasc::server::controllers::dto::PurchaseOrderItemMutationDto{affectedRows});
+    return PurchaseOrderItemMutationResult::success(fasc::server::controllers::dto::PurchaseOrderItemMutationDto{affectedRows});
   } catch (const std::exception& exception) {
     return PurchaseOrderItemMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});
   }
 }
 
-PurchaseOrderItemMutationResult PurchaseOrderItemController::erase(
-    const fasc::server::controllers::dto::PurchaseOrderItemKeyDto& key) const {
-  static const std::vector<std::string> keys{"id"};
+PurchaseOrderItemMutationResult PurchaseOrderItemController::erase(const fasc::server::controllers::dto::PurchaseOrderItemKeyDto& key) const {
   try {
     const unsigned long long affectedRows = db_.invokeTransactionally([&] {
-      return db_.deleteRows("public.purchase_order_item", keys, keyValues(key));
+      unsigned long long count{};
+      std::vector<Entity> rows = db_.selectEntities<Entity>();
+      for (Entity& entity : rows) {
+        if (matchesKey(entity, key)) {
+          db_.eraseEntity(entity);
+          ++count;
+        }
+      }
+      return count;
     });
-    return PurchaseOrderItemMutationResult::success(
-        fasc::server::controllers::dto::PurchaseOrderItemMutationDto{affectedRows});
+    return PurchaseOrderItemMutationResult::success(fasc::server::controllers::dto::PurchaseOrderItemMutationDto{affectedRows});
   } catch (const std::exception& exception) {
     return PurchaseOrderItemMutationResult::failure(
         FarmEntityError{FarmEntityErrorCode::PersistenceFailure, exception.what()});

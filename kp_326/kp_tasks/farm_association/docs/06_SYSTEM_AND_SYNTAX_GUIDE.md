@@ -57,7 +57,7 @@ Backend разделен на слои:
 | Views | `server/include/views` | Публичная форма ответа API |
 | Marshalling | `server/include/marshalling` | `to_json`, `from_json`, преобразование entity/DTO/view |
 | Persistence | `server/include/persistence`, `server/generated/persistence` | C++ представление таблиц и ODB-generated код |
-| Database | `server/include/database`, `server/src/database` | Bootstrap, ODB connection, ODB table registry, низкоуровневый SQL для bootstrap |
+| Database | `server/include/database`, `server/src/database` | Bootstrap, ODB connection, типизированная ODB-обертка для runtime CRUD |
 | Security | `server/include/security`, `server/src/security` | JWT, password hash, encoding helpers |
 
 ### Маршрут Запроса
@@ -361,18 +361,30 @@ JSON для пустого значения возвращает `null`.
 
 ### Database Facade
 
-Предметные CRUD-контроллеры используют generic методы:
+Предметные CRUD-контроллеры работают с типизированными persistence-сущностями, а не со строковыми именами таблиц и колонок:
 
 ```cpp
-db_.selectRows("public.farm", columns);
-db_.insertRow("public.farm", columns, values);
-db_.updateRows("public.farm", columns, values, keys, keyValues(key));
-db_.deleteRows("public.farm", keys, keyValues(key));
+using Entity = fasc::server::persistence::FarmEntity;
+
+auto rows = db_.selectEntities<Entity>();
+db_.persistEntity(entity);
+db_.updateEntity(entity);
+db_.eraseEntity(entity);
 ```
 
-Эти методы больше не собирают SQL в контроллерах. Для зарегистрированных предметных таблиц они переходят в `OdbTableRegistry`, где table name связывается с ODB entity из `server/include/persistence` и generated mapping из `server/generated/persistence`. Поэтому обычные ключи и составные ключи обновляются/удаляются через ODB object identity.
+Контроллер сам знает DTO, entity type и поля ключа. Для обычного ключа сравнивается одно typed-поле, для составного ключа - несколько typed-полей:
 
-Низкоуровневые `querySql` и `executeSql` остаются в `Database` для bootstrap, служебной диагностики и случаев, где нужен сырой SQL поверх libpq connection.
+```cpp
+bool matchesKey(const AssociationFarmsEntity& entity,
+                const AssociationFarmsKeyDto& key) {
+  return entity.farmId == key.farmId &&
+         entity.associationId == key.associationId;
+}
+```
+
+Старый строковый CRUD API с именами таблиц/колонок удален. Сырые ODB-вызовы закрыты внутри database layer: application-код не получает `odb::database&` и не вызывает `odb::query`, `persist`, `update` или `erase` напрямую.
+
+Предметные сущности подключаются к ODB через `EntityAccess<Entity>` в `server/src/database/EntityAccess.cpp`. Там лежат generated headers (`*-odb.hxx`) и реальные вызовы `odb::database`. Пользовательские сценарии вынесены в отдельные методы `selectUsers/findUserByLogin/persistUser/updateUser`, потому что `User` имеет отдельную auth-логику.
 
 ### CMake Синтаксис
 

@@ -150,7 +150,7 @@ Release
 
 Сервер открывает libpq/ODB-подключения с `client_encoding=UTF8`. Новые базы, которые создает bootstrap, создаются как UTF-8 (`template0`, `LC_COLLATE=C`, `LC_CTYPE=C`), а для уже существующих баз PostgreSQL выполняет конвертацию результата в UTF-8 на уровне клиента. Это важно на Windows-кластерах с русской локалью `WIN1251`: JSON API остается валидным UTF-8, и `/api/farm` не падает на русских сидовых данных.
 
-Предметные таблицы и пользователи имеют ODB mapping в `server/include/persistence` и generated-файлы в `server/generated/persistence`. CRUD facade `Database::selectRows/insertRow/updateRows/deleteRows` для `/api/*` теперь dispatch-ит в ODB registry, а прямой libpq SQL остается для bootstrap и низкоуровневой диагностики.
+Предметные таблицы и пользователи имеют ODB mapping в `server/include/persistence` и generated-файлы в `server/generated/persistence`. Предметные CRUD-контроллеры работают типизированно: `Database::selectEntities<Entity>/persistEntity/updateEntity/eraseEntity`, а auth/users идет через `Database::selectUsers/findUserByLogin/persistUser/updateUser`. Строкового CRUD API с именами таблиц/колонок больше нет; `*-odb.hxx`, `odb::query` и вызовы `odb::database` остаются внутри `server/src/database`.
 
 Сервер использует параметры подключения:
 
