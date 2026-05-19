@@ -44,6 +44,7 @@
 | [04_BOOST_ASIO_BEAST_SERVER.md](04_BOOST_ASIO_BEAST_SERVER.md) | HTTP-сервер на Boost.Asio/Beast: accept, session, request dispatcher |
 | [05_HIGH_PERFORMANCE_BEAST_SERVER.md](05_HIGH_PERFORMANCE_BEAST_SERVER.md) | Заметки по производительному Beast server: threads, timeouts, limits |
 | [06_SYSTEM_AND_SYNTAX_GUIDE.md](06_SYSTEM_AND_SYNTAX_GUIDE.md) | Как работает вся система и какой синтаксис используется во frontend/backend |
+| [07_WINDOWS_RELEASE_GUIDE.md](07_WINDOWS_RELEASE_GUIDE.md) | Как устроена готовая Windows-сборка, почему нужен HTTP frontend server и PostgreSQL |
 
 ## Спецификации И Исходные Данные
 
@@ -84,6 +85,7 @@
 | Разобраться с CMake | `docs/03_CMAKE_GUIDE.md` |
 | Разобраться с Beast server | `docs/04_BOOST_ASIO_BEAST_SERVER.md`, `docs/05_HIGH_PERFORMANCE_BEAST_SERVER.md` |
 | Проверить Windows и Manjaro | `docs/01_DEPENDENCIES_SETUP.md`, `docs/02_BUILD_RUN_TEST.md`, `docs/03_CMAKE_GUIDE.md` |
+| Разобраться с готовой Windows-сборкой | `WINDOWS_RELEASE.md`, `windows-release/README.md`, `docs/07_WINDOWS_RELEASE_GUIDE.md` |
 
 ## Актуальное Поведение Системы
 
