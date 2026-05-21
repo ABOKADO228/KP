@@ -96,10 +96,8 @@ AuthViewResult UserHttpController::registerUser(std::string_view body) {
 
 AuthViewResult UserHttpController::loginUser(std::string_view body) {
   try {
-    // Разбираем входной JSON.
     auto command = nlohmann::json::parse(body).get<LoginUserCommand>();
 
-    // Маппим app result в view result.
     const auto result = users_.loginUser(std::move(command));
     if (result.hasError()) {
       return AuthViewResult::failure(errorView(result.error()));
